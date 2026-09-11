@@ -1,0 +1,192 @@
+extends Node2D
+var sim
+var selected_id=-1
+var show_ranges=true
+var time=0.0
+var font=ThemeDB.fallback_font
+var drag_preview=Vector2.INF
+
+func _process(delta):
+	time+=delta
+	queue_redraw()
+
+func text_at(p, text, size=14, color=Color("#d8e9e5")):
+	draw_string(font,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,color)
+
+func _draw():
+	draw_rect(Rect2(-1600,-1200,3200,2400),Color("#17232c"))
+	for ring in range(102):
+		draw_circle(Vector2.ZERO,780-ring*2,Color("#253745").lerp(Color("#aac5d9"),float(ring)/101.0))
+	# Tissue fibres under a microscope, deterministic and low-contrast.
+	for i in range(19):
+		var points=PackedVector2Array()
+		for j in range(51):
+			var x=-750+j*30
+			var y=-470+i*51+sin(x*0.005+i*1.8)*42+sin(x*0.017+i)*9
+			points.append(Vector2(x,y))
+		draw_polyline(points,Color(0.56,0.77,0.76,0.055),5,true)
+	for i in range(100):
+		var p=Vector2(sin(i*27.14)*660,cos(i*13.91)*440)
+		draw_circle(p,2+fmod(i,3),Color(0.71,0.85,0.76,0.11))
+	for r in [180,360,540]:
+		draw_arc(Vector2.ZERO,r,0,TAU,120,Color(0.63,0.81,0.80,0.055),1,true)
+	var directions=[Vector2(620,0),Vector2(-620,0),Vector2(0,-370)]
+	if sim==null: return
+	for entry in sim.wave:
+		var start=directions[entry.lane]
+		var end=Vector2.ZERO
+		for n in range(14):
+			var a=start.lerp(end,n/15.0)
+			var b=start.lerp(end,(n+0.4)/15.0)
+			draw_line(a,b,Color(0.76,0.65,0.84,0.2),2,true)
+		draw_circle(start,30,Color("#635779"))
+		draw_arc(start,37,time*0.1,time*0.1+TAU*0.75,30,Color("#b3a0c7"),2,true)
+		text_at(start+Vector2(-9,5),str(entry.count),17)
+	# Range underneath bodies and hands.
+	var selected=sim.cell_by_id(selected_id)
+	if not selected.is_empty() and selected.alive:
+		var radius=sim.range_of(selected)
+		if radius>0 and show_ranges:
+			draw_circle(selected.p,radius,Color(0.82,0.9,0.7,0.045))
+			draw_arc(selected.p,radius,0,TAU,80,Color(0.82,0.9,0.7,0.35),1.5,true)
+		if selected.key=="orbiter":
+			draw_arc(Vector2.ZERO,maxf(100,selected.p.length()),0,TAU,90,Color(0.82,0.9,0.7,0.4),1.5,true)
+	for l in sim.links:
+		var a=sim.cell_by_id(l.a)
+		var b=sim.cell_by_id(l.b)
+		if not a.alive or not b.alive: continue
+		var dir=a.p.direction_to(b.p)
+		var p=a.p+dir*14
+		var q=b.p-dir*14
+		var mid=(p+q)*0.5
+		var curve=dir.orthogonal()*sin(time*2+l.a)*3
+		draw_line(p,mid+curve,Color("#30454f"),10,true)
+		draw_line(mid+curve,q,Color("#30454f"),10,true)
+		draw_line(p,mid+curve,Color(sim.catalog[a.key].color).lightened(0.12),6,true)
+		draw_line(mid+curve,q,Color(sim.catalog[b.key].color).lightened(0.12),6,true)
+		draw_circle(mid+curve,6,Color("#f5dfcb"))
+		draw_arc(mid+curve,6,-PI/2,PI/2,12,Color("#998a87"),1,true)
+	for b in sim.blood:
+		if not b.alive: continue
+		draw_circle(b.p+Vector2(2,4),14,Color(0.05,0.13,0.17,0.3))
+		draw_circle(b.p,13,Color("#df8998"))
+		draw_circle(b.p+Vector2(-2,-2),10,Color("#eca2ac"))
+		draw_arc(b.p,7,0,TAU,24,Color("#c97688"),2,true)
+		face(b.p,0.62,b.id,false)
+	for c in sim.cells:
+		if c.alive: draw_cell(c)
+	for p in sim.particles:
+		if p.kind=="bullet":
+			draw_circle(p.p,p.r+2,Color(0.8,0.95,1,0.15))
+			draw_circle(p.p,p.r,Color("#bbe5ee"))
+			draw_arc(p.p,p.r,0,TAU,14,Color("#e8faf9"),1,true)
+		elif p.kind=="tag":
+			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-6),p.p+Vector2(5,4),p.p+Vector2(-5,4)]),Color("#efc3d8"))
+		else:
+			draw_circle(p.p,3.5,Color("#ccb6e2"))
+	for v in sim.viruses:
+		if v.alive: draw_virus(v)
+	for e in sim.effects:
+		var alpha=e.life/e.max
+		var color=Color(e.color,alpha)
+		if e.has("end"):
+			draw_line(e.p,e.end,color,3,true)
+		else:
+			draw_arc(e.p,e.r*(1.3-alpha*0.5),0,TAU,36,color,2,true)
+			if e.text!="": text_at(e.p+Vector2(-12,-30-(1-alpha)*20),e.text,15,color)
+	if not selected.is_empty() and selected.alive:
+		var p=selected.p
+		draw_arc(p,27,0,TAU,48,Color("#f8e3a7"),2,true)
+		if sim.phase=="shop":
+			var tip=p+Vector2.RIGHT.rotated(selected.angle)*62
+			draw_line(p+Vector2.RIGHT.rotated(selected.angle)*28,tip,Color("#f8e3a7"),2,true)
+			draw_circle(tip,8,Color("#f4df9d"))
+			var d=Vector2.RIGHT.rotated(selected.angle)
+			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
+	if drag_preview!=Vector2.INF:
+		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
+
+func face(p, factor, id, hurt):
+	var blink=fmod(time+id*0.71,4.8)<0.14
+	for x in [-6,6]:
+		var eye=p+Vector2(x,-2)*factor
+		if blink or hurt:
+			draw_line(eye+Vector2(-2,0)*factor,eye+Vector2(2,0)*factor,Color("#33434c"),1.8,true)
+		else:
+			draw_circle(eye,2.0*factor,Color("#33434c"))
+			draw_circle(eye+Vector2(-0.5,-0.5)*factor,0.55*factor,Color("#fff7e6"))
+	draw_arc(p+Vector2(0,1)*factor,3.5*factor,0.15,PI-0.15,12,Color("#6c5260"),1.4,true)
+	for x in [-11,11]:
+		draw_circle(p+Vector2(x,3)*factor,2.6*factor,Color(0.95,0.51,0.59,0.38))
+
+func draw_cell(c):
+	var d=sim.catalog[c.key]
+	var color=Color(d.color)
+	var pulse=1+sin(time*2+c.id)*0.035
+	var p=c.p
+	var wall=d.behavior=="wall"
+	draw_set_transform(p+Vector2(2,5),c.angle)
+	if wall:
+		draw_style_box(capsule_style(Color(0.03,0.13,0.17,0.4)),Rect2(-44,-14,88,28))
+	else: draw_circle(Vector2.ZERO,21,Color(0.03,0.13,0.17,0.4))
+	draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
+	if wall:
+		draw_style_box(capsule_style(color),Rect2(-43,-13,86,26))
+		draw_line(Vector2(-32,-7),Vector2(32,-7),color.lightened(0.2),3,true)
+	else:
+		if d.behavior in ["orbit","seek","forward","drop"]:
+			for i in range(10):
+				var a=i*TAU/10
+				draw_line(Vector2.from_angle(a)*18,Vector2.from_angle(a+sin(time*5+i)*0.12)*25,color.darkened(0.1),2.3,true)
+		draw_circle(Vector2.ZERO,20,color.darkened(0.25))
+		draw_circle(Vector2.ZERO,18.5,color)
+		draw_arc(Vector2(-1,-1),14,PI*1.1,PI*1.8,16,color.lightened(0.25),2.5,true)
+		if d.behavior in ["shoot","sniper","spray"]:
+			draw_style_box(capsule_style(color.lightened(0.1)),Rect2(10,-6,19,12))
+		if c.key=="magnet":
+			draw_arc(Vector2.ZERO,14,-PI*0.7,PI*0.7,24,Color("#b26e9b"),4,true)
+	draw_set_transform(Vector2.ZERO)
+	face(p,0.95,c.id,c.flash>0)
+	if c.key=="bandage":
+		draw_line(p+Vector2(-8,-12),p+Vector2(8,-12),Color("#fff7df"),5,true)
+	if c.key=="bank":
+		draw_circle(p+Vector2(0,12),4,Color("#ffe49b"))
+	if c.charge>0:
+		text_at(p+Vector2(-5,-27),"ϟ",18,Color("#ffe89a"))
+	if c.rank>1:
+		for i in range(c.rank):
+			draw_circle(p+Vector2(-6+(i*6),-27),2.2,Color("#ffe6a1"))
+	if c.rank==3:
+		draw_arc(p,23,0,TAU,40,Color("#f5db91"),1.4,true)
+	var fraction=clampf(c.hp/maxf(c.max_hp,c.hp),0,1)
+	draw_line(p+Vector2(-14,26),p+Vector2(14,26),Color("#29424b"),3,true)
+	draw_line(p+Vector2(-14,26),p+Vector2(-14+28*fraction,26),Color("#cae2b0"),3,true)
+	text_at(p+Vector2(18,31),str(int(ceil(c.hp))),10,Color("#e7efe1"))
+
+func capsule_style(color):
+	var s=StyleBoxFlat.new()
+	s.bg_color=color
+	s.corner_radius_top_left=12
+	s.corner_radius_top_right=12
+	s.corner_radius_bottom_left=12
+	s.corner_radius_bottom_right=12
+	return s
+
+func draw_virus(v):
+	var p=v.p
+	var color=Color("#b399c6")
+	if v.type=="hungry": color=Color("#a68bb8")
+	if v.type=="wave": color=Color("#bca4d5")
+	if v.type=="seeker": color=Color("#be8fae")
+	if v.jump: color=Color("#eee0f5")
+	for i in range(7):
+		var a=i*TAU/7+v.age*0.15
+		draw_circle(p+Vector2.from_angle(a)*12,3.5,color.darkened(0.15))
+	draw_circle(p,12,color.darkened(0.25))
+	draw_circle(p,10.5,color)
+	face(p,0.63,v.id,false)
+	if v.tag>0:
+		draw_arc(p,17,0,TAU,24,Color("#f4c5d9"),1.5,true)
+	if v.jump:
+		draw_arc(p,20,0,TAU,24,Color("#efdefb"),2,true)
+	if v.hp>1: text_at(p+Vector2(12,-9),str(int(v.hp)),10)

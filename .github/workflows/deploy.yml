@@ -1,0 +1,48 @@
+name: Build and deploy game
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download official Godot and web template
+        run: |
+          mkdir -p .build web
+          curl --fail --location --retry 3 https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip -o .build/godot.zip
+          unzip -q .build/godot.zip -d .build
+          chmod +x .build/Godot_v4.7.2-stable_linux.x86_64
+          node download-web-template.mjs
+      - name: Check game systems
+        run: |
+          for test in test_simulation test_systems test_ui_save test_ui_layout; do
+            .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/$test.gd
+          done
+      - name: Export browser game
+        run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --export-release Web ../web/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deployment

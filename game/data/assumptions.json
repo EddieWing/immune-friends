@@ -1,0 +1,32 @@
+{
+  "status": "Unverified reconstruction parameters, not measured original rules",
+  "scale": 3,
+  "start_blood": 20,
+  "bond_distance": 145,
+  "bond_stiffness": 0.65,
+  "contact_damage": 1,
+  "contact_interval": 0.8,
+  "bullet_damage": 1,
+  "bullet_speed": 280,
+  "bomb_damage": 2,
+  "virus_speed": 31,
+  "xp_thresholds": [
+    1,
+    3,
+    6
+  ],
+  "radar_multiplier": 1.5,
+  "accelerator_multiplier": 1.25,
+  "swapper": "swap persistent HP after restoration",
+  "ordinary_sell_price": 1,
+  "shop_weights": "uniform within unlocked non-reward types",
+  "unknown_elites": "3 copies: sum HP, only measured role buffs applied",
+  "late_waves": "R9-12 extrapolated; generated variant selectable internally",
+  "protein_lifetime": 12,
+  "charge_range": 58,
+  "charge_rule": "one charge kills one reachable virus; nearby objects bridge",
+  "healing": "may exceed base during combat; reset next shop",
+  "max_battle_seconds": 180,
+  "stalemate_resolution": "After 180 seconds, remaining viruses each remove one blood cell; provisional safeguard, original unknown",
+  "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured"
+}

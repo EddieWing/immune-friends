@@ -1,0 +1,10 @@
+game/.godot/
+game/artifacts/
+game/export-templates/
+web/
+.build/
+.env
+.env.*
+*.log
+*.tmp
+Auto-Immune-*.png
