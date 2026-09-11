@@ -11,6 +11,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,10 +24,12 @@ jobs:
           unzip -q .build/godot.zip -d .build
           chmod +x .build/Godot_v4.7.2-stable_linux.x86_64
           node download-web-template.mjs
+      - name: Import project resources
+        run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path game --import
       - name: Check game systems
         run: |
           for test in test_simulation test_systems test_ui_save test_ui_layout; do
-            .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/$test.gd
+            timeout 60s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/$test.gd
           done
       - name: Export browser game
         run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --export-release Web ../web/index.html
@@ -36,6 +39,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write
@@ -46,3 +50,4 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/deploy-pages@v4
         id: deployment
+
