@@ -28,6 +28,7 @@ var last_phase=""
 var menu_open=true
 var clock_accum=0.0
 var icon_cache={}
+var symbol_font: Font
 var audio: AudioStreamPlayer
 var ambient: AudioStreamPlayer
 var bottom_panel: PanelContainer
@@ -90,6 +91,10 @@ func _ready():
 
 func make_theme():
 	var theme=Theme.new()
+	var ui_font=FontVariation.new()
+	ui_font.base_font=ThemeDB.fallback_font
+	ui_font.fallbacks=[preload("res://assets/fonts/NotoSansSymbols.ttf"),preload("res://assets/fonts/NotoSansSymbols2-Regular.ttf"),preload("res://assets/fonts/NotoSansMath-Regular.ttf")]
+	symbol_font=ui_font
 	theme.default_font_size=16
 	theme.set_color("font_color","Label",Color("#354247"))
 	theme.set_color("default_color","RichTextLabel",Color("#354247"))
@@ -143,6 +148,7 @@ func label(parent, text, pos, size_font=16, color=Color("#e7eee7")):
 func button(parent, text, action, min_size=Vector2(0,40)):
 	var b=Button.new()
 	b.text=text
+	if text in ["⚙","⇈","⟳","❄","→","⌃","‹","›"]: b.add_theme_font_override("font",symbol_font)
 	b.custom_minimum_size=min_size
 	b.pressed.connect(action)
 	parent.add_child(b)
@@ -221,6 +227,8 @@ func build_ui():
 	income_panel=panel(ui,Rect2(1306,454,134,228),Color("#eb7b6a"))
 	incoming=RichTextLabel.new()
 	incoming.bbcode_enabled=true
+	incoming.add_theme_font_override("normal_font",symbol_font)
+	incoming.add_theme_font_override("bold_font",symbol_font)
 	incoming.custom_minimum_size=Vector2(108,198)
 	income_panel.add_child(incoming)
 	currency_panel=panel(ui,Rect2(174,711,260,37))
@@ -264,6 +272,7 @@ func build_ui():
 	start_button.tooltip_text="Начать инфекцию"
 	capacity_panel=panel(ui,Rect2(645,849,150,40))
 	stats=Label.new()
+	stats.add_theme_font_override("font",symbol_font)
 	stats.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	capacity_panel.add_child(stats)
 	shop_toggle=absolute_button("⌃",Vector2(175,704),Vector2(23,28),toggle_shop)
@@ -827,7 +836,7 @@ func show_cell_card(key,c={}):
 	term_text.text="[b]"+term+"[/b]\n"+explanation
 
 func virus_glyph(key):
-	return {"basic":"✹","wave":"〰","jumper":"↟","hungry":"●","swarmer":"✣","seeker":"♟","avoider":"◇"}.get(key,"●")
+	return {"basic":"✹","wave":"≈","jumper":"↟","hungry":"●","swarmer":"✣","seeker":"♟","avoider":"◇"}.get(key,"●")
 
 func show_recap():
 	var next_sim=Simulation.new()
@@ -850,6 +859,7 @@ func show_recap():
 	modal_panel.position=Vector2(475,122)
 	modal_panel.size=Vector2(480,226)
 	var amount=Label.new()
+	amount.add_theme_font_override("font",symbol_font)
 	amount.text=virus_glyph(delta_type)+"  + "+str(delta_count)
 	amount.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	amount.add_theme_font_size_override("font_size",40)
@@ -866,6 +876,7 @@ func show_recap():
 	title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var glyph=Label.new()
+	glyph.add_theme_font_override("font",symbol_font)
 	glyph.text=virus_glyph(delta_type)
 	glyph.add_theme_font_size_override("font_size",66)
 	glyph.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER

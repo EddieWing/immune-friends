@@ -10,6 +10,13 @@ func run():
 	scene.save_path="user://test_roundtrip.json"
 	root.add_child(scene)
 	await process_frame
+	var symbols_ok=true
+	for symbol in "⚙⇈⟳❄→⌃⌄♟ⓘ✹≈↟●✣◇▣":
+		var covered=false
+		for font in scene.symbol_font.fallbacks:
+			covered=covered or font.has_char(symbol.unicode_at(0))
+		symbols_ok=symbols_ok and covered
+	check(symbols_ok,"bundled fonts cover every UI icon without OS fonts")
 	scene.sim.reset(42,12)
 	scene.modal.hide()
 	scene.buy_offer(0,false)
@@ -46,6 +53,5 @@ func run():
 	scene.queue_free()
 	await process_frame
 	DirAccess.remove_absolute("user://test_roundtrip.json")
-	print("RESULT: 9 checks, %d failures" % failures)
+	print("RESULT: 10 checks, %d failures" % failures)
 	quit(1 if failures else 0)
-
