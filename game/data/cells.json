@@ -9,7 +9,7 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#efbca1",
-    "description": "Широкое тело задерживает вирусы."
+    "description": "Its wide body blocks viruses."
   },
   "tackle": {
     "name": "Tackle",
@@ -21,7 +21,7 @@
     "interval": 0,
     "behavior": "forward",
     "color": "#ed9c98",
-    "description": "Движется вперёд по направлению стрелки."
+    "description": "Moves forward in the direction of its arrow."
   },
   "seeker": {
     "name": "Seeker",
@@ -33,7 +33,7 @@
     "interval": 0,
     "behavior": "seek",
     "color": "#92d4bd",
-    "description": "Ищет вирусы в радиусе 30."
+    "description": "Seeks viruses within a range of 30."
   },
   "orbiter": {
     "name": "Orbiter",
@@ -45,7 +45,7 @@
     "interval": 0,
     "behavior": "orbit",
     "color": "#b8a1dc",
-    "description": "Обходит клетки крови против часовой стрелки."
+    "description": "Orbits blood cells counterclockwise."
   },
   "magnet": {
     "name": "Magnet",
@@ -57,7 +57,7 @@
     "interval": 0,
     "behavior": "magnet",
     "color": "#e9a4c1",
-    "description": "Сильно притягивает вирусы в своём поле."
+    "description": "Strongly attracts viruses within its field."
   },
   "bandage": {
     "name": "Bandage",
@@ -69,7 +69,7 @@
     "interval": 0,
     "behavior": "bandage",
     "color": "#f4dcb4",
-    "description": "При гибели даёт иммунным клеткам рядом +1 здоровья."
+    "description": "On death, gives nearby immune cells +1 health."
   },
   "regen": {
     "name": "Regen",
@@ -81,7 +81,7 @@
     "interval": 5,
     "behavior": "heal",
     "color": "#ebd587",
-    "description": "Каждые 5 секунд даёт +1 здоровья соседям."
+    "description": "Gives nearby cells +1 health every 5 seconds."
   },
   "bank": {
     "name": "Bank",
@@ -93,7 +93,7 @@
     "interval": 0,
     "behavior": "bank",
     "color": "#e8be70",
-    "description": "Каждый пережитый бой повышает цену продажи."
+    "description": "Each survived battle increases its sale value."
   },
   "resonant_wall": {
     "name": "Resonant Wall",
@@ -105,7 +105,7 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#e2b78c",
-    "description": "Получает +1 здоровья при покупке B-cell."
+    "description": "Gains +1 health when you buy a B-cell."
   },
   "resonant_buffer": {
     "name": "Resonant Buffer",
@@ -117,7 +117,7 @@
     "interval": 0,
     "behavior": "buffer",
     "color": "#bcd99a",
-    "description": "Каждая купленная B-cell получает +1 здоровья."
+    "description": "Each B-cell you buy gains +1 health."
   },
   "turret": {
     "name": "Turret",
@@ -129,7 +129,7 @@
     "interval": 1.5,
     "behavior": "shoot",
     "color": "#8bc6df",
-    "description": "Стреляет Bullet Protein в ближайший вирус."
+    "description": "Fires Bullet Protein at the nearest virus."
   },
   "sniper": {
     "name": "Sniper",
@@ -141,7 +141,7 @@
     "interval": 1.5,
     "behavior": "sniper",
     "color": "#9bbbe4",
-    "description": "Стреляет по линии направления; поворачивается стрелкой."
+    "description": "Fires straight ahead. Drag its arrow to aim."
   },
   "cannon": {
     "name": "Resonant Cannon",
@@ -153,7 +153,7 @@
     "interval": 1.5,
     "behavior": "shoot",
     "color": "#79c5c5",
-    "description": "Размер пуль растёт с числом B-cells."
+    "description": "Bullet size increases with the number of B-cells."
   },
   "bullet_wall": {
     "name": "Bullet Wall",
@@ -165,7 +165,7 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#a2cee1",
-    "description": "Поглощает один Bullet Protein и выпускает две пули."
+    "description": "Absorbs one Bullet Protein and fires two bullets."
   },
   "impact_wall": {
     "name": "Impact Wall",
@@ -177,7 +177,7 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#efb8a2",
-    "description": "Получая урон, выпускает две пули из концов."
+    "description": "When damaged, fires two bullets from its ends."
   },
   "tag_dropper": {
     "name": "Tag Dropper",
@@ -189,7 +189,7 @@
     "interval": 0.5,
     "behavior": "drop",
     "color": "#c5a0dc",
-    "description": "Движется вперёд и оставляет Tag Protein."
+    "description": "Moves forward and drops Tag Protein."
   },
   "tag_sprayer": {
     "name": "Tag Sprayer",
@@ -201,7 +201,7 @@
     "interval": 0.05,
     "behavior": "spray",
     "color": "#c59bd9",
-    "description": "Распыляет метки в секторе 180°."
+    "description": "Sprays tags across a 180° arc."
   },
   "zapper": {
     "name": "Virus Zapper",
@@ -213,7 +213,7 @@
     "interval": 0,
     "behavior": "electric",
     "color": "#e7dc86",
-    "description": "Содержит 2 Electric Charge; проводимость через объекты."
+    "description": "Holds 2 Electric Charges; conducts through objects."
   },
   "generator": {
     "name": "Electric Generator",
@@ -225,7 +225,7 @@
     "interval": 0,
     "behavior": "generator",
     "color": "#e7c77f",
-    "description": "Поглощает 8 Virus Protein и получает 8 Electric Charge."
+    "description": "Absorbs 8 Virus Proteins to gain 8 Electric Charges."
   },
   "bond": {
     "name": "Bond",
@@ -237,7 +237,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#bea7d8",
-    "description": "Физически связывает две ближайшие клетки."
+    "description": "Physically links the two nearest cells."
   },
   "bodyguard": {
     "name": "Bodyguard Bond",
@@ -249,7 +249,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#d8a5c6",
-    "description": "Принимает на себя урон подключённой сети."
+    "description": "Takes damage on behalf of its connected network."
   },
   "radar": {
     "name": "Radar Bond",
@@ -261,7 +261,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#9aceb7",
-    "description": "Увеличивает дальность подключённых клеток."
+    "description": "Increases the range of connected cells."
   },
   "swapper": {
     "name": "Swapper Bond",
@@ -273,7 +273,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#c3b1da",
-    "description": "В начале следующего магазина меняется здоровьем с партнёром."
+    "description": "Swaps health with its partner at the start of the next shop."
   },
   "accelerator": {
     "name": "Accelerator Bond",
@@ -285,7 +285,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#f0c199",
-    "description": "Эффект оригинала не считан. Временная модель: ускорение сети."
+    "description": "Original effect unknown. Provisional ability: speeds up the network."
   },
   "wildcard": {
     "name": "Wildcard",
@@ -297,7 +297,7 @@
     "interval": 0,
     "behavior": "wild",
     "color": "#d9bce6",
-    "description": "Объединяется с любой неэлитной клеткой."
+    "description": "Merges with any non-elite cell."
   },
   "bomb": {
     "name": "Bomb",
@@ -309,7 +309,7 @@
     "interval": 0,
     "behavior": "bomb",
     "color": "#edacbf",
-    "description": "При гибели взрывается: урон союзникам и вирусам, отталкивание."
+    "description": "Explodes on death, damaging and pushing back friends and viruses."
   },
   "pusher": {
     "name": "Pusher",
@@ -321,6 +321,6 @@
     "interval": 1,
     "behavior": "push",
     "color": "#ecc2a0",
-    "description": "Раз в секунду толкает всё вокруг."
+    "description": "Pushes everything nearby once per second."
   }
 }

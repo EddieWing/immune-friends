@@ -43,8 +43,16 @@ func run():
 		root.get_texture().get_image().save_png("res://artifacts/ui-recap.png")
 	scene.advance_recap()
 	check(scene.sim.wave==forecast and scene.bottom_panel.visible,"recap forecast matches next preparation")
+	for screen in ["show_menu","show_settings","show_help","show_catalog","show_reward"]:
+		if screen=="show_reward": scene.sim.reward_choices=[["accelerator","tag_sprayer"]]
+		scene.call(screen)
+		for frame in range(5): await process_frame
+		var window=scene.modal_panel
+		check(Rect2(0,0,1440,900).encloses(window.get_global_rect()),screen+" fits inside the viewport")
+		for child in window.get_child(0).get_children():
+			check(window.get_global_rect().encloses(child.get_global_rect()),screen+" content stays inside window")
 	scene.queue_free()
 	await process_frame
 	DirAccess.remove_absolute("user://ui_layout_test.json")
-	print("RESULT: 8 checks, %d failures" % failures)
+	print("RESULT: layout checks, %d failures" % failures)
 	quit(1 if failures else 0)

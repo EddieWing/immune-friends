@@ -195,7 +195,7 @@ func build_ui():
 	ui.add_child(zoom_gauge)
 	for value in [1,2,5]:
 		var b=absolute_button("×"+str(value),Vector2(565+speed_buttons.size()*83,14),Vector2(73,33),func(): set_playback_speed(value))
-		b.tooltip_text="Скорость боя ×"+str(value)
+		b.tooltip_text="Battle speed ×"+str(value)
 		b.add_theme_stylebox_override("hover",StyleBoxEmpty.new())
 		b.add_theme_font_size_override("font_size",18)
 		speed_buttons.append(b)
@@ -217,9 +217,10 @@ func build_ui():
 	round_label=label(phase_content,"",Vector2(0,47),13,Color.WHITE)
 	round_label.size=Vector2(256,24)
 	round_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	var hints=label(ui,"Колесо: масштаб\nПКМ / WASD: камера",Vector2(1244,96),12,Color("#e2e9ee"))
+	var hints=label(ui,"Scroll: zoom\nRMB / WASD: pan",Vector2(1200,96),12,Color("#e2e9ee"))
+	hints.size=Vector2(216,40)
 	hints.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
-	detail_panel=panel(ui,Rect2(76,85,340,410))
+	detail_panel=panel(ui,Rect2(76,85,340,0))
 	var column=VBoxContainer.new()
 	column.add_theme_constant_override("separation",8)
 	detail_panel.add_child(column)
@@ -230,15 +231,17 @@ func build_ui():
 	column.add_child(detail_icon)
 	detail=RichTextLabel.new()
 	detail.bbcode_enabled=true
-	detail.custom_minimum_size=Vector2(310,252)
+	detail.custom_minimum_size=Vector2(310,0)
+	detail.fit_content=true
 	detail.size_flags_vertical=Control.SIZE_EXPAND_FILL
 	column.add_child(detail)
-	sell_button=button(column,"Продать",sell_selected,Vector2(0,32))
+	sell_button=button(column,"Sell",sell_selected,Vector2(0,32))
 	detail_panel.hide()
 	term_panel=panel(ui,Rect2(435,85,255,150))
 	term_text=RichTextLabel.new()
 	term_text.bbcode_enabled=true
-	term_text.custom_minimum_size=Vector2(227,125)
+	term_text.custom_minimum_size=Vector2(227,0)
+	term_text.fit_content=true
 	term_panel.add_child(term_text)
 	term_panel.hide()
 	income_panel=panel(ui,Rect2(1306,454,134,228),Color("#eb7b6a"))
@@ -268,7 +271,7 @@ func build_ui():
 	refresh_button=button(contents,"⟳",func(): sim.roll_shop(); shop_page=0; changed(),Vector2(70,70))
 	refresh_button.position=Vector2(76,5)
 	refresh_button.add_theme_font_size_override("font_size",35)
-	refresh_button.tooltip_text="Обновить магазин · 1 монета"
+	refresh_button.tooltip_text="Refresh shop · 1 coin"
 	freeze_button=button(contents,"❄",func(): sim.frozen=not sim.frozen; changed(),Vector2(70,70))
 	freeze_button.position=Vector2(152,5)
 	freeze_button.add_theme_font_size_override("font_size",31)
@@ -286,7 +289,7 @@ func build_ui():
 	start_button.position=Vector2(982,3)
 	start_button.add_theme_font_size_override("font_size",36)
 	start_button.add_theme_stylebox_override("normal",style(Color("#fffdf6"),37,Color("#c0b8aa")))
-	start_button.tooltip_text="Начать инфекцию"
+	start_button.tooltip_text="Start infection"
 	capacity_panel=panel(ui,Rect2(645,849,150,40))
 	stats=Label.new()
 	stats.add_theme_font_override("font",symbol_font)
@@ -312,12 +315,13 @@ func clear_modal(title, subtitle=""):
 	shade.color=Color(0.04,0.07,0.10,0.46)
 	for child in modal.get_children():
 		if child is PanelContainer: child.queue_free()
-	modal_panel=panel(modal,Rect2(440,175,560,510))
+	modal_panel=panel(modal,Rect2(440,175,560,0))
 	var col=VBoxContainer.new()
 	col.add_theme_constant_override("separation",12)
 	modal_panel.add_child(col)
 	var title_label=Label.new()
 	title_label.text=title
+	title_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	title_label.add_theme_font_size_override("font_size",30)
 	title_label.add_theme_color_override("font_color",Color("#42443e"))
 	col.add_child(title_label)
@@ -325,22 +329,29 @@ func clear_modal(title, subtitle=""):
 		var sub=Label.new()
 		sub.text=subtitle
 		sub.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-		sub.custom_minimum_size=Vector2(510,60)
+		sub.custom_minimum_size=Vector2(0,0)
 		sub.add_theme_color_override("font_color",Color("#65716f"))
 		col.add_child(sub)
 	modal.show()
+	fit_modal.call_deferred(modal_panel)
 	return col
+
+func fit_modal(window):
+	await get_tree().process_frame
+	if not is_instance_valid(window): return
+	window.size.y=window.get_combined_minimum_size().y
+	window.position=(Vector2(1440,900)-window.size)*0.5
 
 func show_menu():
 	menu_open=true
-	var col=clear_modal("MICROCOSM","Маленькие клетки. Большая работа.\nСоберите иммунную защиту под микроскопом.")
-	button(col,"Продолжить",func(): modal.hide(); menu_open=false)
+	var col=clear_modal("MICROCOSM","Tiny cells. A big job.\nBuild your immune defense under the microscope.")
+	button(col,"Continue",func(): modal.hide(); menu_open=false)
 	if FileAccess.file_exists(save_path):
-		button(col,"Загрузить сохранённую подготовку",load_run)
-	button(col,"Новый забег · 12 раундов",func(): new_run(12))
-	button(col,"Забег · 10 раундов",func(): new_run(10))
-	button(col,"Как играть",show_help)
-	button(col,"Выйти",func(): save_run(); get_tree().quit())
+		button(col,"Load saved preparation",load_run)
+	button(col,"New run · 12 rounds",func(): new_run(12))
+	button(col,"New run · 10 rounds",func(): new_run(10))
+	button(col,"How to play",show_help)
+	button(col,"Quit",func(): save_run(); get_tree().quit())
 
 func new_run(rounds):
 	cancel_placement()
@@ -358,36 +369,39 @@ func new_run(rounds):
 	if not settings.get_value("tutorial","disabled",false): show_help()
 
 func show_help():
-	var col=clear_modal("Подготовка без спешки","Защитите красные клетки крови. В бою отряд действует самостоятельно.")
+	var col=clear_modal("Take your time","Protect the red blood cells. Your team fights automatically.")
 	var t=Label.new()
-	t.text="1. Перетащите клетку из магазина на поле за 2 монеты.\n2. Или выберите предложение и нажмите на поле.\n3. Поверните за круглую стрелку.\n4. Наложите одинаковые клетки: третья даёт элиту.\n5. Bonds сами берут ближайших соседей за руки.\n6. Остаток денег исчезает между волнами.\n\nBomb повреждает и союзников. Берегите отряд!"
+	t.text="1. Drag a cell from the shop onto the field for 2 coins.\n2. Or select an offer, then click on the field to place it.\n3. Hold and drag the round arrow to rotate a cell.\n4. Merge matching cells: the third creates an elite.\n5. Bonds automatically hold hands with nearby cells.\n6. Unspent coins disappear between waves.\n\nBomb hurts friendly cells too. Keep your team safe!"
+	t.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	t.add_theme_font_size_override("font_size",16)
 	col.add_child(t)
-	button(col,"Понятно",func(): modal.hide(); menu_open=false)
+	button(col,"Got it",func(): modal.hide(); menu_open=false)
 
 func show_settings():
 	var col=clear_modal("Settings")
 	modal_panel.position=Vector2(430,40)
-	modal_panel.size=Vector2(580,800)
+	modal_panel.size=Vector2(580,0)
 	col.add_theme_constant_override("separation",8)
 	var graphics_row=HBoxContainer.new()
 	col.add_child(graphics_row)
 	var graphics_label=Label.new()
-	graphics_label.text="Графика клеток"
+	graphics_label.text="Cell graphics"
 	graphics_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	graphics_row.add_child(graphics_label)
 	var graphics=OptionButton.new()
-	graphics.add_item("Простая")
-	graphics.add_item("Рисованная")
+	graphics.custom_minimum_size=Vector2(180,40)
+	graphics.add_item("Simple")
+	graphics.add_item("Painted")
 	graphics.select(visuals.style)
 	graphics.item_selected.connect(set_graphics_style)
 	graphics_row.add_child(graphics)
 	for i in range(4):
-		var names=["Общая громкость","Музыка","Звуковые эффекты","Частые звуки"]
+		var names=["Master volume","Music","Sound effects","Frequent sounds"]
 		var l=Label.new()
 		l.text=names[i]
 		col.add_child(l)
 		var slider=HSlider.new()
+		slider.custom_minimum_size.y=24
 		slider.min_value=0
 		slider.max_value=1
 		slider.step=0.05
@@ -396,34 +410,37 @@ func show_settings():
 		slider.value_changed.connect(func(v): volumes[index]=v; settings.set_value("audio",str(index),v); settings.save(settings_path); ambient.volume_db=linear_to_db(maxf(0.0001,volumes[0]*volumes[1])))
 		col.add_child(slider)
 	var tutorial=CheckBox.new()
-	tutorial.text="Не показывать обучение при запуске"
+	tutorial.text="Skip tutorial when starting a run"
 	tutorial.button_pressed=settings.get_value("tutorial","disabled",false)
 	tutorial.toggled.connect(func(value): settings.set_value("tutorial","disabled",value); settings.save(settings_path))
 	col.add_child(tutorial)
-	button(col,"Полный экран / окно",func():
+	button(col,"Toggle fullscreen",func():
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode()==DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN))
 	var tutorials=HBoxContainer.new()
 	col.add_child(tutorials)
-	button(tutorials,"Сбросить обучение",func(): settings.set_value("tutorial","disabled",false); settings.save(settings_path); show_help(),Vector2(272,38))
-	button(tutorials,"Пропустить обучение",func(): modal.hide(); menu_open=false,Vector2(272,38))
-	button(col,"Атлас клеток",show_catalog)
-	button(col,"На стартовый экран",show_menu)
-	button(col,"Назад",func(): modal.hide(); menu_open=false)
+	button(tutorials,"Reset tutorial",func(): settings.set_value("tutorial","disabled",false); settings.save(settings_path); show_help(),Vector2(272,40))
+	button(tutorials,"Skip tutorial",func(): modal.hide(); menu_open=false,Vector2(272,38))
+	button(col,"Cell atlas",show_catalog)
+	button(col,"Main menu",show_menu)
+	button(col,"Back",func(): modal.hide(); menu_open=false)
 
 func show_catalog():
-	var col=clear_modal("Атлас · 27 клеток","Иммунные клетки, их способности и элитные формы.")
+	var col=clear_modal("Cell atlas · 27 cells","Explore immune cells, their abilities and elite forms.")
 	modal_panel.position=Vector2(250,95)
 	modal_panel.size=Vector2(940,720)
 	var split=HSplitContainer.new()
 	split.custom_minimum_size=Vector2(880,480)
+	split.size_flags_vertical=Control.SIZE_EXPAND_FILL
 	col.add_child(split)
 	var list=ItemList.new()
 	list.custom_minimum_size=Vector2(310,470)
+	list.fixed_icon_size=Vector2i(40,40)
 	split.add_child(list)
 	var text=RichTextLabel.new()
 	catalogue_text=text
 	text.bbcode_enabled=true
 	text.custom_minimum_size=Vector2(520,470)
+	text.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	split.add_child(text)
 	var keys=sim.catalog.keys()
 	for key in keys:
@@ -432,7 +449,7 @@ func show_catalog():
 	list.select(0)
 	catalogue_key=keys[0]
 	text.text=description(keys[0],false)
-	button(col,"Вернуться на поле",func(): modal.hide(); menu_open=false)
+	button(col,"Back to the field",func(): modal.hide(); menu_open=false)
 
 func description(key, elite=false):
 	var d=sim.catalog[key]
@@ -445,13 +462,13 @@ func description(key, elite=false):
 		if key=="tag_dropper": interval=0.25
 	var title=("Elite " if elite else "")+d.name
 	var txt="[font_size=23][color=#34464c]"+title+"[/color][/font_size]\n"
-	txt+="[color=#5b686a]"+d.category+"-cell  ·  "+("Награда" if d.tier==0 else "Уровень "+str(int(d.tier)))+"[/color]\n\n"
-	txt+="Здоровье  [b]"+str(hp)+"[/b]\n"
-	if r>0: txt+="Дальность  [b]"+str(r)+"[/b]\n"
-	if d.speed>0: txt+="Скорость  [b]"+str(d.speed)+"[/b]\n"
-	if interval>0: txt+="Интервал  [b]"+str(interval)+" с[/b]\n"
-	txt+="\n"+d.description+"\n\n[color=#847467]Space — элитная карточка[/color]"
-	if key=="accelerator": txt+="\n[color=#975535]Временная модель: исходное действие ещё неизвестно.[/color]"
+	txt+="[color=#5b686a]"+d.category+"-cell  ·  "+("Reward" if d.tier==0 else "Level "+str(int(d.tier)))+"[/color]\n\n"
+	txt+="Health  [b]"+str(hp)+"[/b]\n"
+	if r>0: txt+="Range  [b]"+str(r)+"[/b]\n"
+	if d.speed>0: txt+="Speed  [b]"+str(d.speed)+"[/b]\n"
+	if interval>0: txt+="Interval  [b]"+str(interval)+" s[/b]\n"
+	txt+="\n"+d.description+"\n\n[color=#847467]Space — view elite stats[/color]"
+	if key=="accelerator": txt+="\n[color=#975535]Provisional ability: the original effect is not yet known.[/color]"
 	return txt
 
 func cell_icon(key):
@@ -459,10 +476,10 @@ func cell_icon(key):
 
 func refresh():
 	stats.text="♟  %d / %d" % [sim.cells.size(),sim.capacity()]
-	stats.tooltip_text="Иммунные клетки / вместимость"
+	stats.tooltip_text="Immune cells / capacity"
 	var names={"shop":"Shop","battle":"Infection","recap":"Recap","win":"Complete","lose":"Complete"}
 	phase_label.text=names[sim.phase]
-	round_label.text="Раунд %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" else sim.round_no,sim.target_rounds]
+	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" else sim.round_no,sim.target_rounds]
 	var display_wave=preview_wave if sim.phase=="recap" and not preview_wave.is_empty() else sim.wave
 	incoming.text="[color=#fff6df][b]ⓘ Incoming[/b][/color]\n"
 	for lane in range(3):
@@ -494,11 +511,11 @@ func refresh():
 	sell_button.disabled=selected.is_empty() or not is_shop
 	start_button.disabled=not is_shop or not sim.reward_choices.is_empty()
 	xp_button.disabled=sim.money<3 or sim.tier>=4 or not is_shop
-	xp_button.tooltip_text="Уровень %d · опыт %d\nКупить опыт · 3 монеты" % [sim.tier,sim.xp]
+	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 coins" % [sim.tier,sim.xp]
 	refresh_button.disabled=sim.money<1 or not is_shop
 	freeze_button.disabled=not is_shop
 	freeze_button.text="❄" if not sim.frozen else "❄▣"
-	freeze_button.tooltip_text="Магазин заморожен. Нажмите, чтобы снять заморозку." if sim.frozen else "Сохранить предложения на следующий раунд · бесплатно"
+	freeze_button.tooltip_text="Shop frozen. Click to unfreeze." if sim.frozen else "Keep offers for the next round · free"
 	message.visible=is_shop
 	message.text=sim.last_message
 	var entries=[]
@@ -555,7 +572,7 @@ func sell_selected():
 	changed()
 
 func show_reward():
-	var col=clear_modal("Элитная клетка!","Выберите одну награду. Она появится в магазине бесплатно.")
+	var col=clear_modal("Elite cell!","Choose a reward. Collect it from the shop for free.")
 	modal_panel.position=Vector2(355,156)
 	modal_panel.size=Vector2(730,530)
 	var choices=sim.reward_choices[0]
@@ -579,7 +596,7 @@ func show_reward():
 		text.text=description(key)
 		text.custom_minimum_size=Vector2(335,220)
 		choice.add_child(text)
-		button(choice,"Выбрать",func():
+		button(choice,"Choose",func():
 			sim.choose_reward(index)
 			modal.hide()
 			shop_page=int(floor((sim.offers.size()+sim.rewards.size()-1)/6.0))
@@ -607,10 +624,10 @@ func _process(delta):
 		if sim.phase=="recap":
 			show_recap()
 		elif sim.phase in ["win","lose"]:
-			var title="Защита справилась!" if sim.phase=="win" else "Кровь закончилась"
-			var col=clear_modal(title,"Вы продержались "+str(sim.round_no)+" раундов.\n"+("Все волны отражены." if sim.phase=="win" else "Новая расстановка — новый шанс."))
-			button(col,"Новый забег",func():new_run(sim.target_rounds))
-			button(col,"Главное меню",show_menu)
+			var title="Defense successful!" if sim.phase=="win" else "No blood cells left"
+			var col=clear_modal(title,"You survived "+str(sim.round_no)+" rounds.\n"+("All waves defeated." if sim.phase=="win" else "A new formation, a new chance."))
+			button(col,"New run",func():new_run(sim.target_rounds))
+			button(col,"Main menu",show_menu)
 			if FileAccess.file_exists(save_path): DirAccess.remove_absolute(save_path)
 	if not modal.visible:
 		var movement=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
@@ -722,7 +739,7 @@ func save_run():
 func load_run():
 	var data=JSON.parse_string(FileAccess.get_file_as_string(save_path))
 	if not data is Dictionary or data.get("version",0)!=1:
-		sim.last_message="Не удалось прочитать сохранение."
+		sim.last_message="Could not read the saved game."
 		return
 	sim.reset(int(data.seed),int(data.rounds))
 	sim.round_no=int(data.round)
@@ -803,7 +820,7 @@ func arm_offer(index,reward):
 	if index<0 or index>=source.size(): return
 	pending_offer={"index":index,"reward":reward,"key":source[index]}
 	show_cell_card(source[index])
-	sim.last_message="Перенесите на поле или нажмите в месте покупки. Esc — отмена."
+	sim.last_message="Drag onto the field or click to place. Esc to cancel."
 	message.text=sim.last_message
 
 func cancel_placement():
@@ -847,24 +864,26 @@ func show_cell_card(key,c={}):
 	detail_key=key
 	detail_panel.show()
 	detail_icon.texture=cell_icon(key)
+	detail_panel.size.y=0
+	term_panel.size.y=0
 	detail.text=description(key,c.get("rank",1)==3)
 	sell_button.visible=not c.is_empty()
 	if not c.is_empty():
-		detail.text+="\n[b]Сейчас: "+str(snappedf(c.hp,0.1))+" HP  ·  "+str(c.rank)+"/3[/b]"
-		sell_button.text="Продать · "+str(c.sale)
+		detail.text+="\n[b]Current: "+str(snappedf(c.hp,0.1))+" HP  ·  "+str(c.rank)+"/3[/b]"
+		sell_button.text="Sell · "+str(c.sale)
 	var behavior=sim.catalog[key].behavior
 	term_panel.show()
 	var term="B-Cell" if sim.catalog[key].category=="B" else "T-Cell"
-	var explanation="Категория иммунных клеток. Участвует в усилениях Resonant Wall и Cannon." if term=="B-Cell" else "Категория иммунных клеток. Метки увеличивают дистанцию обнаружения вируса."
+	var explanation="An immune cell category. Contributes to Resonant Wall and Cannon bonuses." if term=="B-Cell" else "An immune cell category. Tags increase its virus detection range."
 	if behavior=="bond":
 		term="Bonds / Connected"
-		explanation="Физические связи с ближайшими иммунными клетками. Connected — вся сеть клеток, соединённых через bonds."
+		explanation="Physical links to nearby immune cells. Connected means the entire network joined by bonds."
 	elif key in ["tag_dropper","tag_sprayer"]:
 		term="Tag Protein"
-		explanation="Останавливает вирус на 1 секунду и удваивает дистанцию его обнаружения T-клетками."
+		explanation="Stops a virus for 1 second and doubles the range at which T-cells detect it."
 	elif key in ["generator","zapper"]:
 		term="Electric Charge"
-		explanation="Электричество проводится через иммунные клетки, белки и вирусы."
+		explanation="Electricity travels through immune cells, proteins and viruses."
 	term_text.text="[b]"+term+"[/b]\n"+explanation
 
 func virus_glyph(key):
@@ -897,7 +916,7 @@ func show_recap():
 	amount.add_theme_font_size_override("font_size",40)
 	amount.add_theme_color_override("font_color",Color("#9068ab"))
 	col.add_child(amount)
-	button(col,"Нажмите, чтобы продолжить",advance_recap,Vector2(450,40))
+	button(col,"Click to continue",advance_recap,Vector2(450,40))
 	var virus_panel=panel(modal,Rect2(76,85,338,300))
 	var box=VBoxContainer.new()
 	box.add_theme_constant_override("separation",16)
@@ -933,13 +952,13 @@ func advance_recap():
 
 func virus_description(key):
 	return {
-		"basic":"Базовый вирус приближается к клеткам крови.",
-		"wave":"Здоровье: 1\nДвижется по волнообразной траектории.",
-		"jumper":"Медленно движется, затем быстро прыгает. Неуязвим во время прыжка.",
-		"hungry":"Поглощает Virus Protein и получает здоровье.",
-		"swarmer":"Здоровье: 1\nПритягивается и прикрепляется к другим вирусам.",
-		"seeker":"Здоровье: 2\nИщет иммунные клетки в радиусе.",
-		"avoider":"Здоровье: 1\nИзбегает близких иммунных клеток."
+		"basic":"A basic virus that approaches blood cells.",
+		"wave":"Health: 1\nMoves along a wave-shaped path.",
+		"jumper":"Moves slowly, then leaps forward. Invulnerable while jumping.",
+		"hungry":"Absorbs Virus Protein to gain health.",
+		"swarmer":"Health: 1\nAttracted to other viruses and attaches to them.",
+		"seeker":"Health: 2\nSeeks immune cells within range.",
+		"avoider":"Health: 1\nAvoids nearby immune cells."
 	}.get(key,"")
 
 func set_graphics_style(value):

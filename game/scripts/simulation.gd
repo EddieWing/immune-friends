@@ -97,7 +97,7 @@ func merge(a, b):
 		queue_reward()
 	rebuild_links()
 	record("merge",{"key":a.key,"hp":a.hp,"rank":a.rank})
-	effect(a.p,Color("#f6de8d"),"Объятие!",48)
+	effect(a.p,Color("#f6de8d"),"Hug!",48)
 	return true
 
 func queue_reward():
@@ -124,7 +124,7 @@ func purchase(index: int, p: Vector2, reward = false):
 		return false
 	var key = source[index]
 	if not reward and money < 2:
-		last_message = "Нужно 2 монеты"
+		last_message = "You need 2 coins"
 		return false
 	var item = make_cell(key,p)
 	var recipient = {}
@@ -134,7 +134,7 @@ func purchase(index: int, p: Vector2, reward = false):
 				recipient=c
 	var direct = not recipient.is_empty() and (cells.size()>=capacity() or recipient.p.distance_to(p)<44)
 	if cells.size()>=capacity() and not direct:
-		last_message = "Нет мест. Объедините клетки или повысьте уровень."
+		last_message = "No room. Merge cells or level up."
 		return false
 	if not reward:
 		money-=2
@@ -152,7 +152,7 @@ func purchase(index: int, p: Vector2, reward = false):
 		merge(recipient,item)
 	rebuild_links()
 	record("purchase",{"key":key,"reward":reward})
-	last_message = catalog[key].name + " в отряде"
+	last_message = catalog[key].name + " joined the team"
 	return true
 
 func sell(c):
@@ -364,7 +364,7 @@ func damage_cell(c, amount, redirected=false):
 	effect(c.p,Color(catalog[c.key].color),"",40)
 	if c.key=="bomb":
 		var reach=range_of(c)
-		effect(c.p,Color("#f9b8d1"),"Поп!",reach)
+		effect(c.p,Color("#f9b8d1"),"Pop!",reach)
 		for v in viruses:
 			if v.alive and c.p.distance_to(v.p)<reach:
 				v.p+=(v.p-c.p).normalized()*40

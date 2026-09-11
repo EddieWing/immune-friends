@@ -5,7 +5,7 @@ func _ready():
  mouse_filter=Control.MOUSE_FILTER_STOP
  mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
  focus_mode=Control.FOCUS_ALL
- tooltip_text="Нажмите или перетащите для изменения масштаба"
+ tooltip_text="Click or drag to zoom"
 func set_from_y(y):
  var ratio=clampf((230.0-y)/200.0,0,1)
  game.view.scale=Vector2.ONE*(0.45+ratio*1.05)
@@ -47,7 +47,7 @@ func _draw():
  var ratio=clampf((game.view.scale.x-0.45)/1.05,0,1)
  var ink=Color("#385265")
  var font=ThemeDB.fallback_font
- draw_string(font,Vector2(1,14),"Зум",HORIZONTAL_ALIGNMENT_LEFT,-1,13,ink)
+ draw_string(font,Vector2(1,14),"Zoom",HORIZONTAL_ALIGNMENT_LEFT,-1,13,ink)
  draw_style_box(track_style(Color(0.94,0.97,1,0.8)),Rect2(9,30,10,200))
  draw_style_box(track_style(Color("#678fab")),Rect2(9,230-200*ratio,10,200*ratio))
  for tick in range(11):
