@@ -8,3 +8,10 @@ web/
 *.log
 *.tmp
 Auto-Immune-*.png
+
+# Local design documents, research, reports and agent notes are not game source.
+*.md
+!/README.md
+/docs/
+/research/
+/playtest-notes*
