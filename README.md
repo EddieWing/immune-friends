@@ -13,6 +13,10 @@ This is a reconstruction inspired by observed Auto Immune gameplay, with provisi
 
 Windows launch scripts use the engine installed in `D:\Create\Godot`. Adjust that path on another computer. Close the local server window to stop serving the browser build. Browser saves are separate from desktop saves.
 
+## Camera and speed
+
+Use the mouse wheel to zoom; the left gauge shows the current zoom position from 0% to 100%. The top ×1, ×2 and ×5 buttons control battle playback speed. Preparation remains untimed.
+
 ## Graphics
 
 Open the gear button → Graphics (Графика клеток) and choose Простая or Рисованная. Both modes share the same game state, animated faces and hand bonds. The selection is saved locally. The microscope background is used in both modes.

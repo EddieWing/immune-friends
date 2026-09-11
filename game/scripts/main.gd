@@ -58,7 +58,9 @@ var shop_collapsed=false
 var preview_wave=[]
 var showing_recap=false
 var shade: ColorRect
-var zoom_buttons=[]
+var speed_buttons=[]
+var playback_speed=1
+var zoom_gauge: Control
 var auto_button: Button
 const OfferButton=preload("res://scripts/ui/offer.gd")
 const FieldDrop=preload("res://scripts/ui/field_drop.gd")
@@ -186,13 +188,18 @@ func build_ui():
 	var gear=absolute_button("⚙",Vector2(24,12),Vector2(42,42),show_settings)
 	gear.add_theme_font_size_override("font_size",30)
 	gear.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
-	for i in range(3):
-		var value=[0.55,0.88,1.1][i]
-		var b=absolute_button(["400×","800×","1000×"][i],Vector2(565+i*83,14),Vector2(73,33),func(): view.scale=Vector2.ONE*value; update_zoom())
-		b.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
+	zoom_gauge=preload("res://scripts/ui/zoom_gauge.gd").new()
+	zoom_gauge.game=self
+	zoom_gauge.position=Vector2(24,260)
+	zoom_gauge.size=Vector2(40,260)
+	ui.add_child(zoom_gauge)
+	for value in [1,2,5]:
+		var b=absolute_button("×"+str(value),Vector2(565+speed_buttons.size()*83,14),Vector2(73,33),func(): set_playback_speed(value))
+		b.tooltip_text="Скорость боя ×"+str(value)
 		b.add_theme_stylebox_override("hover",StyleBoxEmpty.new())
 		b.add_theme_font_size_override("font_size",18)
-		zoom_buttons.append(b)
+		speed_buttons.append(b)
+	set_playback_speed(1)
 	auto_button=absolute_button("Auto",Vector2(820,16),Vector2(53,29),func(): auto_camera=not auto_camera; update_zoom())
 	auto_button.add_theme_font_size_override("font_size",14)
 	var phase_panel=panel(ui,Rect2(1160,-9,280,80))
@@ -342,6 +349,7 @@ func new_run(rounds):
 	sim.reset(Time.get_ticks_usec()%100000,rounds)
 	view.position=Vector2(720,425)
 	view.scale=Vector2.ONE*0.88
+	update_zoom()
 	selected={}
 	menu_open=false
 	modal.hide()
@@ -592,13 +600,7 @@ func changed():
 	save_run()
 
 func _process(delta):
-	if sim.phase=="battle":
-		clock_accum+=minf(delta,0.1)
-		while clock_accum>=1.0/60.0:
-			sim.update(1.0/60.0)
-			clock_accum-=1.0/60.0
-	else:
-		sim.update(delta)
+	advance_simulation(delta)
 	if sim.phase!=last_phase:
 		last_phase=sim.phase
 		refresh()
@@ -813,16 +815,32 @@ func toggle_shop():
 	refresh()
 
 func update_zoom():
-	for i in range(zoom_buttons.size()):
-		var active=absf(view.scale.x-[0.55,0.88,1.1][i])<0.03
-		zoom_buttons[i].add_theme_color_override("font_color",Color("#fcfff5") if active else Color("#486174"))
-		var s=StyleBoxFlat.new()
-		s.bg_color=Color(0,0,0,0)
-		s.border_width_bottom=2 if active else 0
-		s.border_color=Color("#a5cf93")
-		zoom_buttons[i].add_theme_stylebox_override("normal",s)
-	if auto_button:
-		auto_button.modulate=Color.WHITE if auto_camera else Color("#95a5ab")
+	if zoom_gauge: zoom_gauge.queue_redraw()
+	if auto_button: auto_button.modulate=Color.WHITE if auto_camera else Color("#95a5ab")
+
+func set_playback_speed(value):
+	if value not in [1,2,5]: return
+	playback_speed=value
+	view.playback_speed=value
+	for i in range(speed_buttons.size()):
+		var active=value==[1,2,5][i]
+		var box=StyleBoxFlat.new()
+		box.bg_color=Color(0,0,0,0)
+		box.border_width_bottom=2 if active else 0
+		box.border_color=Color("#a5cf93")
+		speed_buttons[i].add_theme_stylebox_override("normal",box)
+		speed_buttons[i].add_theme_color_override("font_color",Color("#25495b") if active else Color("#6a8591"))
+
+func advance_simulation(delta):
+	if sim.phase=="battle":
+		clock_accum+=minf(delta,0.1)*playback_speed
+		while clock_accum+0.0000001>=1.0/60.0 and sim.phase=="battle":
+			sim.update(1.0/60.0)
+			clock_accum=maxf(0,clock_accum-1.0/60.0)
+		if sim.phase!="battle": clock_accum=0.0
+	else:
+		clock_accum=0.0
+		sim.update(delta)
 
 func show_cell_card(key,c={}):
 	if sim.phase!="shop": return

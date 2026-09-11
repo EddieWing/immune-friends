@@ -4,11 +4,12 @@ var visuals
 var selected_id=-1
 var show_ranges=true
 var time=0.0
+var playback_speed=1
 var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
 
 func _process(delta):
-	time+=delta
+	time+=delta*(playback_speed if sim!=null and sim.phase=="battle" else 1)
 	queue_redraw()
 
 func text_at(p, text, size=14, color=Color("#d8e9e5")):
