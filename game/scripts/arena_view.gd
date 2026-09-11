@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var visuals
 var selected_id=-1
 var show_ranges=true
 var time=0.0
@@ -14,22 +15,6 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 	draw_string(font,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,color)
 
 func _draw():
-	draw_rect(Rect2(-1600,-1200,3200,2400),Color("#17232c"))
-	for ring in range(102):
-		draw_circle(Vector2.ZERO,780-ring*2,Color("#253745").lerp(Color("#aac5d9"),float(ring)/101.0))
-	# Tissue fibres under a microscope, deterministic and low-contrast.
-	for i in range(19):
-		var points=PackedVector2Array()
-		for j in range(51):
-			var x=-750+j*30
-			var y=-470+i*51+sin(x*0.005+i*1.8)*42+sin(x*0.017+i)*9
-			points.append(Vector2(x,y))
-		draw_polyline(points,Color(0.56,0.77,0.76,0.055),5,true)
-	for i in range(100):
-		var p=Vector2(sin(i*27.14)*660,cos(i*13.91)*440)
-		draw_circle(p,2+fmod(i,3),Color(0.71,0.85,0.76,0.11))
-	for r in [180,360,540]:
-		draw_arc(Vector2.ZERO,r,0,TAU,120,Color(0.63,0.81,0.80,0.055),1,true)
 	var directions=[Vector2(620,0),Vector2(-620,0),Vector2(0,-370)]
 	if sim==null: return
 	for entry in sim.wave:
@@ -125,26 +110,12 @@ func draw_cell(c):
 	var pulse=1+sin(time*2+c.id)*0.035
 	var p=c.p
 	var wall=d.behavior=="wall"
-	draw_set_transform(p+Vector2(2,5),c.angle)
-	if wall:
-		draw_style_box(capsule_style(Color(0.03,0.13,0.17,0.4)),Rect2(-44,-14,88,28))
-	else: draw_circle(Vector2.ZERO,21,Color(0.03,0.13,0.17,0.4))
+	var texture=visuals.body(c.key,d)
+	var extent=Vector2(106,80) if wall else Vector2(58,58)
+	draw_set_transform(p+Vector2(2,4),c.angle,Vector2(pulse,1/pulse))
+	draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
 	draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
-	if wall:
-		draw_style_box(capsule_style(color),Rect2(-43,-13,86,26))
-		draw_line(Vector2(-32,-7),Vector2(32,-7),color.lightened(0.2),3,true)
-	else:
-		if d.behavior in ["orbit","seek","forward","drop"]:
-			for i in range(10):
-				var a=i*TAU/10
-				draw_line(Vector2.from_angle(a)*18,Vector2.from_angle(a+sin(time*5+i)*0.12)*25,color.darkened(0.1),2.3,true)
-		draw_circle(Vector2.ZERO,20,color.darkened(0.25))
-		draw_circle(Vector2.ZERO,18.5,color)
-		draw_arc(Vector2(-1,-1),14,PI*1.1,PI*1.8,16,color.lightened(0.25),2.5,true)
-		if d.behavior in ["shoot","sniper","spray"]:
-			draw_style_box(capsule_style(color.lightened(0.1)),Rect2(10,-6,19,12))
-		if c.key=="magnet":
-			draw_arc(Vector2.ZERO,14,-PI*0.7,PI*0.7,24,Color("#b26e9b"),4,true)
+	draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
 	draw_set_transform(Vector2.ZERO)
 	face(p,0.95,c.id,c.flash>0)
 	if c.key=="bandage":

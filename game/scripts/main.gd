@@ -27,7 +27,8 @@ var board_rect=Rect2(0,0,1440,900)
 var last_phase=""
 var menu_open=true
 var clock_accum=0.0
-var icon_cache={}
+var visuals=preload("res://scripts/cell_visuals.gd").new()
+var settings_path="user://settings.cfg"
 var symbol_font: Font
 var audio: AudioStreamPlayer
 var ambient: AudioStreamPlayer
@@ -70,8 +71,9 @@ func _ready():
 	build_ui()
 	audio=AudioStreamPlayer.new()
 	add_child(audio)
-	if settings.load("user://settings.cfg")==OK:
+	if settings.load(settings_path)==OK:
 		for i in range(4): volumes[i]=settings.get_value("audio",str(i),volumes[i])
+	visuals.set_style(int(settings.get_value("graphics","style",0)))
 	make_ambient()
 	sim.reset(Time.get_ticks_usec()%100000,12)
 	refresh()
@@ -161,6 +163,13 @@ func absolute_button(text, pos, size_button, action):
 	return b
 
 func build_ui():
+	var backdrop=TextureRect.new()
+	backdrop.texture=preload("res://assets/art/microscope.png")
+	backdrop.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	backdrop.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	backdrop.size=Vector2(1440,900)
+	backdrop.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	ui.add_child(backdrop)
 	var field=FieldDrop.new()
 	field.game=self
 	field.position=board_rect.position
@@ -172,6 +181,7 @@ func build_ui():
 	view.position=Vector2(720,425)
 	view.scale=Vector2.ONE*0.88
 	view.sim=sim
+	view.visuals=visuals
 	field.add_child(view)
 	var gear=absolute_button("⚙",Vector2(24,12),Vector2(42,42),show_settings)
 	gear.add_theme_font_size_override("font_size",30)
@@ -349,9 +359,21 @@ func show_help():
 
 func show_settings():
 	var col=clear_modal("Settings")
-	modal_panel.position=Vector2(430,80)
-	modal_panel.size=Vector2(580,720)
+	modal_panel.position=Vector2(430,40)
+	modal_panel.size=Vector2(580,800)
 	col.add_theme_constant_override("separation",8)
+	var graphics_row=HBoxContainer.new()
+	col.add_child(graphics_row)
+	var graphics_label=Label.new()
+	graphics_label.text="Графика клеток"
+	graphics_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	graphics_row.add_child(graphics_label)
+	var graphics=OptionButton.new()
+	graphics.add_item("Простая")
+	graphics.add_item("Рисованная")
+	graphics.select(visuals.style)
+	graphics.item_selected.connect(set_graphics_style)
+	graphics_row.add_child(graphics)
 	for i in range(4):
 		var names=["Общая громкость","Музыка","Звуковые эффекты","Частые звуки"]
 		var l=Label.new()
@@ -363,18 +385,18 @@ func show_settings():
 		slider.step=0.05
 		slider.value=volumes[i]
 		var index=i
-		slider.value_changed.connect(func(v): volumes[index]=v; settings.set_value("audio",str(index),v); settings.save("user://settings.cfg"); ambient.volume_db=linear_to_db(maxf(0.0001,volumes[0]*volumes[1])))
+		slider.value_changed.connect(func(v): volumes[index]=v; settings.set_value("audio",str(index),v); settings.save(settings_path); ambient.volume_db=linear_to_db(maxf(0.0001,volumes[0]*volumes[1])))
 		col.add_child(slider)
 	var tutorial=CheckBox.new()
 	tutorial.text="Не показывать обучение при запуске"
 	tutorial.button_pressed=settings.get_value("tutorial","disabled",false)
-	tutorial.toggled.connect(func(value): settings.set_value("tutorial","disabled",value); settings.save("user://settings.cfg"))
+	tutorial.toggled.connect(func(value): settings.set_value("tutorial","disabled",value); settings.save(settings_path))
 	col.add_child(tutorial)
 	button(col,"Полный экран / окно",func():
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode()==DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN))
 	var tutorials=HBoxContainer.new()
 	col.add_child(tutorials)
-	button(tutorials,"Сбросить обучение",func(): settings.set_value("tutorial","disabled",false); settings.save("user://settings.cfg"); show_help(),Vector2(272,38))
+	button(tutorials,"Сбросить обучение",func(): settings.set_value("tutorial","disabled",false); settings.save(settings_path); show_help(),Vector2(272,38))
 	button(tutorials,"Пропустить обучение",func(): modal.hide(); menu_open=false,Vector2(272,38))
 	button(col,"Атлас клеток",show_catalog)
 	button(col,"На стартовый экран",show_menu)
@@ -425,15 +447,7 @@ func description(key, elite=false):
 	return txt
 
 func cell_icon(key):
-	if icon_cache.has(key): return icon_cache[key]
-	var color=sim.catalog[key].color
-	var shape='<ellipse cx="32" cy="33" rx="26" ry="15" fill="'+color+'"/>' if sim.catalog[key].behavior=="wall" else '<circle cx="32" cy="32" r="23" fill="'+color+'"/>'
-	var svg='<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="35" r="24" fill="#18333e" opacity=".35"/>'+shape+'<circle cx="24" cy="30" r="2.6" fill="#35434b"/><circle cx="40" cy="30" r="2.6" fill="#35434b"/><path d="M28 36 Q32 41 36 36" fill="none" stroke="#685463" stroke-width="2"/><ellipse cx="18" cy="36" rx="4" ry="2.4" fill="#df8f9e" opacity=".6"/><ellipse cx="46" cy="36" rx="4" ry="2.4" fill="#df8f9e" opacity=".6"/></svg>'
-	var img=Image.new()
-	img.load_svg_from_string(svg)
-	var texture=ImageTexture.create_from_image(img)
-	icon_cache[key]=texture
-	return texture
+	return visuals.icon(key,sim.catalog[key])
 
 func refresh():
 	stats.text="♟  %d / %d" % [sim.cells.size(),sim.capacity()]
@@ -909,3 +923,10 @@ func virus_description(key):
 		"seeker":"Здоровье: 2\nИщет иммунные клетки в радиусе.",
 		"avoider":"Здоровье: 1\nИзбегает близких иммунных клеток."
 	}.get(key,"")
+
+func set_graphics_style(value):
+	visuals.set_style(value)
+	settings.set_value("graphics","style",visuals.style)
+	settings.save(settings_path)
+	refresh()
+	view.queue_redraw()
