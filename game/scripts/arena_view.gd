@@ -33,10 +33,10 @@ func _draw():
 	if not selected.is_empty() and selected.alive:
 		var radius=sim.range_of(selected)
 		if radius>0 and show_ranges:
-			draw_circle(selected.p,radius,Color(0.82,0.9,0.7,0.045))
-			draw_arc(selected.p,radius,0,TAU,80,Color(0.82,0.9,0.7,0.35),1.5,true)
-		if selected.key=="orbiter":
-			draw_arc(Vector2.ZERO,maxf(100,selected.p.length()),0,TAU,90,Color(0.82,0.9,0.7,0.4),1.5,true)
+			draw_circle(selected.p,radius,Color(0.08,0.36,0.46,0.11))
+			draw_range_ring(selected.p,radius,Color("#245a70"))
+		if selected.key=="orbiter" and show_ranges:
+			draw_range_ring(Vector2.ZERO,maxf(100,selected.p.length()),Color("#794e96"),true)
 	for l in sim.links:
 		var a=sim.cell_by_id(l.a)
 		var b=sim.cell_by_id(l.b)
@@ -162,3 +162,15 @@ func draw_virus(v):
 	if v.jump:
 		draw_arc(p,20,0,TAU,24,Color("#efdefb"),2,true)
 	if v.hp>1: text_at(p+Vector2(12,-9),str(int(v.hp)),10)
+
+func draw_range_ring(center,radius,color,dashed=false):
+	# Keep the boundary readable at every camera zoom, including on bright art.
+	var zoom=maxf(get_global_transform().get_scale().x,0.01)
+	var segments=clampi(int(ceil(TAU*radius*zoom/5.0)),64,512)
+	draw_arc(center,radius,0,TAU,segments,Color(1,1,1,0.85),5.0/zoom,true)
+	if dashed:
+		for i in range(48):
+			var start=i*TAU/48.0
+			draw_arc(center,radius,start,start+TAU/48.0*0.62,8,color,2.5/zoom,true)
+	else:
+		draw_arc(center,radius,0,TAU,segments,color,2.5/zoom,true)
