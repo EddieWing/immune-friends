@@ -17,6 +17,7 @@ var offers: Array = []
 var rewards: Array = []
 var reward_choices: Array = []
 var events: Array = []
+var round_losses={"viruses":0,"core":0,"cells":0}
 var round_no = 1
 var target_rounds = 12
 var money = 4
@@ -37,11 +38,14 @@ func _init():
 	rules = JSON.parse_string(FileAccess.get_file_as_string("res://data/assumptions.json").trim_prefix("\ufeff"))
 
 func record(kind: String, detail = {}):
+	var loss_key={"virus_defeated":"viruses","blood_lost":"core","cell_rest":"cells"}.get(kind,"")
+	if loss_key!="": round_losses[loss_key]+=1
 	events.append({"event":kind, "round":round_no, "time":snappedf(elapsed,0.01), "data":detail})
 	if events.size() > 12000:
 		events.pop_front()
 
 func reset(seed_number = 42, rounds = 12):
+	round_losses={"viruses":0,"core":0,"cells":0}
 	rng.seed = seed_number
 	seed_value = seed_number
 	target_rounds = rounds
@@ -269,6 +273,7 @@ func make_wave():
 func begin_battle():
 	if phase!="shop" or not reward_choices.is_empty():
 		return
+	round_losses={"viruses":0,"core":0,"cells":0}
 	phase="battle"
 	elapsed=0
 	spawn_timer=0
@@ -579,6 +584,7 @@ func update(delta):
 		if v.alive and v.p.distance_to(destination.p)<19:
 			destination.alive=false
 			v.alive=false
+			record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p})
 			effect(destination.p,Color("#eb8f9d"),"",35)
 			record("blood_lost",{"id":destination.id,"p":destination.p})
 	for p in particles:
@@ -612,7 +618,9 @@ func update(delta):
 		# Explicit provisional resolution for an otherwise infinite freeze/stall.
 		for v in viruses:
 			var b=nearest_blood(v.p)
-			if not b.is_empty(): b.alive=false
+			if not b.is_empty():
+				b.alive=false
+				record("blood_lost",{"id":b.id,"p":b.p})
 		viruses.clear()
 		spawn_queue.clear()
 		record("provisional_stalemate_resolution")

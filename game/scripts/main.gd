@@ -58,6 +58,10 @@ var pending_offer={}
 var shop_collapsed=false
 var preview_wave=[]
 var showing_recap=false
+var results_pending=false
+var results_delay=0.0
+var results_stage=""
+const RESULTS_PAUSE=0.65
 var shade: ColorRect
 var speed_buttons=[]
 var playback_speed=1
@@ -394,6 +398,8 @@ func show_menu():
 	button(col,"Quit",func(): save_run(); get_tree().quit())
 
 func new_run(rounds):
+	results_pending=false
+	results_stage=""
 	cancel_placement()
 	shop_collapsed=false
 	shop_page=0
@@ -508,7 +514,7 @@ func refresh():
 	stats.text="Capacity  %d / %d" % [sim.cells.size(),sim.capacity()]
 	stats.tooltip_text="Immune cells / capacity"
 	phase_panel.visible=sim.phase!="battle"
-	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" else sim.round_no,sim.target_rounds]
+	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" and results_stage=="forecast" else sim.round_no,sim.target_rounds]
 	var display_wave=preview_wave if sim.phase=="recap" and not preview_wave.is_empty() else sim.wave
 	incoming.text="[color=#fff6df][b]Incoming infection[/b][/color]\n"
 	for lane in range(3):
@@ -654,14 +660,12 @@ func _process(delta):
 	if sim.phase!=last_phase:
 		last_phase=sim.phase
 		refresh()
-		if sim.phase=="recap":
-			show_recap()
-		elif sim.phase in ["win","lose"]:
-			var title="Defense successful!" if sim.phase=="win" else "No blood cells left"
-			var col=clear_modal(title,"You survived "+str(sim.round_no)+" rounds.\n"+("All waves defeated." if sim.phase=="win" else "A new formation, a new chance."))
-			button(col,"New run",func():new_run(sim.target_rounds))
-			button(col,"Main menu",show_menu)
-			if FileAccess.file_exists(save_path): DirAccess.remove_absolute(save_path)
+		if sim.phase in ["recap","win","lose"]:
+			results_pending=true
+			results_delay=RESULTS_PAUSE
+			results_stage="settling"
+			modal.hide()
+	advance_results(delta)
 	if not modal.visible:
 		var movement=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
 		view.position+=movement*delta*280
@@ -964,58 +968,67 @@ func show_cell_card(key,c={}):
 func virus_glyph(key):
 	return {"basic":"✹","wave":"≈","jumper":"↟","hungry":"●","swarmer":"✣","seeker":"♟","avoider":"◇"}.get(key,"●")
 
+func advance_results(delta):
+	if not results_pending: return
+	# Damage has stopped; only transient visuals finish before the results pause.
+	for particle in sim.particles:
+		particle.life-=delta
+		particle.p+=particle.v*delta
+	sim.particles=sim.particles.filter(func(p): return p.life>0 and p.kind=="bullet")
+	if not sim.effects.is_empty() or not sim.particles.is_empty(): return
+	results_delay-=delta
+	if results_delay>0: return
+	results_pending=false
+	show_infection_results()
+
+func show_infection_results():
+	results_stage="losses"
+	var losses=sim.round_losses
+	var text="Viral cells destroyed: %d" % losses.viruses
+	if losses.core>0: text+="\nCore cells lost: %d" % losses.core
+	text+="\nImmune cells lost: %d" % losses.cells
+	var col=clear_modal("Infection phase complete",text)
+	button(col,"OK",func():
+		if sim.phase=="recap": show_recap()
+		else: show_run_result())
+
+func show_run_result():
+	results_stage="finished"
+	var col=clear_modal("Defense successful!" if sim.phase=="win" else "No core cells left","You survived %d rounds." % sim.round_no)
+	button(col,"New run",func():new_run(sim.target_rounds))
+	button(col,"Main menu",show_menu)
+
 func show_recap():
+	results_stage="forecast"
 	var next_sim=Simulation.new()
 	next_sim.reset(sim.seed_value,sim.target_rounds)
 	next_sim.round_no=sim.round_no+1
 	next_sim.make_wave()
 	preview_wave=next_sim.wave.duplicate(true)
-	var delta_type="basic"
-	var delta_count=0
-	for entry in preview_wave:
-		var previous=0
-		for old in sim.wave:
-			if old.type==entry.type and old.lane==entry.lane: previous+=old.count
-		if entry.count-previous>delta_count:
-			delta_count=entry.count-previous
-			delta_type=entry.type
-	var col=clear_modal("Viral Load Increase!")
+	var changes=""
+	for lane in range(3):
+		var types=[]
+		for entry in sim.wave+preview_wave:
+			if entry.lane==lane and entry.type not in types: types.append(entry.type)
+		for type in types:
+			var before=0
+			var after=0
+			for entry in sim.wave:
+				if entry.lane==lane and entry.type==type: before+=entry.count
+			for entry in preview_wave:
+				if entry.lane==lane and entry.type==type: after+=entry.count
+			if before!=after:
+				changes+="Lane %d · %s: %d to %d%s\n" % [lane+1,type.capitalize(),before,after," (new)" if before==0 else ""]
+	if changes.is_empty(): changes="The infection lineup is unchanged.\n"
+	changes+="\nPreparation protein: %d" % mini(sim.round_no+4,10)
+	var col=clear_modal("Next round · %d" % (sim.round_no+1),changes)
 	showing_recap=true
 	shade.color=Color(0,0,0,0)
-	modal_panel.position=Vector2(475,122)
-	modal_panel.size=Vector2(480,226)
-	var amount=Label.new()
-	amount.add_theme_font_override("font",symbol_font)
-	amount.text=virus_glyph(delta_type)+"  + "+str(delta_count)
-	amount.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	amount.add_theme_font_size_override("font_size",40)
-	amount.add_theme_color_override("font_color",Color("#9068ab"))
-	col.add_child(amount)
-	button(col,"Click to continue",advance_recap,Vector2(450,40))
-	var virus_panel=panel(modal,Rect2(76,85,338,300))
-	var box=VBoxContainer.new()
-	box.add_theme_constant_override("separation",16)
-	virus_panel.add_child(box)
-	var title=Label.new()
-	title.text=delta_type.capitalize()+" Virus"
-	title.add_theme_font_size_override("font_size",27)
-	title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-	var glyph=Label.new()
-	glyph.add_theme_font_override("font",symbol_font)
-	glyph.text=virus_glyph(delta_type)
-	glyph.add_theme_font_size_override("font_size",66)
-	glyph.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	glyph.add_theme_color_override("font_color",Color("#956eb0"))
-	box.add_child(glyph)
-	var facts=Label.new()
-	facts.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	facts.custom_minimum_size=Vector2(305,92)
-	facts.text=virus_description(delta_type)
-	box.add_child(facts)
+	button(col,"OK",advance_recap)
 	refresh()
 
 func advance_recap():
+	results_stage=""
 	if sim.phase!="recap": return
 	sim.next_round()
 	preview_wave=[]

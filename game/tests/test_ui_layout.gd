@@ -75,8 +75,25 @@ func run():
 	scene.start_battle()
 	await create_timer(0.4).timeout
 	check(not scene.dock.visible,"battle slides away the entire dock")
+	scene.set_process(false)
 	scene.sim.phase="recap"
-	scene.show_recap()
+	scene.sim.round_losses={"viruses":7,"core":2,"cells":3}
+	scene.sim.particles.clear()
+	scene.sim.effect(Vector2.ZERO,Color.WHITE)
+	scene.results_pending=true
+	scene.results_delay=scene.RESULTS_PAUSE
+	scene.results_stage="settling"
+	scene.advance_results(0.7)
+	check(scene.results_stage=="settling","results wait for final effects")
+	scene.sim.update(1.0)
+	scene.advance_results(0.3)
+	check(scene.results_stage=="settling","short pause follows completed effects")
+	scene.advance_results(0.4)
+	check(scene.results_stage=="losses","infection losses appear before next-round forecast")
+	var result_column=scene.modal_panel.get_child(0)
+	check("7" in result_column.get_child(1).text and "Core cells lost: 2" in result_column.get_child(1).text,"results show the round loss counters")
+	result_column.get_child(result_column.get_child_count()-1).pressed.emit()
+	check(scene.results_stage=="forecast" and scene.sim.phase=="recap","first OK opens forecast without starting preparation")
 	var forecast=scene.preview_wave.duplicate(true)
 	check(scene.shade.color.a==0 and scene.showing_recap,"recap leaves microscope visible")
 	if "--capture" in OS.get_cmdline_user_args():
