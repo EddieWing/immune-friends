@@ -5,6 +5,7 @@ var rules: Dictionary
 var rng = RandomNumberGenerator.new()
 var cells: Array = []
 var blood: Array = []
+var blood_links: Array = []
 var viruses: Array = []
 var particles: Array = []
 var effects: Array = []
@@ -57,10 +58,14 @@ func reset(seed_number = 42, rounds = 12):
 	money = 4
 	frozen = false
 	phase = "shop"
+	var sites=[]
+	for q in range(-5,6):
+		for r in range(-5,6):
+			sites.append(Vector2(26.0*(q+r*0.5),26.0*sqrt(3.0)*r*0.5))
+	sites.sort_custom(func(a,b): return a.length_squared()<b.length_squared() if not is_equal_approx(a.length_squared(),b.length_squared()) else a.angle()<b.angle())
 	for i in range(int(rules.start_blood)):
-		var a = i * 2.39996
-		var r = sqrt(float(i)) * 16.0
-		blood.append({"p":Vector2(cos(a),sin(a))*r,"alive":true,"id":i})
+		blood.append({"p":sites[i],"alive":true,"id":i})
+	rebuild_blood_links()
 	roll_shop(false)
 	# Reproducible useful first draw; subsequent draws use the provisional pool.
 	offers = ["wall","tackle","orbiter"]
@@ -400,6 +405,7 @@ func update(delta):
 	effects=effects.filter(func(e): return e.life>0)
 	for c in cells: c.flash=maxf(0,c.flash-delta)
 	if phase!="battle": return
+	solve_blood()
 	elapsed+=delta
 	spawn_timer-=delta
 	if spawn_timer<=0 and not spawn_queue.is_empty():
@@ -678,3 +684,77 @@ func body_radius(c, direction):
 	if catalog[c.key].behavior!="wall": return 18.0
 	var local=direction.rotated(-c.angle).abs()
 	return minf(43.0/maxf(0.001,local.x),13.0/maxf(0.001,local.y))
+
+# Provisional soft-body constraints: touching membranes, fixed neighbour links.
+func rebuild_blood_links():
+	blood_links.clear()
+	var connected=[]
+	for i in range(blood.size()):
+		if blood[i].alive: connected.append(i); break
+	while not connected.is_empty():
+		var closest=INF
+		var pair=[]
+		for a in connected:
+			for b in range(blood.size()):
+				if b in connected or not blood[b].alive: continue
+				var distance=blood[a].p.distance_to(blood[b].p)
+				if distance<closest: closest=distance; pair=[a,b]
+		if pair.is_empty(): break
+		blood_links.append({"a":pair[0],"b":pair[1],"rest":26.0})
+		connected.append(pair[1])
+	for a in range(blood.size()):
+		for b in range(a+1,blood.size()):
+			if blood[a].alive and blood[b].alive and blood[a].p.distance_to(blood[b].p)<28:
+				if not blood_links.any(func(l): return (l.a==a and l.b==b) or (l.a==b and l.b==a)):
+					blood_links.append({"a":a,"b":b,"rest":26.0})
+	solve_blood()
+
+func solve_blood():
+	for iteration in range(24):
+		var adjusted=false
+		for link in blood_links:
+			var a=blood[link.a]
+			var b=blood[link.b]
+			if not a.alive or not b.alive: continue
+			var offset=b.p-a.p
+			var distance=offset.length()
+			if distance>26.05:
+				adjusted=true
+				var correction=offset/distance*(distance-26.0)*0.35
+				a.p+=correction
+				b.p-=correction
+		for i in range(blood.size()):
+			var a=blood[i]
+			if not a.alive: continue
+			for j in range(i+1,blood.size()):
+				var b=blood[j]
+				if not b.alive: continue
+				var offset=b.p-a.p
+				var distance=offset.length()
+				if distance<25.999:
+					adjusted=true
+					var direction=offset/distance if distance>0.0001 else Vector2.RIGHT.rotated(i*2.4)
+					var correction=direction*(26.0-distance)*0.5
+					a.p-=correction
+					b.p+=correction
+		if not adjusted: break
+
+func move_blood(index,target):
+	if index<0 or index>=blood.size() or not blood[index].alive: return
+	var group=[index]
+	var cursor=0
+	while cursor<group.size():
+		var current=group[cursor]
+		cursor+=1
+		for link in blood_links:
+			var other=link.b if link.a==current else (link.a if link.b==current else -1)
+			if other>=0 and blood[other].alive and other not in group: group.append(other)
+	var offset=target-blood[index].p
+	var lower=Vector2(-INF,-INF)
+	var upper=Vector2(INF,INF)
+	for i in group:
+		lower=lower.max(Vector2(-550,-300)-blood[i].p)
+		upper=upper.min(Vector2(550,280)-blood[i].p)
+	offset=offset.clamp(lower,upper)
+	for i in group: blood[i].p+=offset
+	solve_blood()

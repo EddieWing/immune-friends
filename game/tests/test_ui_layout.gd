@@ -15,6 +15,17 @@ func run():
 		check(scene.bottom_panel.get_global_rect().encloses(control.get_global_rect()),"toolbar button stays inside shelf")
 	scene.modal.hide()
 	scene.sim.reset(42,12)
+	var before=scene.sim.blood.map(func(b): return b.p)
+	scene.sim.move_blood(0,Vector2(100,60))
+	var shift=scene.sim.blood[0].p-before[0]
+	var coherent=true
+	var separated=true
+	for i in range(scene.sim.blood.size()):
+		coherent=coherent and (scene.sim.blood[i].p-before[i]).is_equal_approx(shift)
+		for j in range(i+1,scene.sim.blood.size()):
+			separated=separated and scene.sim.blood[i].p.distance_to(scene.sim.blood[j].p)>25.99
+	check(coherent,"dragging blood moves its connected cluster")
+	check(separated,"blood membranes do not overlap")
 	scene.refresh()
 	check(not scene.detail_panel.visible,"no permanent card blocking field")
 	var money=scene.sim.money

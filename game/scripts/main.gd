@@ -747,7 +747,7 @@ func _unhandled_input(event):
 			selected.p=(world+mouse_offset).clamp(Vector2(-590,-345),Vector2(590,325))
 			sim.rebuild_links()
 		elif dragging_blood>=0:
-			sim.blood[dragging_blood].p=world.clamp(Vector2(-550,-300),Vector2(550,280))
+			sim.move_blood(dragging_blood,world)
 
 func save_run():
 	if sim.phase!="shop": return
@@ -761,7 +761,7 @@ func save_run():
 	for b in sim.blood: blood_data.append({"p":[b.p.x,b.p.y],"alive":b.alive,"id":b.id})
 	var data={"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
 		"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
-		"cells":cell_data,"blood":blood_data,"offers":sim.offers,"rewards":sim.rewards,
+		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
 		"choices":sim.reward_choices,"rng_state":str(sim.rng.state)}
 	var file=FileAccess.open(save_path,FileAccess.WRITE)
 	if file: file.store_string(JSON.stringify(data))
@@ -784,6 +784,8 @@ func load_run():
 		c.start=c.p
 	sim.blood=data.blood
 	for b in sim.blood: b.p=Vector2(b.p[0],b.p[1])
+	if data.has("blood_links"): sim.blood_links=data.blood_links
+	else: sim.rebuild_blood_links()
 	sim.offers=data.offers
 	sim.rewards=data.rewards
 	sim.reward_choices=data.choices
