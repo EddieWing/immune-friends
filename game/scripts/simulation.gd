@@ -82,7 +82,7 @@ func capacity():
 
 func make_cell(key: String, p: Vector2):
 	var d = catalog[key]
-	var c = {"id":next_id,"key":key,"p":p,"start":p,"angle":PI,"start_angle":PI,
+	var c = {"id":next_id,"key":key,"p":p,"start":p,"angle":0.0,"start_angle":0.0,
 		"hp":float(d.hp),"max_hp":float(d.hp),"rank":1,"alive":true,
 		"cool":0.0,"contact":0.0,"flash":0.0,"charge":2 if key=="zapper" else 0,
 		"food":0,"sale":1,"orbit":p.angle(),"range_buff":1.0,"speed_buff":1.0}
@@ -806,4 +806,5 @@ func step_blood(delta):
 					var correction=normal*(26-distance)/(wa+wb)
 					blood[i].p-=correction*wa
 					blood[j].p+=correction*wb
+
 
