@@ -60,6 +60,9 @@ var showing_recap=false
 var shade: ColorRect
 var speed_buttons=[]
 var playback_speed=1
+var zoom_target=0.88
+var water_time=0.0
+var background_material: ShaderMaterial
 var zoom_gauge: Control
 var auto_button: Button
 const OfferButton=preload("res://scripts/ui/offer.gd")
@@ -166,6 +169,9 @@ func absolute_button(text, pos, size_button, action):
 
 func build_ui():
 	var backdrop=TextureRect.new()
+	background_material=ShaderMaterial.new()
+	background_material.shader=preload("res://shaders/microscope.gdshader")
+	backdrop.material=background_material
 	backdrop.texture=preload("res://assets/art/microscope.png")
 	backdrop.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 	backdrop.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
@@ -181,7 +187,8 @@ func build_ui():
 	ui.add_child(field)
 	view=ArenaView.new()
 	view.position=Vector2(720,425)
-	view.scale=Vector2.ONE*0.88
+	zoom_target=0.88
+	view.scale=Vector2.ONE*zoom_target
 	view.sim=sim
 	view.visuals=visuals
 	field.add_child(view)
@@ -617,6 +624,7 @@ func changed():
 	save_run()
 
 func _process(delta):
+	advance_camera(delta)
 	advance_simulation(delta)
 	if sim.phase!=last_phase:
 		last_phase=sim.phase
@@ -669,8 +677,7 @@ func _unhandled_input(event):
 		if not board_rect.has_point(screen) and event.pressed: return
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
 			var factor=1.1 if event.button_index==MOUSE_BUTTON_WHEEL_UP else 1.0/1.1
-			view.scale=Vector2.ONE*clampf(view.scale.x*factor,0.45,1.5)
-			update_zoom()
+			set_zoom(zoom_target*factor)
 		if event.button_index==MOUSE_BUTTON_LEFT:
 			var world=view.get_global_transform().affine_inverse()*screen
 			if event.pressed:
@@ -830,6 +837,19 @@ func cancel_placement():
 func toggle_shop():
 	shop_collapsed=not shop_collapsed
 	refresh()
+
+func set_zoom(value):
+	zoom_target=clampf(value,0.45,1.5)
+	update_zoom()
+
+func advance_camera(delta):
+	var value=lerpf(view.scale.x,zoom_target,1.0-exp(-delta/0.065))
+	if absf(value-zoom_target)<0.0001: value=zoom_target
+	view.scale=Vector2.ONE*value
+	water_time+=delta
+	background_material.set_shader_parameter("camera_zoom",value)
+	background_material.set_shader_parameter("flow_time",water_time)
+	update_zoom()
 
 func update_zoom():
 	if zoom_gauge: zoom_gauge.queue_redraw()

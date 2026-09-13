@@ -37,11 +37,16 @@ func run():
  wheel.pressed=true
  wheel.button_index=MOUSE_BUTTON_WHEEL_UP
  for i in range(30): scene._unhandled_input(wheel)
+ check(scene.view.scale.x<scene.zoom_target,"zoom has a short easing tail")
+ scene.advance_camera(1.0)
  check(is_equal_approx(scene.view.scale.x,1.5) and scene.zoom_gauge.visible,"wheel reaches maximum zoom and gauge is visible")
  wheel.button_index=MOUSE_BUTTON_WHEEL_DOWN
  for i in range(40): scene._unhandled_input(wheel)
+ scene.advance_camera(1.0)
+ check(is_equal_approx(scene.background_material.get_shader_parameter("camera_zoom"),scene.view.scale.x),"background follows camera zoom")
+ check(scene.water_time>0,"water animates during preparation")
  check(is_equal_approx(scene.view.scale.x,0.45),"wheel respects minimum zoom")
  scene.queue_free()
  await process_frame
- print("RESULT: 7 checks, %d failures"%failures)
+ print("RESULT: 10 checks, %d failures"%failures)
  quit(1 if failures else 0)

@@ -8,8 +8,7 @@ func _ready():
  tooltip_text="Click or drag to zoom"
 func set_from_y(y):
  var ratio=clampf((230.0-y)/200.0,0,1)
- game.view.scale=Vector2.ONE*(0.45+ratio*1.05)
- game.update_zoom()
+ game.set_zoom(0.45+ratio*1.05)
 func _gui_input(event):
  if game.modal.visible: return
  if event is InputEventMouseButton and event.pressed:
@@ -20,17 +19,15 @@ func _gui_input(event):
    accept_event()
   elif event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
    var factor=1.1 if event.button_index==MOUSE_BUTTON_WHEEL_UP else 1.0/1.1
-   game.view.scale=Vector2.ONE*clampf(game.view.scale.x*factor,0.45,1.5)
-   game.update_zoom()
+   game.set_zoom(game.zoom_target*factor)
    accept_event()
  if event is InputEventKey and event.pressed and event.keycode in [KEY_UP,KEY_DOWN,KEY_HOME,KEY_END]:
-  var value=game.view.scale.x
+  var value=game.zoom_target
   if event.keycode==KEY_UP: value+=0.0525
   if event.keycode==KEY_DOWN: value-=0.0525
   if event.keycode==KEY_HOME: value=0.45
   if event.keycode==KEY_END: value=1.5
-  game.view.scale=Vector2.ONE*clampf(value,0.45,1.5)
-  game.update_zoom()
+  game.set_zoom(value)
   accept_event()
 func _input(event):
  if not dragging: return
