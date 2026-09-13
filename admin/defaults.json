@@ -46,6 +46,14 @@
     "blood_drift": {
       "speed": 6,
       "slow_radius": 80
+    },
+    "infection_sources": {
+      "distance_min": 340.0,
+      "distance_max": 440.0,
+      "angle_jitter_degrees": 25.0,
+      "exit_distance": 70.0,
+      "exit_spread": 85.0,
+      "emerge_speed": 95.0
     }
   },
   "cells": {

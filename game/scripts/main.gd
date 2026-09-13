@@ -770,7 +770,9 @@ func save_run():
 	var data={"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
 		"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
 		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
-		"choices":sim.reward_choices,"rng_state":str(sim.rng.state)}
+		"choices":sim.reward_choices,"rng_state":str(sim.rng.state),
+		"infection_sources":sim.infection_sources.map(func(p): return [p.x,p.y]),
+		"source_center":[sim.source_center.x,sim.source_center.y]}
 	var file=FileAccess.open(save_path,FileAccess.WRITE)
 	if file: file.store_string(JSON.stringify(data))
 
@@ -799,6 +801,9 @@ func load_run():
 	sim.reward_choices=data.choices
 	sim.rng.state=int(data.rng_state)
 	sim.make_wave()
+	if data.has("infection_sources") and data.has("source_center"):
+		sim.infection_sources=data.infection_sources.map(func(p): return Vector2(p[0],p[1]))
+		sim.source_center=Vector2(data.source_center[0],data.source_center[1])
 	sim.rebuild_links()
 	selected={}
 	modal.hide()

@@ -18,14 +18,13 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 	draw_string(font,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,color)
 
 func _draw():
-	var directions=[Vector2(620,0),Vector2(-620,0),Vector2(0,-370)]
 	if sim==null: return
 	var drawn_lanes=[]
 	for entry in sim.wave:
 		if entry.lane in drawn_lanes: continue
 		drawn_lanes.append(entry.lane)
-		var start=directions[entry.lane]
-		var end=Vector2.ZERO
+		var start=sim.infection_sources[entry.lane]
+		var end=sim.source_center
 		for n in range(14):
 			var a=start.lerp(end,n/15.0)
 			var b=start.lerp(end,(n+0.4)/15.0)

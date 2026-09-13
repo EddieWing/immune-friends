@@ -25,9 +25,11 @@ func run():
 	c.angle=1.25
 	scene.sim.frozen=true
 	var money=scene.sim.money
+	var saved_sources=scene.sim.infection_sources.duplicate()
 	scene.save_run()
 	scene.sim.reset(77,10)
 	scene.load_run()
+	check(scene.sim.infection_sources==saved_sources,"save restores infection sources despite moved core cells")
 	check(scene.sim.cells.size()==1,"UI purchase saved")
 	check(scene.sim.cells[0].p==Vector2(321,-87) and scene.sim.cells[0].angle==1.25,"position and rotation roundtrip")
 	check(scene.sim.money==money and scene.sim.frozen,"economy and freeze roundtrip")

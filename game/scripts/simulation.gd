@@ -29,6 +29,8 @@ var next_id = 1
 var elapsed = 0.0
 var spawn_timer = 0.0
 var spawn_queue: Array = []
+var infection_sources=[]
+var source_center=Vector2.ZERO
 var wave: Array = []
 var last_message = ""
 var seed_value = 0
@@ -257,6 +259,7 @@ func interval_of(c):
 	return float(catalog[c.key].interval)
 
 func make_wave():
+	make_infection_sources()
 	var basic=2 if round_no==1 else 4
 	wave=[{"type":"basic","count":basic,"lane":0}]
 	if round_no>=3:
@@ -308,13 +311,31 @@ func begin_battle():
 		spawn_queue[j]=temp
 	record("battle_start")
 
+func make_infection_sources():
+	var config=rules.infection_sources
+	var source_rng=RandomNumberGenerator.new()
+	source_rng.seed=seed_value+round_no*104729
+	source_center=Vector2.ZERO
+	var alive=blood.filter(func(b): return b.alive)
+	for b in alive: source_center+=b.p
+	if not alive.is_empty(): source_center/=alive.size()
+	infection_sources.clear()
+	var minimum=maxf(1,config.distance_min)
+	var maximum=maxf(minimum,config.distance_max)
+	for angle in [0.0,PI,-PI/2]:
+		var jitter=deg_to_rad(clampf(config.angle_jitter_degrees,0,45))
+		var direction=Vector2.from_angle(angle+source_rng.randf_range(-jitter,jitter))
+		infection_sources.append(source_center+direction*source_rng.randf_range(minimum,maximum))
+
 func spawn_virus(entry):
-	var p=Vector2(620,rng.randf_range(-170,170))
-	if entry.lane==1: p=Vector2(-620,rng.randf_range(-170,170))
-	if entry.lane==2: p=Vector2(rng.randf_range(-180,180),-370)
+	var config=rules.infection_sources
+	var p=infection_sources[entry.lane]
+	var inward=p.direction_to(source_center)
+	var exit=p+inward*maxf(1,config.exit_distance)+inward.orthogonal()*rng.randf_range(-config.exit_spread,config.exit_spread)
 	var hp=2.0 if entry.type=="seeker" else 1.0
 	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"alive":true,
-		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"jump":false,"phase":rng.randf()*TAU})
+		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"jump":false,"phase":rng.randf()*TAU,
+		"emerging":true,"exit":exit})
 	next_id+=1
 
 func nearest_virus(p, reach=10000.0):
@@ -531,6 +552,14 @@ func update(delta):
 		v.cool=maxf(0,v.cool-delta)
 		v.tag=maxf(0,v.tag-delta)
 		v.freeze=maxf(0,v.freeze-delta)
+		if v.get("emerging",false):
+			v.jump=false
+			if v.freeze<=0:
+				v.p=v.p.move_toward(v.exit,maxf(1,rules.infection_sources.emerge_speed)*movement_delta)
+			if v.p.is_equal_approx(v.exit):
+				v.emerging=false
+				v.age=0.0
+			continue
 		v.jump=v.type=="jumper" and fmod(v.age+v.phase,3.5)>2.8
 		var destination=nearest_blood(v.p)
 		if destination.is_empty():

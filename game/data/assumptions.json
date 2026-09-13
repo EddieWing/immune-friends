@@ -2,9 +2,21 @@
   "status": "Unverified reconstruction parameters, not measured original rules",
   "scale": 3,
   "movement_multiplier": 1.5,
-  "blood_drift": {"speed": 6.0, "slow_radius": 80.0},
-  "blood_elasticity": {"stiffness": 48.0, "damping": 5.0},
-  "blood_faces": {"attention_radius": 180, "danger_radius": 65, "look_smoothing": 0.15, "fear_seconds": 1.5, "relief_seconds": 1.0},
+  "blood_drift": {
+    "speed": 6.0,
+    "slow_radius": 80.0
+  },
+  "blood_elasticity": {
+    "stiffness": 48.0,
+    "damping": 5.0
+  },
+  "blood_faces": {
+    "attention_radius": 180,
+    "danger_radius": 65,
+    "look_smoothing": 0.15,
+    "fear_seconds": 1.5,
+    "relief_seconds": 1.0
+  },
   "start_blood": 20,
   "bond_distance": 145,
   "bond_stiffness": 0.65,
@@ -32,5 +44,13 @@
   "healing": "may exceed base during combat; reset next shop",
   "max_battle_seconds": 180,
   "stalemate_resolution": "After 180 seconds, remaining viruses each remove one blood cell; provisional safeguard, original unknown",
-  "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured"
+  "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured",
+  "infection_sources": {
+    "distance_min": 340.0,
+    "distance_max": 440.0,
+    "angle_jitter_degrees": 25.0,
+    "exit_distance": 70.0,
+    "exit_spread": 85.0,
+    "emerge_speed": 95.0
+  }
 }
