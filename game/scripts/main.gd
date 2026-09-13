@@ -7,9 +7,7 @@ var view: Node2D
 var shop: HBoxContainer
 var stats: Label
 var phase_panel: PanelContainer
-var phase_stripe: ColorRect
 var incoming_tween: Tween
-var phase_label: Label
 var detail: RichTextLabel
 var incoming: RichTextLabel
 var message: Label
@@ -233,22 +231,13 @@ func build_ui():
 	set_playback_speed(1)
 	auto_button=absolute_button("Auto",Vector2(820,16),Vector2(53,29),func(): auto_camera=not auto_camera; update_zoom())
 	auto_button.add_theme_font_size_override("font_size",14)
-	phase_panel=panel(ui,Rect2(1160,-9,280,80))
-	var phase_content=Control.new()
-	phase_panel.add_child(phase_content)
-	phase_label=label(phase_content,"Shop",Vector2(0,1),30,Color("#414541"))
-	phase_label.size=Vector2(256,42)
-	phase_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	var stripe=ColorRect.new()
-	phase_stripe=stripe
-	stripe.position=Vector2(-11,48)
-	stripe.size=Vector2(279,23)
-	stripe.color=Color("#ed7865")
-	stripe.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	phase_content.add_child(stripe)
-	round_label=label(phase_content,"",Vector2(0,47),13,Color.WHITE)
-	round_label.size=Vector2(256,24)
+	phase_panel=panel(ui,Rect2(1270,-10,146,46),Color("#ed7865"))
+	round_label=Label.new()
+	round_label.add_theme_font_size_override("font_size",14)
+	round_label.add_theme_color_override("font_color",Color("#fff7e7"))
 	round_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	round_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	phase_panel.add_child(round_label)
 	detail_panel=panel(ui,Rect2(194,85,340,0))
 	var column=VBoxContainer.new()
 	column.add_theme_constant_override("separation",8)
@@ -273,13 +262,14 @@ func build_ui():
 	term_text.fit_content=true
 	term_panel.add_child(term_text)
 	term_panel.hide()
-	income_panel=panel(ui,Rect2(-180,350,164,0),Color("#eb7b6a"))
+	income_panel=panel(ui,Rect2(-220,350,204,0),Color("#eb7b6a"))
 	incoming=RichTextLabel.new()
 	incoming.bbcode_enabled=true
 	incoming.add_theme_font_override("normal_font",symbol_font)
 	incoming.add_theme_font_override("bold_font",symbol_font)
-	incoming.custom_minimum_size=Vector2(140,0)
+	incoming.custom_minimum_size=Vector2(180,0)
 	incoming.scroll_active=true
+	income_panel.get_theme_stylebox("panel").content_margin_left=22
 	income_panel.add_child(incoming)
 	currency_panel=panel(ui,Rect2(174,711,260,37))
 	var pips=CurrencyPips.new()
@@ -497,15 +487,10 @@ func cell_icon(key):
 func refresh():
 	stats.text="♟  %d / %d" % [sim.cells.size(),sim.capacity()]
 	stats.tooltip_text="Immune cells / capacity"
-	var names={"shop":"Shop","battle":"Infection","recap":"Recap","win":"Complete","lose":"Complete"}
-	phase_label.text=names[sim.phase]
-	phase_label.visible=sim.phase!="shop"
-	phase_panel.size.y=40 if sim.phase=="shop" else 80
-	phase_stripe.position.y=3 if sim.phase=="shop" else 48
-	round_label.position.y=2 if sim.phase=="shop" else 47
+	phase_panel.visible=sim.phase!="battle"
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" else sim.round_no,sim.target_rounds]
 	var display_wave=preview_wave if sim.phase=="recap" and not preview_wave.is_empty() else sim.wave
-	incoming.text="[color=#fff6df][b]ⓘ Incoming[/b][/color]\n"
+	incoming.text="[color=#fff6df][b]Incoming infection[/b][/color]\n"
 	for lane in range(3):
 		var items=display_wave.filter(func(e): return e.lane==lane)
 		if items.is_empty(): continue
@@ -1042,7 +1027,7 @@ func layout_incoming():
 	income_panel.size.y=incoming.custom_minimum_size.y+18
 	income_panel.position.y=(900-income_panel.size.y)*0.5
 	var show_panel=sim.phase=="shop"
-	var destination=12.0 if show_panel else -180.0
+	var destination=-8.0 if show_panel else -220.0
 	if incoming_tween and incoming_tween.is_running(): incoming_tween.kill()
 	if show_panel: income_panel.show()
 	if is_equal_approx(income_panel.position.x,destination):
