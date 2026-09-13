@@ -42,7 +42,8 @@ func _input(event):
   get_viewport().set_input_as_handled()
 func _draw():
  var ratio=clampf((game.view.scale.x-0.45)/1.05,0,1)
- var ink=Color("#385265")
+ var ink=Color("#fff5df")
+ draw_style_box(track_style(Color(0.07,0.14,0.19,0.92)),Rect2(-8,-7,58,272))
  var font=ThemeDB.fallback_font
  draw_string(font,Vector2(1,14),"Zoom",HORIZONTAL_ALIGNMENT_LEFT,-1,13,ink)
  draw_style_box(track_style(Color(0.94,0.97,1,0.8)),Rect2(9,30,10,200))

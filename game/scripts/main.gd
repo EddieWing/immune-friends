@@ -6,6 +6,9 @@ var ui: Control
 var view: Node2D
 var shop: HBoxContainer
 var stats: Label
+var phase_panel: PanelContainer
+var phase_stripe: ColorRect
+var incoming_tween: Tween
 var phase_label: Label
 var detail: RichTextLabel
 var incoming: RichTextLabel
@@ -218,7 +221,7 @@ func build_ui():
 	gear.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
 	zoom_gauge=preload("res://scripts/ui/zoom_gauge.gd").new()
 	zoom_gauge.game=self
-	zoom_gauge.position=Vector2(24,260)
+	zoom_gauge.position=Vector2(1376,320)
 	zoom_gauge.size=Vector2(40,260)
 	ui.add_child(zoom_gauge)
 	for value in [1,2,5]:
@@ -230,13 +233,14 @@ func build_ui():
 	set_playback_speed(1)
 	auto_button=absolute_button("Auto",Vector2(820,16),Vector2(53,29),func(): auto_camera=not auto_camera; update_zoom())
 	auto_button.add_theme_font_size_override("font_size",14)
-	var phase_panel=panel(ui,Rect2(1160,-9,280,80))
+	phase_panel=panel(ui,Rect2(1160,-9,280,80))
 	var phase_content=Control.new()
 	phase_panel.add_child(phase_content)
 	phase_label=label(phase_content,"Shop",Vector2(0,1),30,Color("#414541"))
 	phase_label.size=Vector2(256,42)
 	phase_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	var stripe=ColorRect.new()
+	phase_stripe=stripe
 	stripe.position=Vector2(-11,48)
 	stripe.size=Vector2(279,23)
 	stripe.color=Color("#ed7865")
@@ -245,10 +249,7 @@ func build_ui():
 	round_label=label(phase_content,"",Vector2(0,47),13,Color.WHITE)
 	round_label.size=Vector2(256,24)
 	round_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	var hints=label(ui,"Scroll: zoom\nRMB / WASD: pan",Vector2(1200,96),12,Color("#e2e9ee"))
-	hints.size=Vector2(216,40)
-	hints.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
-	detail_panel=panel(ui,Rect2(76,85,340,0))
+	detail_panel=panel(ui,Rect2(194,85,340,0))
 	var column=VBoxContainer.new()
 	column.add_theme_constant_override("separation",8)
 	detail_panel.add_child(column)
@@ -265,19 +266,20 @@ func build_ui():
 	column.add_child(detail)
 	sell_button=button(column,"Sell",sell_selected,Vector2(0,32))
 	detail_panel.hide()
-	term_panel=panel(ui,Rect2(435,85,255,150))
+	term_panel=panel(ui,Rect2(550,85,255,150))
 	term_text=RichTextLabel.new()
 	term_text.bbcode_enabled=true
 	term_text.custom_minimum_size=Vector2(227,0)
 	term_text.fit_content=true
 	term_panel.add_child(term_text)
 	term_panel.hide()
-	income_panel=panel(ui,Rect2(1306,454,134,228),Color("#eb7b6a"))
+	income_panel=panel(ui,Rect2(-180,350,164,0),Color("#eb7b6a"))
 	incoming=RichTextLabel.new()
 	incoming.bbcode_enabled=true
 	incoming.add_theme_font_override("normal_font",symbol_font)
 	incoming.add_theme_font_override("bold_font",symbol_font)
-	incoming.custom_minimum_size=Vector2(108,198)
+	incoming.custom_minimum_size=Vector2(140,0)
+	incoming.scroll_active=true
 	income_panel.add_child(incoming)
 	currency_panel=panel(ui,Rect2(174,711,260,37))
 	var pips=CurrencyPips.new()
@@ -497,6 +499,10 @@ func refresh():
 	stats.tooltip_text="Immune cells / capacity"
 	var names={"shop":"Shop","battle":"Infection","recap":"Recap","win":"Complete","lose":"Complete"}
 	phase_label.text=names[sim.phase]
+	phase_label.visible=sim.phase!="shop"
+	phase_panel.size.y=40 if sim.phase=="shop" else 80
+	phase_stripe.position.y=3 if sim.phase=="shop" else 48
+	round_label.position.y=2 if sim.phase=="shop" else 47
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" else sim.round_no,sim.target_rounds]
 	var display_wave=preview_wave if sim.phase=="recap" and not preview_wave.is_empty() else sim.wave
 	incoming.text="[color=#fff6df][b]ⓘ Incoming[/b][/color]\n"
@@ -506,6 +512,7 @@ func refresh():
 		incoming.text+="\n[color=#663e4a]Lane "+str(lane+1)+"[/color]\n"
 		for entry in items:
 			incoming.text+="[color=#fff7e7]"+virus_glyph(entry.type)+" ×"+str(entry.count)+"[/color]\n"
+	layout_incoming.call_deferred()
 	var is_shop=sim.phase=="shop"
 	bottom_panel.visible=is_shop and not shop_collapsed
 	currency_panel.visible=is_shop and not shop_collapsed
@@ -1027,3 +1034,20 @@ func show_virus_catalog():
 	list.select(0)
 	select.call(0)
 	button(col,"Back",show_settings)
+
+func layout_incoming():
+	await get_tree().process_frame
+	if not is_instance_valid(incoming): return
+	incoming.custom_minimum_size.y=clampf(incoming.get_content_height(),44,580)
+	income_panel.size.y=incoming.custom_minimum_size.y+18
+	income_panel.position.y=(900-income_panel.size.y)*0.5
+	var show_panel=sim.phase=="shop"
+	var destination=12.0 if show_panel else -180.0
+	if incoming_tween and incoming_tween.is_running(): incoming_tween.kill()
+	if show_panel: income_panel.show()
+	if is_equal_approx(income_panel.position.x,destination):
+		income_panel.visible=show_panel
+		return
+	incoming_tween=create_tween()
+	incoming_tween.tween_property(income_panel,"position:x",destination,0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if not show_panel: incoming_tween.tween_callback(income_panel.hide)
