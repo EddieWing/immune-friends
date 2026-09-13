@@ -438,7 +438,10 @@ func show_settings():
 	col.add_child(tutorials)
 	button(tutorials,"Reset tutorial",func(): settings.set_value("tutorial","disabled",false); settings.save(settings_path); show_help(),Vector2(272,40))
 	button(tutorials,"Skip tutorial",func(): modal.hide(); menu_open=false,Vector2(272,38))
-	button(col,"Cell atlas",show_catalog)
+	var atlases=HBoxContainer.new()
+	col.add_child(atlases)
+	button(atlases,"Cell atlas",show_catalog,Vector2(272,40))
+	button(atlases,"Virus atlas",show_virus_catalog,Vector2(272,40))
 	button(col,"Main menu",show_menu)
 	button(col,"Back",func(): modal.hide(); menu_open=false)
 
@@ -999,3 +1002,33 @@ func set_graphics_style(value):
 	settings.save(settings_path)
 	refresh()
 	view.queue_redraw()
+
+func show_virus_catalog():
+	var col=clear_modal("Virus atlas · 7 viruses","Meet the invaders emerging from infection sources.")
+	modal_panel.size=Vector2(940,0)
+	var row=HBoxContainer.new()
+	row.add_theme_constant_override("separation",24)
+	col.add_child(row)
+	var list=ItemList.new()
+	list.custom_minimum_size=Vector2(280,420)
+	row.add_child(list)
+	var info=VBoxContainer.new()
+	info.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	row.add_child(info)
+	var preview=preload("res://scripts/ui/virus_preview.gd").new()
+	preview.custom_minimum_size=Vector2(0,150)
+	info.add_child(preview)
+	var facts=RichTextLabel.new()
+	facts.bbcode_enabled=true
+	facts.custom_minimum_size=Vector2(540,240)
+	info.add_child(facts)
+	var keys=["basic","wave","jumper","hungry","swarmer","seeker","avoider"]
+	var select=func(index):
+		var key=keys[index]
+		preview.kind=key
+		facts.text="[font_size=26]"+key.capitalize()+" Virus[/font_size]\n\n"+virus_description(key)+"\n\n[color=#65716f]Infection sources release viruses into the field. Protect your red blood cells.[/color]"
+	for key in keys: list.add_item(key.capitalize()+" Virus")
+	list.item_selected.connect(select)
+	list.select(0)
+	select.call(0)
+	button(col,"Back",show_settings)

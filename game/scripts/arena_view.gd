@@ -18,16 +18,17 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 func _draw():
 	var directions=[Vector2(620,0),Vector2(-620,0),Vector2(0,-370)]
 	if sim==null: return
+	var drawn_lanes=[]
 	for entry in sim.wave:
+		if entry.lane in drawn_lanes: continue
+		drawn_lanes.append(entry.lane)
 		var start=directions[entry.lane]
 		var end=Vector2.ZERO
 		for n in range(14):
 			var a=start.lerp(end,n/15.0)
 			var b=start.lerp(end,(n+0.4)/15.0)
 			draw_line(a,b,Color(0.76,0.65,0.84,0.2),2,true)
-		draw_circle(start,30,Color("#635779"))
-		draw_arc(start,37,time*0.1,time*0.1+TAU*0.75,30,Color("#b3a0c7"),2,true)
-		text_at(start+Vector2(-9,5),str(entry.count),17)
+		draw_ink_source(start,entry.lane)
 	# Range underneath bodies and hands.
 	var selected=sim.cell_by_id(selected_id)
 	if not selected.is_empty() and selected.alive:
@@ -145,23 +146,7 @@ func capsule_style(color):
 	return s
 
 func draw_virus(v):
-	var p=v.p
-	var color=Color("#b399c6")
-	if v.type=="hungry": color=Color("#a68bb8")
-	if v.type=="wave": color=Color("#bca4d5")
-	if v.type=="seeker": color=Color("#be8fae")
-	if v.jump: color=Color("#eee0f5")
-	for i in range(7):
-		var a=i*TAU/7+v.age*0.15
-		draw_circle(p+Vector2.from_angle(a)*12,3.5,color.darkened(0.15))
-	draw_circle(p,12,color.darkened(0.25))
-	draw_circle(p,10.5,color)
-	face(p,0.63,v.id,false)
-	if v.tag>0:
-		draw_arc(p,17,0,TAU,24,Color("#f4c5d9"),1.5,true)
-	if v.jump:
-		draw_arc(p,20,0,TAU,24,Color("#efdefb"),2,true)
-	if v.hp>1: text_at(p+Vector2(12,-9),str(int(v.hp)),10)
+	preload("res://scripts/virus_visuals.gd").draw(self,v)
 
 func draw_range_ring(center,radius,color,dashed=false):
 	# Keep the boundary readable at every camera zoom, including on bright art.
@@ -174,3 +159,21 @@ func draw_range_ring(center,radius,color,dashed=false):
 			draw_arc(center,radius,start,start+TAU/48.0*0.62,8,color,2.5/zoom,true)
 	else:
 		draw_arc(center,radius,0,TAU,segments,color,2.5/zoom,true)
+
+func draw_ink_source(center,seed):
+	for layer in range(7):
+		var points=PackedVector2Array()
+		var radius=72-layer*7
+		for i in range(96):
+			var angle=i*TAU/96.0
+			var wobble=sin(angle*5+time*0.22+seed)*0.15+sin(angle*9-time*0.17)*0.08
+			points.append(center+Vector2.from_angle(angle)*(radius*(1+wobble)))
+		draw_colored_polygon(points,Color(0.22,0.12,0.32,0.045+layer*0.012))
+	for i in range(11):
+		var angle=i*TAU/11+seed
+		var trail=PackedVector2Array()
+		for j in range(18):
+			var t=j/17.0
+			trail.append(center+Vector2.from_angle(angle+sin(t*4+time*0.24+i)*0.23)*(25+t*55))
+		draw_polyline(trail,Color(0.29,0.16,0.38,0.08),3,true)
+	draw_circle(center,17,Color(0.18,0.09,0.25,0.38))

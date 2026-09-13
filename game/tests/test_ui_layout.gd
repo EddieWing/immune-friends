@@ -46,7 +46,7 @@ func run():
 		root.get_texture().get_image().save_png("res://artifacts/ui-recap.png")
 	scene.advance_recap()
 	check(scene.sim.wave==forecast and scene.bottom_panel.visible,"recap forecast matches next preparation")
-	for screen in ["show_menu","show_settings","show_help","show_catalog","show_reward"]:
+	for screen in ["show_menu","show_settings","show_help","show_catalog","show_virus_catalog","show_reward"]:
 		if screen=="show_reward": scene.sim.reward_choices=[["accelerator","tag_sprayer"]]
 		scene.call(screen)
 		for frame in range(5): await process_frame
@@ -59,3 +59,4 @@ func run():
 	DirAccess.remove_absolute("user://ui_layout_test.json")
 	print("RESULT: layout checks, %d failures" % failures)
 	quit(1 if failures else 0)
+
