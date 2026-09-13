@@ -1034,6 +1034,7 @@ func show_virus_catalog():
 	var select=func(index):
 		var key=keys[index]
 		preview.kind=key
+		preview.style=visuals.style
 		facts.text="[font_size=26]"+key.capitalize()+" Virus[/font_size]\n\n"+virus_description(key)+"\n\n[color=#65716f]Infection sources release viruses into the field. Protect your red blood cells.[/color]"
 	for key in keys: list.add_item(key.capitalize()+" Virus")
 	list.item_selected.connect(select)
