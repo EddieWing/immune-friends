@@ -161,6 +161,17 @@ func button(parent, text, action, min_size=Vector2(0,40)):
 	parent.add_child(b)
 	return b
 
+func fixed_icon_button(parent, glyph, action, dimensions, font_size):
+	var b=preload("res://scripts/ui/icon_button.gd").new()
+	b.glyph=glyph
+	b.glyph_font=symbol_font
+	b.glyph_size=font_size
+	b.custom_minimum_size=dimensions
+	b.size=dimensions
+	b.pressed.connect(action)
+	parent.add_child(b)
+	return b
+
 func absolute_button(text, pos, size_button, action):
 	var b=button(ui,text,action,size_button)
 	b.position=pos
@@ -268,18 +279,18 @@ func build_ui():
 	var contents=Control.new()
 	contents.custom_minimum_size=Vector2(1068,86)
 	bottom.add_child(contents)
-	xp_button=button(contents,"⇈",func(): sim.buy_xp(); changed(),Vector2(70,70))
+	xp_button=fixed_icon_button(contents,"⇈",func(): sim.buy_xp(); changed(),Vector2(70,70),30)
 	xp_button.position=Vector2(0,5)
 	xp_button.add_theme_font_size_override("font_size",30)
 	var ring=XPRing.new()
 	ring.game=self
 	ring.size=Vector2(70,70)
 	xp_button.add_child(ring)
-	refresh_button=button(contents,"⟳",func(): sim.roll_shop(); shop_page=0; changed(),Vector2(70,70))
+	refresh_button=fixed_icon_button(contents,"⟳",func(): sim.roll_shop(); shop_page=0; changed(),Vector2(70,70),35)
 	refresh_button.position=Vector2(76,5)
 	refresh_button.add_theme_font_size_override("font_size",35)
 	refresh_button.tooltip_text="Refresh shop · 1 coin"
-	freeze_button=button(contents,"❄",func(): sim.frozen=not sim.frozen; changed(),Vector2(70,70))
+	freeze_button=fixed_icon_button(contents,"❄",func(): sim.frozen=not sim.frozen; changed(),Vector2(70,70),31)
 	freeze_button.position=Vector2(152,5)
 	freeze_button.add_theme_font_size_override("font_size",31)
 	shop=HBoxContainer.new()
@@ -292,7 +303,7 @@ func build_ui():
 	previous_button.position=Vector2(230,14)
 	next_button=button(contents,"›",func(): shop_page+=1; refresh(),Vector2(28,50))
 	next_button.position=Vector2(900,14)
-	start_button=button(contents,"→",start_battle,Vector2(74,74))
+	start_button=fixed_icon_button(contents,"→",start_battle,Vector2(74,74),36)
 	start_button.position=Vector2(982,3)
 	start_button.add_theme_font_size_override("font_size",36)
 	start_button.add_theme_stylebox_override("normal",style(Color("#fffdf6"),37,Color("#c0b8aa")))
@@ -521,7 +532,8 @@ func refresh():
 	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 coins" % [sim.tier,sim.xp]
 	refresh_button.disabled=sim.money<1 or not is_shop
 	freeze_button.disabled=not is_shop
-	freeze_button.text="❄" if not sim.frozen else "❄▣"
+	freeze_button.set("glyph","❄" if not sim.frozen else "❄▣")
+	freeze_button.queue_redraw()
 	freeze_button.tooltip_text="Shop frozen. Click to unfreeze." if sim.frozen else "Keep offers for the next round · free"
 	message.visible=is_shop
 	message.text=sim.last_message

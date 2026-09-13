@@ -10,6 +10,9 @@ func run():
 	scene.save_path="user://ui_layout_test.json"
 	root.add_child(scene)
 	await process_frame
+	for control in [scene.xp_button,scene.refresh_button,scene.freeze_button,scene.start_button]:
+		check(is_equal_approx(control.size.x,control.size.y),"toolbar icon button stays square")
+		check(scene.bottom_panel.get_global_rect().encloses(control.get_global_rect()),"toolbar button stays inside shelf")
 	scene.modal.hide()
 	scene.sim.reset(42,12)
 	scene.refresh()
