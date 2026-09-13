@@ -78,7 +78,9 @@ func _ready():
 	add_child(audio)
 	if settings.load(settings_path)==OK:
 		for i in range(4): volumes[i]=settings.get_value("audio",str(i),volumes[i])
-	visuals.set_style(int(settings.get_value("graphics","style",0)))
+	if settings.has_section("graphics"):
+		settings.erase_section("graphics")
+		settings.save(settings_path)
 	make_ambient()
 	sim.reset(Time.get_ticks_usec()%100000,12)
 	refresh()
@@ -408,19 +410,6 @@ func show_settings():
 	modal_panel.position=Vector2(430,40)
 	modal_panel.size=Vector2(580,0)
 	col.add_theme_constant_override("separation",8)
-	var graphics_row=HBoxContainer.new()
-	col.add_child(graphics_row)
-	var graphics_label=Label.new()
-	graphics_label.text="Cell graphics"
-	graphics_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	graphics_row.add_child(graphics_label)
-	var graphics=OptionButton.new()
-	graphics.custom_minimum_size=Vector2(180,40)
-	graphics.add_item("Simple")
-	graphics.add_item("Painted")
-	graphics.select(visuals.style)
-	graphics.item_selected.connect(set_graphics_style)
-	graphics_row.add_child(graphics)
 	for i in range(4):
 		var names=["Master volume","Music","Sound effects","Frequent sounds"]
 		var l=Label.new()
@@ -1006,13 +995,6 @@ func virus_description(key):
 		"avoider":"Health: 1\nAvoids nearby immune cells."
 	}.get(key,"")
 
-func set_graphics_style(value):
-	visuals.set_style(value)
-	settings.set_value("graphics","style",visuals.style)
-	settings.save(settings_path)
-	refresh()
-	view.queue_redraw()
-
 func show_virus_catalog():
 	var col=clear_modal("Virus atlas · 7 viruses","Meet the invaders emerging from infection sources.")
 	modal_panel.size=Vector2(940,0)
@@ -1036,7 +1018,6 @@ func show_virus_catalog():
 	var select=func(index):
 		var key=keys[index]
 		preview.kind=key
-		preview.style=visuals.style
 		facts.text="[font_size=26]"+key.capitalize()+" Virus[/font_size]\n\n"+virus_description(key)+"\n\n[color=#65716f]Infection sources release viruses into the field. Protect your red blood cells.[/color]"
 	for key in keys: list.add_item(key.capitalize()+" Virus")
 	list.item_selected.connect(select)

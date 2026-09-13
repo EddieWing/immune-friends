@@ -142,7 +142,7 @@ func capsule_style(color):
 	return s
 
 func draw_virus(v):
-	preload("res://scripts/virus_visuals.gd").draw(self,v,visuals.style)
+	preload("res://scripts/virus_visuals.gd").draw(self,v)
 
 func draw_range_ring(center,radius,color,dashed=false):
 	# Keep the boundary readable at every camera zoom, including on bright art.
@@ -157,10 +157,6 @@ func draw_range_ring(center,radius,color,dashed=false):
 		draw_arc(center,radius,0,TAU,segments,color,2.5/zoom,true)
 
 func draw_ink_source(center,seed):
-	if visuals.style==1:
-		var extent=Vector2.ONE*(150+sin(time*0.3+seed)*7)
-		draw_texture_rect(preload("res://scripts/virus_visuals.gd").texture("source"),Rect2(center-extent/2,extent),false,Color(1,1,1,0.8))
-		return
 	for layer in range(7):
 		var points=PackedVector2Array()
 		var radius=72-layer*7

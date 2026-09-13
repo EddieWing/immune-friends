@@ -49,6 +49,7 @@ func run():
  var faces=preload("res://scripts/blood_faces.gd").new()
  scene.sim.reset(42,12)
  scene.sim.blood=[{"id":0,"p":Vector2.ZERO,"alive":true}]
+ scene.sim.blood_links.clear()
  scene.sim.phase="battle"
  var enemy={"id":99,"p":Vector2(120,0),"alive":true,"type":"basic","age":0.0,"jump":false,"tag":0.0,"hp":1.0}
  scene.sim.viruses=[enemy]
@@ -79,4 +80,5 @@ func run():
  await process_frame
  print("RESULT: 16 checks, %d failures"%failures)
  quit(1 if failures else 0)
+
 

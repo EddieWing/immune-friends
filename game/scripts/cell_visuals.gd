@@ -1,9 +1,7 @@
 extends RefCounted
 # Shared by field, shop, catalogue and drag previews. Visuals never mutate simulation.
-var style=0
 var cache={}
 var icon_cache={}
-var atlas: Texture2D
 const ARCHETYPES=["wall","seeker","orbiter","bodyguard","turret","generator","bandage","bomb"]
 
 func family(key,behavior):
@@ -16,32 +14,17 @@ func family(key,behavior):
  if behavior in ["heal","bandage"]: return 6
  return 7
 
-func set_style(value):
- style=clampi(value,0,1)
- cache.clear()
- icon_cache.clear()
-
 func body(key,data):
  if cache.has(key): return cache[key]
  var kind=family(key,data.behavior)
- var texture: Texture2D
- if style==1:
-  if atlas==null: atlas=load("res://assets/art/cell-atlas.png")
-  var tile=AtlasTexture.new()
-  tile.atlas=atlas
-  var size=atlas.get_size()/Vector2(4,2)
-  tile.region=Rect2(Vector2(kind%4,kind/4)*size,size)
-  texture=tile
- else:
-  var image=Image.new()
-  image.load_svg_from_string(body_svg(kind,data.color))
-  texture=ImageTexture.create_from_image(image)
+ var image=Image.new()
+ image.load_svg_from_string(body_svg(kind,data.color))
+ var texture=ImageTexture.create_from_image(image)
  cache[key]=texture
  return texture
 
-func tint(key,data):
- if style==0 or key in ARCHETYPES: return Color.WHITE
- return Color.WHITE.lerp(Color(data.color),0.38)
+func tint(_key,_data):
+ return Color.WHITE
 
 func icon(key,data):
  if icon_cache.has(key): return icon_cache[key]
