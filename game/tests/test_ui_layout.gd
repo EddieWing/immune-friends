@@ -59,4 +59,3 @@ func run():
 	DirAccess.remove_absolute("user://ui_layout_test.json")
 	print("RESULT: layout checks, %d failures" % failures)
 	quit(1 if failures else 0)
-

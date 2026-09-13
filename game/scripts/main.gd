@@ -203,6 +203,14 @@ func build_ui():
 	view.sim=sim
 	view.visuals=visuals
 	field.add_child(view)
+	var vignette=ColorRect.new()
+	vignette.name="MicroscopeVignette"
+	vignette.size=Vector2(1440,900)
+	vignette.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	var lens_material=ShaderMaterial.new()
+	lens_material.shader=preload("res://shaders/microscope_vignette.gdshader")
+	vignette.material=lens_material
+	ui.add_child(vignette)
 	var gear=absolute_button("⚙",Vector2(24,12),Vector2(42,42),show_settings)
 	gear.add_theme_font_size_override("font_size",30)
 	gear.add_theme_stylebox_override("normal",StyleBoxEmpty.new())

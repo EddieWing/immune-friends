@@ -23,4 +23,3 @@ static func draw(canvas,v):
 	if v.jump:
 		canvas.draw_arc(p,20,0,TAU,24,Color("#efdefb"),2,true)
 	if v.hp>1: canvas.draw_string(ThemeDB.fallback_font,p+Vector2(12,-9),str(int(v.hp)),HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#e7efe1"))
-
