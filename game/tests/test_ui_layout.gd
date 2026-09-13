@@ -11,7 +11,7 @@ func run():
 	root.add_child(scene)
 	await process_frame
 	check(scene.refresh_button.position.x>scene.bottom_panel.position.x+scene.bottom_panel.size.x,"refresh sits to right of slide")
-	check(scene.xp_button.position.y>scene.capacity_panel.position.y,"upgrade sits below capacity")
+	check(scene.xp_button.position.y<scene.capacity_panel.position.y,"upgrade sits above capacity")
 	check(scene.start_button.position.y<60,"play is in top transport")
 	scene.modal.hide()
 	scene.sim.reset(42,12)

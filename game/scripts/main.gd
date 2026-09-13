@@ -12,6 +12,7 @@ var detail: RichTextLabel
 var incoming: RichTextLabel
 var message: Label
 var start_button: Button
+var dock_play: Button
 var freeze_button: Button
 var xp_button: Button
 var sell_button: Button
@@ -144,6 +145,12 @@ func style(color, radius=12, border=Color(0,0,0,0)):
 	s.content_margin_top=9
 	s.content_margin_bottom=9
 	return s
+
+func round_button(control, radius):
+	for state in ["normal","hover","pressed","disabled","focus"]:
+		var skin=control.get_theme_stylebox(state).duplicate()
+		if skin is StyleBoxFlat: skin.set_corner_radius_all(radius)
+		control.add_theme_stylebox_override(state,skin)
 
 func panel(parent, rect, color=Color("#e6ddcb")):
 	var p=PanelContainer.new()
@@ -305,8 +312,10 @@ func build_ui():
 	pips.game=self
 	pips.custom_minimum_size=Vector2(112,140)
 	currency_panel.add_child(pips)
-	bottom_panel=panel(dock,Rect2(450,754,680,112),Color("#c5e2e6b8"))
+	bottom_panel=panel(dock,Rect2(450,754,680,112),Color("#c5e2e63d"))
 	var glass=bottom_panel.get_theme_stylebox("panel")
+	glass.shadow_size=0
+	glass.shadow_color=Color.TRANSPARENT
 	glass.border_color=Color("#f1ffffc9")
 	glass.border_width_top=2
 	glass.border_width_bottom=2
@@ -323,22 +332,34 @@ func build_ui():
 	previous_button.position=Vector2(-4,20)
 	next_button=button(contents,"›",func(): shop_page+=1; refresh(),Vector2(24,50))
 	next_button.position=Vector2(636,20)
-	capacity_panel=panel(dock,Rect2(294,754,144,43))
+	capacity_panel=panel(dock,Rect2(350,834,88,32))
+	capacity_panel.get_theme_stylebox("panel").content_margin_left=5
+	capacity_panel.get_theme_stylebox("panel").content_margin_right=5
+	capacity_panel.get_theme_stylebox("panel").content_margin_top=4
+	capacity_panel.get_theme_stylebox("panel").content_margin_bottom=4
 	stats=Label.new()
+	stats.add_theme_font_override("font",symbol_font)
 	stats.add_theme_font_size_override("font_size",14)
 	stats.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	capacity_panel.add_child(stats)
-	xp_button=fixed_icon_button(dock,"⇈",func(): sim.buy_xp(); changed(),Vector2(144,60),27)
-	xp_button.position=Vector2(294,806)
+	xp_button=fixed_icon_button(dock,"⇈",func(): sim.buy_xp(); changed(),Vector2(88,88),27)
+	xp_button.position=Vector2(350,740)
+	round_button(xp_button,44)
 	var ring=XPRing.new()
 	ring.game=self
-	ring.position=Vector2(38,-5)
+	ring.position=Vector2(9,9)
 	ring.size=Vector2(70,70)
 	xp_button.add_child(ring)
-	refresh_button=fixed_icon_button(dock,"⟳",func(): sim.roll_shop(); shop_page=0; changed(),Vector2(58,52),30)
+	refresh_button=fixed_icon_button(dock,"⟳",func(): sim.roll_shop(); shop_page=0; changed(),Vector2(52,52),30)
 	refresh_button.position=Vector2(1144,754)
-	freeze_button=fixed_icon_button(dock,"❄",func(): sim.frozen=not sim.frozen; changed(),Vector2(58,52),27)
+	freeze_button=fixed_icon_button(dock,"❄",func(): sim.frozen=not sim.frozen; changed(),Vector2(52,52),27)
 	freeze_button.position=Vector2(1144,814)
+	round_button(refresh_button,26)
+	round_button(freeze_button,26)
+	dock_play=fixed_icon_button(dock,"▶",func(): set_playback_speed(1); start_battle(),Vector2(72,72),30)
+	dock_play.position=Vector2(1210,774)
+	dock_play.tooltip_text="Start infection phase"
+	round_button(dock_play,36)
 	shop_toggle=absolute_button("⌃",Vector2(175,850),Vector2(23,28),toggle_shop)
 	shop_toggle.hide()
 	message=label(dock,"",Vector2(450,727),13,Color("#233d4d"))
@@ -511,7 +532,7 @@ func cell_icon(key):
 	return visuals.icon(key,sim.catalog[key])
 
 func refresh():
-	stats.text="Capacity  %d / %d" % [sim.cells.size(),sim.capacity()]
+	stats.text="♟ %d/%d" % [sim.cells.size(),sim.capacity()]
 	stats.tooltip_text="Immune cells / capacity"
 	phase_panel.visible=sim.phase!="battle"
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" and results_stage=="forecast" else sim.round_no,sim.target_rounds]
@@ -542,6 +563,7 @@ func refresh():
 	else:
 		view.selected_id=selected.id
 	sell_button.disabled=selected.is_empty() or not is_shop
+	dock_play.disabled=not is_shop or not sim.reward_choices.is_empty()
 	start_button.disabled=sim.phase not in ["shop","battle"] or not sim.reward_choices.is_empty()
 	xp_button.disabled=sim.money<3 or sim.tier>=4 or not is_shop
 	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 protein" % [sim.tier,sim.xp]
@@ -670,7 +692,7 @@ func _process(delta):
 		var movement=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
 		view.position+=movement*delta*280
 	if sim.phase=="battle":
-		stats.text="Capacity  %d / %d" % [sim.cells.size(),sim.capacity()]
+		stats.text="♟ %d/%d" % [sim.cells.size(),sim.capacity()]
 		if auto_camera and not panning:
 			var focus=Vector2.ZERO
 			var count=0
