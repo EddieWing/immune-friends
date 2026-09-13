@@ -20,7 +20,11 @@ func run():
 	drift_sim.blood=[{"id":0,"p":Vector2(200,0),"alive":true}]
 	drift_sim.blood_links=[]
 	for tick in range(60): drift_sim.step_blood(1.0/60.0)
-	check(absf(drift_sim.blood[0].p.x-194)<0.01,"cluster drifts toward center at configured speed")
+	check(absf(drift_sim.blood[0].p.x-200*exp(-6.0/80.0))<0.01,"cluster drifts toward center at configured speed")
+	var near_displacement=200-drift_sim.blood[0].p.x
+	drift_sim.blood[0].p=Vector2(400,0)
+	for tick in range(60): drift_sim.step_blood(1.0/60.0)
+	check(absf((400-drift_sim.blood[0].p.x)-2*near_displacement)<0.01,"twice the distance produces twice the drift speed")
 	drift_sim.move_blood(0,drift_sim.blood[0].p)
 	var held=drift_sim.blood[0].p
 	for tick in range(60): drift_sim.step_blood(1.0/60.0)

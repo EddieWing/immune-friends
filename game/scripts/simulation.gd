@@ -766,8 +766,8 @@ func step_blood(delta):
 			if living>0:
 				center/=living
 				var drift=rules.blood_drift
-				var speed=float(drift.speed)*minf(1.0,center.length()/maxf(1,float(drift.slow_radius)))
-				var offset=center.move_toward(Vector2.ZERO,speed*dt)-center
+				var rate=float(drift.speed)/maxf(1,float(drift.slow_radius))
+				var offset=center*(exp(-rate*dt)-1.0)
 				for b in blood:
 					if b.alive: b.p+=offset
 		var forces={}
