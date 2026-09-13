@@ -757,6 +757,19 @@ func step_blood(delta):
 	var dt=minf(delta,0.1)/count
 	var config=rules.blood_elasticity
 	for step in range(count):
+		# Translate the living cluster uniformly: centering must not compress its springs.
+		if blood_drag<0:
+			var center=Vector2.ZERO
+			var living=0
+			for b in blood:
+				if b.alive: center+=b.p; living+=1
+			if living>0:
+				center/=living
+				var drift=rules.blood_drift
+				var speed=float(drift.speed)*minf(1.0,center.length()/maxf(1,float(drift.slow_radius)))
+				var offset=center.move_toward(Vector2.ZERO,speed*dt)-center
+				for b in blood:
+					if b.alive: b.p+=offset
 		var forces={}
 		for i in range(blood.size()): forces[i]=Vector2.ZERO
 		for link in blood_links:

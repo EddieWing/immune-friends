@@ -15,6 +15,16 @@ func run():
 		check(scene.bottom_panel.get_global_rect().encloses(control.get_global_rect()),"toolbar button stays inside shelf")
 	scene.modal.hide()
 	scene.sim.reset(42,12)
+	var drift_sim=load("res://scripts/simulation.gd").new()
+	drift_sim.reset(42,12)
+	drift_sim.blood=[{"id":0,"p":Vector2(200,0),"alive":true}]
+	drift_sim.blood_links=[]
+	for tick in range(60): drift_sim.step_blood(1.0/60.0)
+	check(absf(drift_sim.blood[0].p.x-194)<0.01,"cluster drifts toward center at configured speed")
+	drift_sim.move_blood(0,drift_sim.blood[0].p)
+	var held=drift_sim.blood[0].p
+	for tick in range(60): drift_sim.step_blood(1.0/60.0)
+	check(drift_sim.blood[0].p.is_equal_approx(held),"centering pauses while dragging")
 	var before=scene.sim.blood.map(func(b): return b.p)
 	scene.sim.move_blood(0,Vector2(100,60))
 	for tick in range(12): scene.sim.step_blood(1.0/60.0)

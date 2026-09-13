@@ -42,7 +42,11 @@
     "healing": "may exceed base during combat; reset next shop",
     "max_battle_seconds": 180,
     "stalemate_resolution": "After 180 seconds, remaining viruses each remove one blood cell; provisional safeguard, original unknown",
-    "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured"
+    "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured",
+    "blood_drift": {
+      "speed": 6,
+      "slow_radius": 80
+    }
   },
   "cells": {
     "wall": {
