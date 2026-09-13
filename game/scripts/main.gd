@@ -337,10 +337,10 @@ func build_ui():
 	capacity_panel.get_theme_stylebox("panel").content_margin_right=5
 	capacity_panel.get_theme_stylebox("panel").content_margin_top=4
 	capacity_panel.get_theme_stylebox("panel").content_margin_bottom=4
-	stats=Label.new()
-	stats.add_theme_font_override("font",symbol_font)
+	stats=preload("res://scripts/ui/capacity.gd").new()
+	stats.add_theme_constant_override("outline_size",0)
 	stats.add_theme_font_size_override("font_size",14)
-	stats.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	stats.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
 	capacity_panel.add_child(stats)
 	xp_button=fixed_icon_button(dock,"⇈",func(): sim.buy_xp(); changed(),Vector2(88,88),27)
 	xp_button.position=Vector2(350,740)
@@ -532,7 +532,7 @@ func cell_icon(key):
 	return visuals.icon(key,sim.catalog[key])
 
 func refresh():
-	stats.text="♟ %d/%d" % [sim.cells.size(),sim.capacity()]
+	stats.text="%d/%d " % [sim.cells.size(),sim.capacity()]
 	stats.tooltip_text="Immune cells / capacity"
 	phase_panel.visible=sim.phase!="battle"
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" and results_stage=="forecast" else sim.round_no,sim.target_rounds]
@@ -692,7 +692,7 @@ func _process(delta):
 		var movement=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
 		view.position+=movement*delta*280
 	if sim.phase=="battle":
-		stats.text="♟ %d/%d" % [sim.cells.size(),sim.capacity()]
+		stats.text="%d/%d " % [sim.cells.size(),sim.capacity()]
 		if auto_camera and not panning:
 			var focus=Vector2.ZERO
 			var count=0
