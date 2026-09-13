@@ -22,9 +22,14 @@ func _draw():
 	if is_hovered(): color=Color("#deebef")
 	if elite_ready: color=Color("#f5e2a2")
 	if reward: color=Color("#dce7bc")
-	draw_circle(center+Vector2(1,3),radius,Color(0.2,0.23,0.25,0.25))
-	draw_circle(center,radius,color)
-	draw_arc(center,radius,0,TAU,64,Color("#a39c94"),1.5,true)
+	var puddle=PackedVector2Array()
+	for i in range(49):
+		var angle=i*TAU/48
+		var ripple=1+0.045*sin(angle*3+index)+0.035*cos(angle*5)
+		puddle.append(center+Vector2(cos(angle),sin(angle)*0.84)*radius*ripple)
+	draw_colored_polygon(puddle,Color(color,0.65))
+	draw_polyline(puddle,Color("#eaffffd9"),1.5,true)
+	draw_arc(center+Vector2(-5,-2),radius*0.75,PI*1.1,PI*1.55,16,Color("#ffffff90"),2,true)
 	if icon_texture: draw_texture_rect(icon_texture,Rect2(center-Vector2(29,29),Vector2(58,58)),false)
 	var badge=center+Vector2(-radius*0.72,-radius*0.70)
 	draw_circle(badge,13,Color("#e8b745") if not reward else Color("#a4bd75"))

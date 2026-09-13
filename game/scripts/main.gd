@@ -61,6 +61,13 @@ var showing_recap=false
 var shade: ColorRect
 var speed_buttons=[]
 var playback_speed=1
+var paused=false
+var dock: Control
+var dock_tween: Tween
+var dock_open=true
+var scanner: Control
+var card_cell={}
+var card_anchor=Vector2(720,780)
 var zoom_target=0.88
 var water_time=0.0
 var background_material: ShaderMaterial
@@ -222,15 +229,28 @@ func build_ui():
 	zoom_gauge.position=Vector2(1376,320)
 	zoom_gauge.size=Vector2(40,260)
 	ui.add_child(zoom_gauge)
-	for value in [1,2,5]:
-		var b=absolute_button("×"+str(value),Vector2(565+speed_buttons.size()*83,14),Vector2(73,33),func(): set_playback_speed(value))
-		b.tooltip_text="Battle speed ×"+str(value)
-		b.add_theme_stylebox_override("hover",StyleBoxEmpty.new())
-		b.add_theme_font_size_override("font_size",18)
+	for value in [1,2,5,0]:
+		var b=preload("res://scripts/ui/transport.gd").new()
+		b.mode=value
+		b.position=Vector2(598+speed_buttons.size()*62,12)
+		b.custom_minimum_size=Vector2(54,42)
+		b.size=Vector2(54,42)
+		b.tooltip_text={1:"Play · normal speed",2:"Fast forward · ×2",5:"Fast forward · ×5",0:"Pause"}[value]
+		b.pressed.connect(func():
+			if value==0:
+				paused=true
+				update_transport()
+			else:
+				set_playback_speed(value)
+				if sim.phase=="shop" and sim.reward_choices.is_empty(): start_battle())
+		ui.add_child(b)
 		speed_buttons.append(b)
+	start_button=speed_buttons[0]
 	set_playback_speed(1)
-	auto_button=absolute_button("Auto",Vector2(820,16),Vector2(53,29),func(): auto_camera=not auto_camera; update_zoom())
-	auto_button.add_theme_font_size_override("font_size",14)
+	scanner=preload("res://scripts/ui/scanner.gd").new()
+	scanner.game=self
+	scanner.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	ui.add_child(scanner)
 	phase_panel=panel(ui,Rect2(1270,-10,146,46),Color("#ed7865"))
 	round_label=Label.new()
 	round_label.add_theme_font_size_override("font_size",14)
@@ -238,7 +258,8 @@ func build_ui():
 	round_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	round_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
 	phase_panel.add_child(round_label)
-	detail_panel=panel(ui,Rect2(194,85,340,0))
+	detail_panel=panel(ui,Rect2(194,85,340,0),Color("#d7edefef"))
+	detail_panel.get_theme_stylebox("panel").border_color=Color("#efffff")
 	var column=VBoxContainer.new()
 	column.add_theme_constant_override("separation",8)
 	detail_panel.add_child(column)
@@ -271,54 +292,53 @@ func build_ui():
 	incoming.scroll_active=true
 	income_panel.get_theme_stylebox("panel").content_margin_left=22
 	income_panel.add_child(incoming)
-	currency_panel=panel(ui,Rect2(174,711,260,37))
+	dock=Control.new()
+	dock.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	ui.add_child(dock)
+	currency_panel=panel(dock,Rect2(170,730,112,140))
+	currency_panel.add_theme_stylebox_override("panel",StyleBoxEmpty.new())
 	var pips=CurrencyPips.new()
 	pips.game=self
-	pips.custom_minimum_size=Vector2(234,24)
+	pips.custom_minimum_size=Vector2(112,140)
 	currency_panel.add_child(pips)
-	var bottom=panel(ui,Rect2(174,748,1092,104))
-	bottom_panel=bottom
+	bottom_panel=panel(dock,Rect2(450,754,680,112),Color("#c5e2e6b8"))
+	var glass=bottom_panel.get_theme_stylebox("panel")
+	glass.border_color=Color("#f1ffffc9")
+	glass.border_width_top=2
+	glass.border_width_bottom=2
 	var contents=Control.new()
-	contents.custom_minimum_size=Vector2(1068,86)
-	bottom.add_child(contents)
-	xp_button=fixed_icon_button(contents,"⇈",func(): sim.buy_xp(); changed(),Vector2(70,70),30)
-	xp_button.position=Vector2(0,5)
-	xp_button.add_theme_font_size_override("font_size",30)
-	var ring=XPRing.new()
-	ring.game=self
-	ring.size=Vector2(70,70)
-	xp_button.add_child(ring)
-	refresh_button=fixed_icon_button(contents,"⟳",func(): sim.roll_shop(); shop_page=0; changed(),Vector2(70,70),35)
-	refresh_button.position=Vector2(76,5)
-	refresh_button.add_theme_font_size_override("font_size",35)
-	refresh_button.tooltip_text="Refresh shop · 1 coin"
-	freeze_button=fixed_icon_button(contents,"❄",func(): sim.frozen=not sim.frozen; changed(),Vector2(70,70),31)
-	freeze_button.position=Vector2(152,5)
-	freeze_button.add_theme_font_size_override("font_size",31)
+	contents.custom_minimum_size=Vector2(656,90)
+	bottom_panel.add_child(contents)
 	shop=HBoxContainer.new()
-	shop.position=Vector2(260,-5)
-	shop.size=Vector2(630,94)
+	shop.position=Vector2(28,-2)
+	shop.size=Vector2(600,94)
 	shop.alignment=BoxContainer.ALIGNMENT_CENTER
 	shop.add_theme_constant_override("separation",4)
 	contents.add_child(shop)
-	previous_button=button(contents,"‹",func(): shop_page=maxi(0,shop_page-1); refresh(),Vector2(28,50))
-	previous_button.position=Vector2(230,14)
-	next_button=button(contents,"›",func(): shop_page+=1; refresh(),Vector2(28,50))
-	next_button.position=Vector2(900,14)
-	start_button=fixed_icon_button(contents,"→",start_battle,Vector2(74,74),36)
-	start_button.position=Vector2(982,3)
-	start_button.add_theme_font_size_override("font_size",36)
-	start_button.add_theme_stylebox_override("normal",style(Color("#fffdf6"),37,Color("#c0b8aa")))
-	start_button.tooltip_text="Start infection"
-	capacity_panel=panel(ui,Rect2(645,849,150,40))
+	previous_button=button(contents,"‹",func(): shop_page=maxi(0,shop_page-1); refresh(),Vector2(24,50))
+	previous_button.position=Vector2(-4,20)
+	next_button=button(contents,"›",func(): shop_page+=1; refresh(),Vector2(24,50))
+	next_button.position=Vector2(636,20)
+	capacity_panel=panel(dock,Rect2(294,754,144,43))
 	stats=Label.new()
-	stats.add_theme_font_override("font",symbol_font)
+	stats.add_theme_font_size_override("font_size",14)
 	stats.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	capacity_panel.add_child(stats)
-	shop_toggle=absolute_button("⌃",Vector2(175,704),Vector2(23,28),toggle_shop)
-	shop_toggle.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
-	message=label(ui,"",Vector2(438,716),13,Color("#233d4d"))
-	message.size=Vector2(785,25)
+	xp_button=fixed_icon_button(dock,"⇈",func(): sim.buy_xp(); changed(),Vector2(144,60),27)
+	xp_button.position=Vector2(294,806)
+	var ring=XPRing.new()
+	ring.game=self
+	ring.position=Vector2(38,-5)
+	ring.size=Vector2(70,70)
+	xp_button.add_child(ring)
+	refresh_button=fixed_icon_button(dock,"⟳",func(): sim.roll_shop(); shop_page=0; changed(),Vector2(58,52),30)
+	refresh_button.position=Vector2(1144,754)
+	freeze_button=fixed_icon_button(dock,"❄",func(): sim.frozen=not sim.frozen; changed(),Vector2(58,52),27)
+	freeze_button.position=Vector2(1144,814)
+	shop_toggle=absolute_button("⌃",Vector2(175,850),Vector2(23,28),toggle_shop)
+	shop_toggle.hide()
+	message=label(dock,"",Vector2(450,727),13,Color("#233d4d"))
+	message.size=Vector2(680,25)
 	message.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	modal=Control.new()
 	modal.size=Vector2(1440,900)
@@ -391,7 +411,7 @@ func new_run(rounds):
 func show_help():
 	var col=clear_modal("Take your time","Protect the red blood cells. Your team fights automatically.")
 	var t=Label.new()
-	t.text="1. Drag a cell from the shop onto the field for 2 coins.\n2. Or select an offer, then click on the field to place it.\n3. Hold and drag the round arrow to rotate a cell.\n4. Merge matching cells: the third creates an elite.\n5. Bonds automatically hold hands with nearby cells.\n6. Unspent coins disappear between waves.\n\nBomb hurts friendly cells too. Keep your team safe!"
+	t.text="1. Drag a cell from the shop onto the field for 2 protein.\n2. Or select an offer, then click on the field to place it.\n3. Hold and drag the round arrow to rotate a cell.\n4. Merge matching cells: the third creates an elite.\n5. Bonds automatically hold hands with nearby cells.\n6. Unspent protein disappear between waves.\n\nBomb hurts friendly cells too. Keep your team safe!"
 	t.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	t.add_theme_font_size_override("font_size",16)
 	col.add_child(t)
@@ -485,7 +505,7 @@ func cell_icon(key):
 	return visuals.icon(key,sim.catalog[key])
 
 func refresh():
-	stats.text="♟  %d / %d" % [sim.cells.size(),sim.capacity()]
+	stats.text="Capacity  %d / %d" % [sim.cells.size(),sim.capacity()]
 	stats.tooltip_text="Immune cells / capacity"
 	phase_panel.visible=sim.phase!="battle"
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" else sim.round_no,sim.target_rounds]
@@ -499,12 +519,9 @@ func refresh():
 			incoming.text+="[color=#fff7e7]"+virus_glyph(entry.type)+" ×"+str(entry.count)+"[/color]\n"
 	layout_incoming.call_deferred()
 	var is_shop=sim.phase=="shop"
-	bottom_panel.visible=is_shop and not shop_collapsed
-	currency_panel.visible=is_shop and not shop_collapsed
-	capacity_panel.visible=is_shop and not shop_collapsed
-	shop_toggle.visible=is_shop
-	shop_toggle.position.y=704 if not shop_collapsed else 850
-	shop_toggle.text="⌄" if not shop_collapsed else "⌃"
+	animate_dock(is_shop and not shop_collapsed)
+	shop_toggle.hide()
+	update_transport()
 	if not is_shop:
 		detail_panel.hide()
 		term_panel.hide()
@@ -519,10 +536,11 @@ func refresh():
 	else:
 		view.selected_id=selected.id
 	sell_button.disabled=selected.is_empty() or not is_shop
-	start_button.disabled=not is_shop or not sim.reward_choices.is_empty()
+	start_button.disabled=sim.phase not in ["shop","battle"] or not sim.reward_choices.is_empty()
 	xp_button.disabled=sim.money<3 or sim.tier>=4 or not is_shop
-	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 coins" % [sim.tier,sim.xp]
+	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 protein" % [sim.tier,sim.xp]
 	refresh_button.disabled=sim.money<1 or not is_shop
+	refresh_button.tooltip_text="Refresh offers · 1 protein"
 	freeze_button.disabled=not is_shop
 	freeze_button.set("glyph","❄" if not sim.frozen else "❄▣")
 	freeze_button.queue_redraw()
@@ -614,6 +632,7 @@ func show_reward():
 			changed(),Vector2(335,40))
 
 func start_battle():
+	paused=false
 	sim.release_blood()
 	cancel_placement()
 	save_run()
@@ -629,6 +648,7 @@ func changed():
 	save_run()
 
 func _process(delta):
+	position_scanner()
 	advance_camera(delta)
 	advance_simulation(delta)
 	if sim.phase!=last_phase:
@@ -646,7 +666,7 @@ func _process(delta):
 		var movement=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
 		view.position+=movement*delta*280
 	if sim.phase=="battle":
-		stats.text="♟  %d / %d" % [sim.cells.size(),sim.capacity()]
+		stats.text="Capacity  %d / %d" % [sim.cells.size(),sim.capacity()]
 		if auto_camera and not panning:
 			var focus=Vector2.ZERO
 			var count=0
@@ -866,18 +886,40 @@ func update_zoom():
 
 func set_playback_speed(value):
 	if value not in [1,2,5]: return
+	paused=false
 	playback_speed=value
 	view.playback_speed=value
-	for i in range(speed_buttons.size()):
-		var active=value==[1,2,5][i]
-		var box=StyleBoxFlat.new()
-		box.bg_color=Color(0,0,0,0)
-		box.border_width_bottom=2 if active else 0
-		box.border_color=Color("#a5cf93")
-		speed_buttons[i].add_theme_stylebox_override("normal",box)
-		speed_buttons[i].add_theme_color_override("font_color",Color("#25495b") if active else Color("#6a8591"))
+	update_transport()
+
+func update_transport():
+	for b in speed_buttons:
+		b.active=(b.mode==0 if paused else b.mode==playback_speed)
+		b.disabled=sim.phase not in ["shop","battle"] or (sim.phase=="shop" and (b.mode==0 or not sim.reward_choices.is_empty()))
+		b.queue_redraw()
+
+func animate_dock(open):
+	if dock_open==open: return
+	dock_open=open
+	if dock_tween: dock_tween.kill()
+	dock.show()
+	dock_tween=create_tween()
+	dock_tween.tween_property(dock,"position:y",0.0 if open else 180.0,0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if not open: dock_tween.tween_callback(dock.hide)
+
+func position_scanner():
+	if not scanner or not detail_panel.visible: return
+	var anchor=card_anchor
+	if not card_cell.is_empty() and sim.cells.has(card_cell):
+		anchor=view.to_global(card_cell.p)
+	var right=anchor.x<720
+	var x=anchor.x+65 if right else anchor.x-65-detail_panel.size.x
+	detail_panel.position=Vector2(clampf(x,216,1350-detail_panel.size.x),clampf(anchor.y-detail_panel.size.y*0.5,70,maxf(70,710-detail_panel.size.y)))
+	term_panel.hide()
+	scanner.anchor=anchor
+	scanner.queue_redraw()
 
 func advance_simulation(delta):
+	if paused and sim.phase=="battle": return
 	if sim.phase=="battle":
 		clock_accum+=minf(delta,0.1)*playback_speed
 		while clock_accum+0.0000001>=1.0/60.0 and sim.phase=="battle":
@@ -891,6 +933,8 @@ func advance_simulation(delta):
 func show_cell_card(key,c={}):
 	if sim.phase!="shop": return
 	detail_key=key
+	card_cell=c
+	card_anchor=get_viewport().get_mouse_position()
 	detail_panel.show()
 	detail_icon.texture=cell_icon(key)
 	detail_panel.size.y=0
@@ -914,6 +958,8 @@ func show_cell_card(key,c={}):
 		term="Electric Charge"
 		explanation="Electricity travels through immune cells, proteins and viruses."
 	term_text.text="[b]"+term+"[/b]\n"+explanation
+	detail.text+="\n\n[color=#537a83][b]"+term+"[/b] · "+explanation+"[/color]"
+	position_scanner.call_deferred()
 
 func virus_glyph(key):
 	return {"basic":"✹","wave":"≈","jumper":"↟","hungry":"●","swarmer":"✣","seeker":"♟","avoider":"◇"}.get(key,"●")

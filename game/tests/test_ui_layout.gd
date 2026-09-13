@@ -10,9 +10,9 @@ func run():
 	scene.save_path="user://ui_layout_test.json"
 	root.add_child(scene)
 	await process_frame
-	for control in [scene.xp_button,scene.refresh_button,scene.freeze_button,scene.start_button]:
-		check(is_equal_approx(control.size.x,control.size.y),"toolbar icon button stays square")
-		check(scene.bottom_panel.get_global_rect().encloses(control.get_global_rect()),"toolbar button stays inside shelf")
+	check(scene.refresh_button.position.x>scene.bottom_panel.position.x+scene.bottom_panel.size.x,"refresh sits to right of slide")
+	check(scene.xp_button.position.y>scene.capacity_panel.position.y,"upgrade sits below capacity")
+	check(scene.start_button.position.y<60,"play is in top transport")
 	scene.modal.hide()
 	scene.sim.reset(42,12)
 	var drift_sim=load("res://scripts/simulation.gd").new()
@@ -52,6 +52,15 @@ func run():
 	scene.buy_offer_at(0,false,Vector2(210,-80))
 	check(scene.sim.cells.size()==1 and scene.sim.cells[0].p==Vector2(210,-80),"purchase placed at requested location")
 	check(scene.sim.money==money-2 and scene.pending_offer.is_empty(),"placement charges once and clears tool")
+	var cell=scene.sim.cells[0]
+	scene.show_cell_card(cell.key,cell)
+	await process_frame
+	cell.p=Vector2(400,0)
+	scene.position_scanner()
+	check(scene.detail_panel.get_global_rect().end.x<scene.view.to_global(cell.p).x,"scanner card sits left of a right-side cell")
+	cell.p=Vector2(-400,0)
+	scene.position_scanner()
+	check(scene.detail_panel.position.x>scene.view.to_global(cell.p).x,"scanner card switches right for a left-side cell")
 	scene.sim.rewards=["wall","wall","wall","wall","wall","wall","wall"]
 	scene.shop_page=1
 	scene.refresh()
@@ -64,7 +73,8 @@ func run():
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://artifacts/ui-preparation.png")
 	scene.start_battle()
-	check(not scene.bottom_panel.visible and not scene.currency_panel.visible,"battle clears shop shelf")
+	await create_timer(0.4).timeout
+	check(not scene.dock.visible,"battle slides away the entire dock")
 	scene.sim.phase="recap"
 	scene.show_recap()
 	var forecast=scene.preview_wave.duplicate(true)
