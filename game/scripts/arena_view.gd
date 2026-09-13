@@ -55,13 +55,7 @@ func _draw():
 		draw_line(mid+curve,q,Color(sim.catalog[b.key].color).lightened(0.12),6,true)
 		draw_circle(mid+curve,6,Color("#f5dfcb"))
 		draw_arc(mid+curve,6,-PI/2,PI/2,12,Color("#998a87"),1,true)
-	for b in sim.blood:
-		if not b.alive: continue
-		draw_circle(b.p+Vector2(2,4),14,Color(0.05,0.13,0.17,0.3))
-		draw_circle(b.p,13,Color("#df8998"))
-		draw_circle(b.p+Vector2(-2,-2),10,Color("#eca2ac"))
-		draw_arc(b.p,7,0,TAU,24,Color("#c97688"),2,true)
-		blood_faces.draw(self,b,time)
+	draw_blood_cluster()
 	for c in sim.cells:
 		if c.alive: draw_cell(c)
 	for p in sim.particles:
@@ -183,3 +177,49 @@ func draw_ink_source(center,seed):
 			trail.append(center+Vector2.from_angle(angle+sin(t*4+time*0.24+i)*0.23)*(25+t*55))
 		draw_polyline(trail,Color(0.29,0.16,0.38,0.08),3,true)
 	draw_circle(center,17,Color(0.18,0.09,0.25,0.38))
+
+func draw_blood_cluster():
+	var occupied={}
+	var grips=[]
+	for link in sim.blood_links:
+		var a=sim.blood[link.a]
+		var b=sim.blood[link.b]
+		if not a.alive or not b.alive: continue
+		var direction=a.p.direction_to(b.p)
+		var slot_a=posmod(roundi(direction.angle()/(TAU/6)),6)
+		var slot_b=posmod(slot_a+3,6)
+		var key_a=str(a.id)+":"+str(slot_a)
+		var key_b=str(b.id)+":"+str(slot_b)
+		if occupied.has(key_a) or occupied.has(key_b): continue
+		occupied[key_a]=true
+		occupied[key_b]=true
+		grips.append({"a":a.p,"b":b.p,"sa":slot_a,"sb":slot_b})
+	for b in sim.blood:
+		if not b.alive: continue
+		draw_circle(b.p+Vector2(1,2),12,Color(0.05,0.13,0.17,0.22))
+		# The hair tips lie on the actual radius-13 collision boundary.
+		for i in range(30):
+			var angle=i*TAU/30.0
+			var normal=Vector2.from_angle(angle)
+			var tangent=normal.orthogonal()*sin(time*1.8+b.id+i)*0.22
+			draw_line(b.p+normal*10.7+tangent,b.p+normal*13.0,Color("#b96b82"),0.75,true)
+		draw_circle(b.p,10.8,Color("#df8998"))
+		draw_circle(b.p+Vector2(-1,-1),9,Color("#eca2ac"))
+		draw_arc(b.p,7,0,TAU,24,Color("#c97688"),1.5,true)
+		for slot in range(6):
+			if occupied.has(str(b.id)+":"+str(slot)): continue
+			var center=b.p+Vector2.from_angle(slot*TAU/6)*10.8
+			draw_circle(center,2.2,Color("#b96b82"))
+			draw_circle(center,1.5,Color("#f3b0b8"))
+	for grip in grips:
+		var start=grip.a+Vector2.from_angle(grip.sa*TAU/6)*9.5
+		var end=grip.b+Vector2.from_angle(grip.sb*TAU/6)*9.5
+		var middle=(grip.a+grip.b)*0.5
+		draw_line(start,middle,Color("#ad647d"),4.2,true)
+		draw_line(middle,end,Color("#ad647d"),4.2,true)
+		draw_line(start,middle,Color("#f2acb8"),2.6,true)
+		draw_line(middle,end,Color("#f2acb8"),2.6,true)
+		draw_circle(middle,2.3,Color("#f8c4c8"))
+		draw_arc(middle,1.5,-PI/2,PI/2,8,Color("#ad647d"),0.7,true)
+	for b in sim.blood:
+		if b.alive: blood_faces.draw(self,b,time)
