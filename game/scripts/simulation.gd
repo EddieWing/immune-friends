@@ -6,6 +6,9 @@ var rng = RandomNumberGenerator.new()
 var cells: Array = []
 var blood: Array = []
 var blood_links: Array = []
+var blood_velocity={}
+var blood_drag=-1
+var blood_target=Vector2.ZERO
 var viruses: Array = []
 var particles: Array = []
 var effects: Array = []
@@ -44,6 +47,8 @@ func reset(seed_number = 42, rounds = 12):
 	target_rounds = rounds
 	cells.clear()
 	blood.clear()
+	blood_velocity.clear()
+	blood_drag=-1
 	viruses.clear()
 	particles.clear()
 	effects.clear()
@@ -404,8 +409,8 @@ func update(delta):
 	for e in effects: e.life-=delta
 	effects=effects.filter(func(e): return e.life>0)
 	for c in cells: c.flash=maxf(0,c.flash-delta)
+	if phase in ["shop","battle"]: step_blood(delta)
 	if phase!="battle": return
-	solve_blood()
 	elapsed+=delta
 	spawn_timer-=delta
 	if spawn_timer<=0 and not spawn_queue.is_empty():
@@ -741,20 +746,51 @@ func solve_blood():
 
 func move_blood(index,target):
 	if index<0 or index>=blood.size() or not blood[index].alive: return
-	var group=[index]
-	var cursor=0
-	while cursor<group.size():
-		var current=group[cursor]
-		cursor+=1
+	blood_drag=index
+	blood_target=target.clamp(Vector2(-550,-300),Vector2(550,280))
+
+func release_blood():
+	blood_drag=-1
+
+func step_blood(delta):
+	var count=maxi(1,int(ceil(minf(delta,0.1)*120)))
+	var dt=minf(delta,0.1)/count
+	var config=rules.blood_elasticity
+	for step in range(count):
+		var forces={}
+		for i in range(blood.size()): forces[i]=Vector2.ZERO
 		for link in blood_links:
-			var other=link.b if link.a==current else (link.a if link.b==current else -1)
-			if other>=0 and blood[other].alive and other not in group: group.append(other)
-	var offset=target-blood[index].p
-	var lower=Vector2(-INF,-INF)
-	var upper=Vector2(INF,INF)
-	for i in group:
-		lower=lower.max(Vector2(-550,-300)-blood[i].p)
-		upper=upper.min(Vector2(550,280)-blood[i].p)
-	offset=offset.clamp(lower,upper)
-	for i in group: blood[i].p+=offset
-	solve_blood()
+			var a=blood[link.a]
+			var b=blood[link.b]
+			if not a.alive or not b.alive: continue
+			var offset=b.p-a.p
+			var distance=offset.length()
+			if distance<0.001: continue
+			var force=offset/distance*(distance-26.0)*float(config.stiffness)
+			forces[int(link.a)]+=force
+			forces[int(link.b)]-=force
+		for i in range(blood.size()):
+			if not blood[i].alive: continue
+			var velocity=blood_velocity.get(i,Vector2.ZERO)
+			velocity=(velocity+forces[i]*dt)*exp(-float(config.damping)*dt)
+			velocity=velocity.limit_length(650)
+			if i==blood_drag:
+				var next=blood[i].p.move_toward(blood_target,650*dt)
+				velocity=(next-blood[i].p)/maxf(dt,0.00001)
+			blood[i].p=(blood[i].p+velocity*dt).clamp(Vector2(-550,-300),Vector2(550,280))
+			blood_velocity[i]=velocity
+		for iteration in range(8):
+			for i in range(blood.size()):
+				if not blood[i].alive: continue
+				for j in range(i+1,blood.size()):
+					if not blood[j].alive: continue
+					var offset=blood[j].p-blood[i].p
+					var distance=offset.length()
+					if distance>=26: continue
+					var normal=offset/distance if distance>0.001 else Vector2.RIGHT.rotated(i*2.4)
+					var wa=0.0 if i==blood_drag else 1.0
+					var wb=0.0 if j==blood_drag else 1.0
+					var correction=normal*(26-distance)/(wa+wb)
+					blood[i].p-=correction*wa
+					blood[j].p+=correction*wb
+

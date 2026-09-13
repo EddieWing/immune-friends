@@ -17,14 +17,18 @@ func run():
 	scene.sim.reset(42,12)
 	var before=scene.sim.blood.map(func(b): return b.p)
 	scene.sim.move_blood(0,Vector2(100,60))
+	for tick in range(12): scene.sim.step_blood(1.0/60.0)
 	var shift=scene.sim.blood[0].p-before[0]
 	var coherent=true
 	var separated=true
 	for i in range(scene.sim.blood.size()):
 		coherent=coherent and (scene.sim.blood[i].p-before[i]).is_equal_approx(shift)
 		for j in range(i+1,scene.sim.blood.size()):
-			separated=separated and scene.sim.blood[i].p.distance_to(scene.sim.blood[j].p)>25.99
-	check(coherent,"dragging blood moves its connected cluster")
+			separated=separated and scene.sim.blood[i].p.distance_to(scene.sim.blood[j].p)>25.8
+	check(not coherent and shift.length()>10,"dragging stretches links instead of translating the entire cluster")
+	scene.sim.release_blood()
+	for tick in range(240): scene.sim.step_blood(1.0/60.0)
+	check(scene.sim.blood_velocity[0].length()<5,"elastic cluster settles after release")
 	check(separated,"blood membranes do not overlap")
 	scene.refresh()
 	check(not scene.detail_panel.visible,"no permanent card blocking field")

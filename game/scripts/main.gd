@@ -622,6 +622,7 @@ func show_reward():
 			changed(),Vector2(335,40))
 
 func start_battle():
+	sim.release_blood()
 	cancel_placement()
 	save_run()
 	sim.begin_battle()
@@ -663,6 +664,8 @@ func _process(delta):
 			view.position=view.position.lerp(Vector2(720,425)-focus*view.scale.x,delta*1.2)
 
 func _input(event):
+	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
+		sim.release_blood()
 	if event is InputEventKey and event.pressed:
 		if event.keycode==KEY_ESCAPE:
 			get_viewport().set_input_as_handled()
