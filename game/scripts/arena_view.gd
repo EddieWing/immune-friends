@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var blood_faces=preload("res://scripts/blood_faces.gd").new()
 var visuals
 var selected_id=-1
 var show_ranges=true
@@ -9,6 +10,7 @@ var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
 
 func _process(delta):
+	if sim!=null: blood_faces.update(sim,delta)
 	time+=delta*(playback_speed if sim!=null and sim.phase=="battle" else 1)
 	queue_redraw()
 
@@ -59,7 +61,7 @@ func _draw():
 		draw_circle(b.p,13,Color("#df8998"))
 		draw_circle(b.p+Vector2(-2,-2),10,Color("#eca2ac"))
 		draw_arc(b.p,7,0,TAU,24,Color("#c97688"),2,true)
-		face(b.p,0.62,b.id,false)
+		blood_faces.draw(self,b,time)
 	for c in sim.cells:
 		if c.alive: draw_cell(c)
 	for p in sim.particles:

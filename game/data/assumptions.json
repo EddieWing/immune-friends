@@ -2,6 +2,7 @@
   "status": "Unverified reconstruction parameters, not measured original rules",
   "scale": 3,
   "movement_multiplier": 1.5,
+  "blood_faces": {"attention_radius": 180, "danger_radius": 65, "look_smoothing": 0.15, "fear_seconds": 1.5, "relief_seconds": 1.0},
   "start_blood": 20,
   "bond_distance": 145,
   "bond_stiffness": 0.65,

@@ -46,7 +46,36 @@ func run():
  check(is_equal_approx(scene.background_material.get_shader_parameter("camera_zoom"),scene.view.scale.x),"background follows camera zoom")
  check(scene.water_time>0,"water animates during preparation")
  check(is_equal_approx(scene.view.scale.x,0.45),"wheel respects minimum zoom")
+ var faces=preload("res://scripts/blood_faces.gd").new()
+ scene.sim.reset(42,12)
+ scene.sim.blood=[{"id":0,"p":Vector2.ZERO,"alive":true}]
+ scene.sim.phase="battle"
+ var enemy={"id":99,"p":Vector2(120,0),"alive":true}
+ scene.sim.viruses=[enemy]
+ faces.update(scene.sim,0.016)
+ check(faces.states[0].emotion=="surprised" and faces.states[0].look.x>0 and faces.states[0].look.x<1,"visible virus triggers surprise and eased gaze")
+ enemy.p=Vector2(40,0)
+ faces.update(scene.sim,0.016)
+ check(faces.states[0].emotion=="scared","close virus triggers fear")
+ enemy.p=Vector2(120,0)
+ faces.update(scene.sim,2.0)
+ enemy.alive=false
+ scene.sim.record("virus_defeated",{"id":99,"p":enemy.p})
+ faces.update(scene.sim,0.016)
+ check(faces.states[0].emotion=="relieved","tracked virus death triggers relief")
+ faces.update(scene.sim,2.0)
+ check(faces.states[0].emotion=="calm","emotion expires without a threat")
+ enemy.alive=true
+ var wall=scene.sim.make_cell("wall",Vector2(60,0))
+ wall.angle=PI/2
+ scene.sim.cells=[wall]
+ faces.update(scene.sim,0.016)
+ check(faces.states[0].target==-1,"wall blocks line of sight")
+ scene.sim.cells=[]
+ scene.sim.record("cell_rest",{"id":123,"p":Vector2(50,20)})
+ faces.update(scene.sim,0.016)
+ check(faces.states[0].emotion=="scared","visible friendly death triggers fear")
  scene.queue_free()
  await process_frame
- print("RESULT: 10 checks, %d failures"%failures)
+ print("RESULT: 16 checks, %d failures"%failures)
  quit(1 if failures else 0)

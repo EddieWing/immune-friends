@@ -382,7 +382,7 @@ func damage_cell(c, amount, redirected=false):
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<range_of(c):
 				heal(other,1)
-	record("cell_rest",{"id":c.id})
+	record("cell_rest",{"id":c.id,"p":c.p})
 
 func damage_virus(v, amount):
 	if not v.alive or v.jump: return
@@ -391,7 +391,7 @@ func damage_virus(v, amount):
 	v.alive=false
 	particles.append({"kind":"food","p":v.p,"v":Vector2.ZERO,"life":float(rules.protein_lifetime),"r":4.0,"owner":-1})
 	effect(v.p,Color("#d4b8e7"),"",20)
-	record("virus_defeated",{"type":v.type})
+	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p})
 
 func contains_cell(c, p, extra=0.0):
 	var local=(p-c.p).rotated(-c.angle)
@@ -575,7 +575,7 @@ func update(delta):
 			destination.alive=false
 			v.alive=false
 			effect(destination.p,Color("#eb8f9d"),"",35)
-			record("blood_lost",{"id":destination.id})
+			record("blood_lost",{"id":destination.id,"p":destination.p})
 	for p in particles:
 		if p.life<=0: continue
 		p.life-=delta
