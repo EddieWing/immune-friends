@@ -1,6 +1,7 @@
 {
   "status": "Unverified reconstruction parameters, not measured original rules",
   "scale": 3,
+  "movement_multiplier": 1.5,
   "start_blood": 20,
   "bond_distance": 145,
   "bond_stiffness": 0.65,

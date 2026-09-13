@@ -395,6 +395,7 @@ func contains_cell(c, p, extra=0.0):
 	return local.length()<18+extra
 
 func update(delta):
+	var movement_delta=delta*float(rules.get("movement_multiplier",1.0))
 	for e in effects: e.life-=delta
 	effects=effects.filter(func(e): return e.life>0)
 	for c in cells: c.flash=maxf(0,c.flash-delta)
@@ -435,10 +436,10 @@ func update(delta):
 			if not target.is_empty(): velocity=c.p.direction_to(target.p)*float(d.speed)*3
 		elif d.behavior=="orbit":
 			var radius=maxf(100,c.start.length())
-			c.orbit-=float(d.speed)*3/radius*delta
+			c.orbit-=float(d.speed)*3/radius*movement_delta
 			var desired=Vector2.from_angle(c.orbit)*radius
 			velocity=(desired-c.p).limit_length(float(d.speed)*3)
-		c.p+=velocity*delta*float(c.speed_buff)
+		c.p+=velocity*movement_delta*float(c.speed_buff)
 		c.p=c.p.clamp(Vector2(-620,-365),Vector2(620,350))
 		if c.cool<=0:
 			c.cool=maxf(0.05,interval_of(c))
@@ -467,7 +468,7 @@ func update(delta):
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":reach/95,"r":5.0,"owner":c.id})
 		if c.key=="magnet":
 			for v in viruses:
-				if v.alive and v.p.distance_to(c.p)<reach: v.p+=v.p.direction_to(c.p)*60*delta
+				if v.alive and v.p.distance_to(c.p)<reach: v.p+=v.p.direction_to(c.p)*60*movement_delta
 		if c.key=="generator":
 			for p in particles:
 				if p.kind=="food" and p.life>0 and p.p.distance_to(c.p)<45:
@@ -548,7 +549,7 @@ func update(delta):
 						dir=v.p.direction_to(other.p)
 						if other.p.distance_to(v.p)<22: v.host=other.id
 						break
-		if v.freeze<=0: v.p+=dir*speed*delta
+		if v.freeze<=0: v.p+=dir*speed*movement_delta
 		if v.type=="hungry":
 			for p in particles:
 				if p.kind=="food" and p.life>0 and p.p.distance_to(v.p)<20:
@@ -559,7 +560,7 @@ func update(delta):
 			if contains_cell(c,v.p,10):
 				var away=(v.p-c.p).normalized()
 				if away==Vector2.ZERO: away=Vector2.RIGHT
-				v.p+=away*speed*delta
+				v.p+=away*speed*movement_delta
 				if v.cool<=0:
 					v.cool=float(rules.contact_interval)
 					damage_cell(c,float(rules.contact_damage))
@@ -572,7 +573,7 @@ func update(delta):
 	for p in particles:
 		if p.life<=0: continue
 		p.life-=delta
-		p.p+=p.v*delta
+		p.p+=p.v*movement_delta
 		if p.kind=="bullet":
 			for c in cells:
 				if c.alive and c.key=="bullet_wall" and c.id!=p.owner and not p.get("split",false) and contains_cell(c,p.p,5):
