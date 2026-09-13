@@ -2,6 +2,8 @@ name: Build and deploy game
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - admin/settings.json
   workflow_dispatch:
 permissions:
   contents: read
@@ -33,6 +35,8 @@ jobs:
           done
       - name: Export browser game
         run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --export-release Web ../web/index.html
+      - name: Include parameter admin
+        run: cp -r admin web/admin
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

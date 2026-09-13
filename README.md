@@ -19,7 +19,13 @@ Use the mouse wheel to zoom; the left gauge shows the current zoom position from
 
 ## Graphics
 
-Open the gear button → Graphics (Графика клеток) and choose Простая or Рисованная. Both modes share the same game state, animated faces and hand bonds. The selection is saved locally. The microscope background is used in both modes.
+The game uses simple cell and virus graphics.
+
+## Parameter admin
+
+Open `/admin/` on the published site. Save writes staged values to `admin/settings.json` through GitHub Contents API with a fine-grained token scoped to this repository (Contents: read and write). The token is held only in page memory. The game never reads staged settings. Import them only when explicitly requested by the owner. Saves do not trigger a game deployment.
+
+The admin includes all values currently externalized in `game/data/assumptions.json` and `game/data/cells.json`; constants embedded in scripts are not editable here. `admin/defaults.json` is the initial snapshot, not a live connection to game data.
 
 ## GitHub Pages
 
