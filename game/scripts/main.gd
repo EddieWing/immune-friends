@@ -28,6 +28,12 @@ var mouse_offset=Vector2.ZERO
 var board_rect=Rect2(0,0,1440,900)
 var last_phase=""
 var menu_open=true
+var main_menu: Control
+var menu_tagline: Label
+var menu_transition: Tween
+var entering_game=false
+var hud_opacity=1.0
+var menu_time=0.0
 var clock_accum=0.0
 var visuals=preload("res://scripts/cell_visuals.gd").new()
 var settings_path="user://settings.cfg"
@@ -408,15 +414,61 @@ func fit_modal(window):
 	window.position=(Vector2(1440,900)-window.size)*0.5
 
 func show_menu():
+	if entering_game: return
 	menu_open=true
-	var col=clear_modal("MICROCOSM","Tiny cells. A big job.\nBuild your immune defense under the microscope.")
-	button(col,"Continue",func(): modal.hide(); menu_open=false)
+	modal.hide()
+	if main_menu: main_menu.queue_free()
+	main_menu=Control.new()
+	main_menu.size=Vector2(1440,900)
+	main_menu.mouse_filter=Control.MOUSE_FILTER_STOP
+	ui.add_child(main_menu)
+	ui.move_child(modal,ui.get_child_count()-1)
+	var title=label(main_menu,"MICROCOSM",Vector2(700,320),72,Color("#254b5c"))
+	title.size=Vector2(680,100)
+	menu_tagline=label(main_menu,"Tiny Cells Big Job",Vector2(825,550),27,Color("#416876"))
+	var column=VBoxContainer.new()
+	column.position=Vector2(150,280)
+	column.size=Vector2(370,0)
+	column.add_theme_constant_override("separation",14)
+	main_menu.add_child(column)
+	button(column,"Continue",func(): enter_microscope(func(): pass),Vector2(370,52))
 	if FileAccess.file_exists(save_path):
-		button(col,"Load saved preparation",load_run)
-	button(col,"New run · 12 rounds",func(): new_run(12))
-	button(col,"New run · 10 rounds",func(): new_run(10))
-	button(col,"How to play",show_help)
-	button(col,"Quit",func(): save_run(); get_tree().quit())
+		button(column,"Load saved preparation",func(): enter_microscope(load_run),Vector2(370,52))
+	button(column,"New run · 12 rounds",func(): enter_microscope(func(): new_run(12)),Vector2(370,52))
+	button(column,"New run · 10 rounds",func(): enter_microscope(func(): new_run(10)),Vector2(370,52))
+	button(column,"How to play",show_help,Vector2(370,52))
+	button(column,"Quit",func(): save_run(); get_tree().quit(),Vector2(370,52))
+	for control in column.get_children():
+		control.alignment=HORIZONTAL_ALIGNMENT_LEFT
+		control.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
+		control.add_theme_font_size_override("font_size",23)
+	hud_opacity=0.0
+	ui.get_node("MicroscopeVignette").material.set_shader_parameter("aperture",1.65)
+	apply_menu_visibility()
+
+func apply_menu_visibility():
+	for child in ui.get_children():
+		if child==ui.get_child(0) or child==main_menu or child==modal or child.name=="MicroscopeVignette": continue
+		if child is CanvasItem: child.modulate.a=hud_opacity
+
+func enter_microscope(action: Callable):
+	if entering_game: return
+	entering_game=true
+	action.call()
+	var tutorial=modal.visible
+	modal.hide()
+	menu_open=false
+	var lens=ui.get_node("MicroscopeVignette").material
+	menu_transition=create_tween().set_parallel(true)
+	menu_transition.tween_property(main_menu,"modulate:a",0.0,0.75).set_trans(Tween.TRANS_SINE)
+	menu_transition.tween_method(func(value): lens.set_shader_parameter("aperture",value),1.65,1.0,1.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	menu_transition.tween_property(self,"hud_opacity",1.0,0.8).set_delay(0.45)
+	menu_transition.chain().tween_callback(func():
+		main_menu.hide()
+		hud_opacity=1.0
+		apply_menu_visibility()
+		entering_game=false
+		if tutorial: show_help())
 
 func new_run(rounds):
 	results_pending=false
@@ -676,9 +728,19 @@ func changed():
 	save_run()
 
 func _process(delta):
+	menu_time+=delta
+	if is_instance_valid(main_menu) and main_menu.visible:
+		menu_tagline.position=Vector2(825+sin(menu_time*0.37)*35,550+sin(menu_time*0.65)*18)
+		apply_menu_visibility()
+		if not entering_game:
+			advance_camera(delta)
+			return
+	elif hud_opacity<1.0:
+		hud_opacity=1.0
+		apply_menu_visibility()
 	position_scanner()
 	advance_camera(delta)
-	advance_simulation(delta)
+	if not entering_game: advance_simulation(delta)
 	if sim.phase!=last_phase:
 		last_phase=sim.phase
 		refresh()
@@ -706,6 +768,11 @@ func _input(event):
 		sim.release_blood()
 	if event is InputEventKey and event.pressed:
 		if event.keycode==KEY_ESCAPE:
+			if is_instance_valid(main_menu) and main_menu.visible:
+				if modal.visible: modal.hide()
+				elif not entering_game: enter_microscope(func(): pass)
+				get_viewport().set_input_as_handled()
+				return
 			get_viewport().set_input_as_handled()
 			if not pending_offer.is_empty():
 				cancel_placement()

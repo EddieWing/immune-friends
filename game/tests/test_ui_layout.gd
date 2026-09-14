@@ -10,6 +10,11 @@ func run():
 	scene.save_path="user://ui_layout_test.json"
 	root.add_child(scene)
 	await process_frame
+	check(scene.main_menu.visible and not scene.modal.visible and scene.hud_opacity==0,"startup uses full-screen menu with hidden game HUD")
+	scene.enter_microscope(func(): pass)
+	await create_timer(1.4).timeout
+	check(not scene.main_menu.visible and scene.hud_opacity==1 and not scene.entering_game,"Continue fades into the microscope and restores HUD")
+	check(is_equal_approx(scene.ui.get_node("MicroscopeVignette").material.get_shader_parameter("aperture"),1.0),"transition restores fixed gameplay vignette")
 	check(scene.refresh_button.position.x>scene.bottom_panel.position.x+scene.bottom_panel.size.x,"refresh sits to right of slide")
 	check(scene.xp_button.position.y<scene.capacity_panel.position.y,"upgrade sits above capacity")
 	check(scene.start_button.position.y<60,"play is in top transport")
@@ -106,6 +111,9 @@ func run():
 		if screen=="show_reward": scene.sim.reward_choices=[["accelerator","tag_sprayer"]]
 		scene.call(screen)
 		for frame in range(5): await process_frame
+		if screen=="show_menu":
+			check(scene.main_menu.visible and not scene.modal.visible,"main menu is a separate full screen")
+			continue
 		var window=scene.modal_panel
 		check(Rect2(0,0,1440,900).encloses(window.get_global_rect()),screen+" fits inside the viewport")
 		for child in window.get_child(0).get_children():
