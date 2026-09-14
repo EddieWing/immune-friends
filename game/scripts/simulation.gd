@@ -40,6 +40,13 @@ func _init():
 	rules = JSON.parse_string(FileAccess.get_file_as_string("res://data/assumptions.json").trim_prefix("\ufeff"))
 
 func record(kind: String, detail = {}):
+	if kind=="blood_lost":
+		detail["hand_neighbors"]=[]
+		for link in blood_links:
+			var a=blood[link.a]
+			var b=blood[link.b]
+			if a.id==detail.id and b.alive: detail.hand_neighbors.append(b.id)
+			elif b.id==detail.id and a.alive: detail.hand_neighbors.append(a.id)
 	var loss_key={"virus_defeated":"viruses","blood_lost":"core","cell_rest":"cells"}.get(kind,"")
 	if loss_key!="": round_losses[loss_key]+=1
 	events.append({"event":kind, "round":round_no, "time":snappedf(elapsed,0.01), "data":detail})

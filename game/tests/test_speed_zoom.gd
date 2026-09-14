@@ -114,6 +114,18 @@ func run():
  scene.sim.record("cell_rest",{"id":123,"p":Vector2(50,20)})
  faces.update(scene.sim,0.016)
  check(faces.states[0].emotion=="scared","visible friendly death triggers fear")
+ scene.sim.viruses=[]
+ scene.sim.blood=[{"id":10,"p":Vector2.ZERO,"alive":true},{"id":20,"p":Vector2(26,0),"alive":true},{"id":30,"p":Vector2(52,0),"alive":true}]
+ scene.sim.blood_links=[{"a":0,"b":1,"rest":26},{"a":1,"b":2,"rest":26}]
+ faces.update(scene.sim,2.0)
+ scene.sim.blood[0].alive=false
+ scene.sim.record("blood_lost",{"id":10,"p":Vector2.ZERO})
+ scene.sim.blood_links.clear()
+ faces.update(scene.sim,0.016)
+ check(faces.states[20].emotion=="crying","direct hand neighbour cries even after link cleanup")
+ check(faces.states[30].emotion!="crying","crying does not spread to indirect neighbours")
+ faces.update(scene.sim,3.1)
+ check(faces.states[20].emotion=="calm","crying expires after configured duration")
  scene.queue_free()
  await process_frame
  print("RESULT: 16 checks, %d failures"%failures)

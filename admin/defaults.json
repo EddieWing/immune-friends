@@ -13,7 +13,8 @@
       "danger_radius": 65,
       "look_smoothing": 0.15,
       "fear_seconds": 1.5,
-      "relief_seconds": 1
+      "relief_seconds": 1,
+      "cry_seconds": 3.0
     },
     "start_blood": 20,
     "bond_distance": 145,
