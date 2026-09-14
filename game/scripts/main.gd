@@ -435,7 +435,7 @@ func show_menu():
 	if FileAccess.file_exists(save_path):
 		button(column,"Load saved preparation",func(): enter_microscope(load_run),Vector2(370,52))
 	button(column,"New run · 12 rounds",func(): enter_microscope(func(): new_run(12)),Vector2(370,52))
-	button(column,"New run · 10 rounds",func(): enter_microscope(func(): new_run(10)),Vector2(370,52))
+	button(column,"Codex",show_codex,Vector2(370,52))
 	button(column,"How to play",show_help,Vector2(370,52))
 	button(column,"Quit",func(): save_run(); get_tree().quit(),Vector2(370,52))
 	for control in column.get_children():
@@ -533,6 +533,15 @@ func show_settings():
 	button(col,"Main menu",show_menu)
 	button(col,"Back",func(): modal.hide(); menu_open=false)
 
+func show_codex():
+	var col=clear_modal("Codex","Discover the cells and viruses under the microscope.")
+	button(col,"Cells · 27",show_catalog)
+	button(col,"Viruses · 7",show_virus_catalog)
+	button(col,"Back to main menu",func(): modal.hide())
+
+func browsing_from_main_menu():
+	return is_instance_valid(main_menu) and main_menu.visible
+
 func show_catalog():
 	var col=clear_modal("Cell atlas · 27 cells","Explore immune cells, their abilities and elite forms.")
 	modal_panel.position=Vector2(250,95)
@@ -558,7 +567,8 @@ func show_catalog():
 	list.select(0)
 	catalogue_key=keys[0]
 	text.text=description(keys[0],false)
-	button(col,"Back to the field",func(): modal.hide(); menu_open=false)
+	if browsing_from_main_menu(): button(col,"Back to Codex",show_codex)
+	else: button(col,"Back to the field",func(): modal.hide(); menu_open=false)
 
 func description(key, elite=false):
 	var d=sim.catalog[key]
@@ -1171,7 +1181,7 @@ func show_virus_catalog():
 	list.item_selected.connect(select)
 	list.select(0)
 	select.call(0)
-	button(col,"Back",show_settings)
+	button(col,"Back to Codex" if browsing_from_main_menu() else "Back",show_codex if browsing_from_main_menu() else show_settings)
 
 func layout_incoming():
 	await get_tree().process_frame
