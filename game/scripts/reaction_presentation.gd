@@ -1,4 +1,5 @@
 extends RefCounted
+var revision_seen=-1
 var observed_sim
 var round_seen=-1
 var phase_seen=""
@@ -7,10 +8,12 @@ var cursor=0
 var reactions={}
 var bursts=[]
 func update(sim,delta):
- if observed_sim!=sim or round_seen!=sim.round_no or cursor>sim.events.size() or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
+ var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
+ revision_seen=sim.presentation_revision
+ if fresh or round_seen!=sim.round_no or cursor>sim.event_sequence or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
   reactions.clear()
   bursts.clear()
-  cursor=0 if sim.phase=="battle" else sim.events.size()
+  cursor=sim.event_sequence if fresh else cursor
   elapsed=sim.elapsed
  observed_sim=sim
  round_seen=sim.round_no
@@ -22,7 +25,7 @@ func update(sim,delta):
   if reactions[key].age>=0.38: reactions.erase(key)
  for burst in bursts: burst.age+=dt
  bursts=bursts.filter(func(b): return b.age<0.5)
- for e in sim.events.slice(cursor):
+ for e in sim.events_since(cursor):
   var d=e.data
   if e.event in ["damage","virus_hit","pushed"]:
    var kind=d.get("kind","cell" if e.event=="damage" else "virus")
@@ -30,7 +33,7 @@ func update(sim,delta):
    reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("from",d.p).direction_to(d.p)}
   if e.event in ["virus_hit","pushed","tagged","thawed","tag_ended"]:
    bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("from",d.p).direction_to(d.p)})
- cursor=sim.events.size()
+ cursor=sim.event_sequence
  if bursts.size()>48: bursts=bursts.slice(bursts.size()-48)
 func pose(kind,id):
  var r=reactions.get(kind+":"+str(id),{})

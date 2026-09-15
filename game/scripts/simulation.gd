@@ -17,6 +17,8 @@ var offers: Array = []
 var rewards: Array = []
 var reward_choices: Array = []
 var events: Array = []
+var event_sequence=0
+var presentation_revision=0
 var round_losses={"viruses":0,"core":0,"cells":0}
 var round_no = 1
 var target_rounds = 12
@@ -50,11 +52,21 @@ func record(kind: String, detail = {}):
 			elif b.id==detail.id and a.alive: detail.hand_neighbors.append(a.id)
 	var loss_key={"virus_defeated":"viruses","blood_lost":"core","cell_rest":"cells"}.get(kind,"")
 	if loss_key!="": round_losses[loss_key]+=1
-	events.append({"event":kind, "round":round_no, "time":snappedf(elapsed,0.01), "data":detail})
+	event_sequence+=1
+	events.append({"seq":event_sequence,"event":kind, "round":round_no, "time":snappedf(elapsed,0.01), "data":detail})
 	if events.size() > 12000:
 		events.pop_front()
 
+func events_since(sequence):
+	if events.is_empty(): return []
+	var first=int(events[0].get("seq",1))
+	return events.slice(clampi(sequence-first+1,0,events.size()))
+
 func reset(seed_number = 42, rounds = 12):
+	presentation_revision+=1
+	elapsed=0.0
+	spawn_timer=0.0
+	spawn_queue.clear()
 	round_losses={"viruses":0,"core":0,"cells":0}
 	rng.seed = seed_number
 	seed_value = seed_number

@@ -705,6 +705,7 @@ func gym_run():
 
 func gym_reset_setup():
 	if not gym_mode: return
+	sim.presentation_revision+=1
 	view.diagnostics.tracks.clear()
 	if not gym_setup.is_empty():
 		sim.cells=gym_setup.cells.duplicate(true)
@@ -750,6 +751,7 @@ func debug_replenish_core():
 
 func gym_restore_core():
 	if not gym_mode: return
+	sim.presentation_revision+=1
 	paused=sim.phase=="battle"
 	update_transport()
 	var fresh=Simulation.new()
@@ -1369,7 +1371,7 @@ func advance_results(delta):
 		particle.life-=delta
 		particle.p+=particle.v*delta
 	sim.particles=sim.particles.filter(func(p): return p.life>0 and p.kind=="bullet")
-	if not sim.effects.is_empty() or not sim.particles.is_empty(): return
+	if not sim.effects.is_empty() or not sim.particles.is_empty() or view.has_transient_effects(): return
 	results_delay-=delta
 	if results_delay>0: return
 	results_pending=false

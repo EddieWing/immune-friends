@@ -1,18 +1,25 @@
 extends RefCounted
+var revision_seen=-1
 var observed_sim
 var round_seen=-1
 var cursor=0
+var elapsed=0.0
 var bonds={}
 var signals=[]
 var hits=[]
 func update(sim,delta):
- if observed_sim!=sim or round_seen!=sim.round_no or cursor>sim.events.size():
+ var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
+ revision_seen=sim.presentation_revision
+ if fresh or round_seen!=sim.round_no or cursor>sim.event_sequence:
   observed_sim=sim
   round_seen=sim.round_no
-  cursor=0 if sim.phase=="battle" else sim.events.size()
+  cursor=sim.event_sequence if fresh else cursor
   bonds.clear()
   signals.clear()
   hits.clear()
+  elapsed=sim.elapsed
+ delta=maxf(0,sim.elapsed-elapsed) if sim.phase=="battle" else delta
+ elapsed=sim.elapsed
  var active={}
  for link in sim.links:
   var a=sim.cell_by_id(link.a)
@@ -33,14 +40,14 @@ func update(sim,delta):
    if bond.a.get("alive",false): bond.p=bond.a.p
    if bond.b.get("alive",false): bond.q=bond.b.p
    if bond.progress==0: bonds.erase(key)
- for e in sim.events.slice(cursor):
+ for e in sim.events_since(cursor):
   if e.event=="damage" and e.data.has("p"):
    var d=e.data
    hits.append({"p":d.p,"from":d.get("from",d.p),"kind":d.get("source_kind","unknown"),"age":0.0})
   elif e.event=="transfer" or e.event=="discharge":
    if e.data.get("path",[]).size()>1: signals.append({"path":e.data.path.duplicate(),"age":0.0,"kind":e.event})
   elif e.event=="blood_lost": hits.append({"p":e.data.p,"from":e.data.p,"kind":"core","age":0.0})
- cursor=sim.events.size()
+ cursor=sim.event_sequence
  for hit in hits: hit.age+=delta
  for pulse in signals: pulse.age+=delta
  hits=hits.filter(func(h): return h.age<0.65)

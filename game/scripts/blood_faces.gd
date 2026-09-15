@@ -1,5 +1,7 @@
 extends RefCounted
 var states={}
+var observed_sim
+var revision_seen=-1
 var cursor=0
 var phase=""
 func visible(sim,origin,target):
@@ -13,13 +15,16 @@ func visible(sim,origin,target):
    if Geometry2D.segment_intersects_segment(a,b,corners[i],corners[(i+1)%4])!=null: return false
  return true
 func update(sim,delta):
+ var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
+ observed_sim=sim
+ revision_seen=sim.presentation_revision
  var config=sim.rules.blood_faces
- if (phase!=sim.phase and sim.phase in ["shop","battle"]) or cursor>sim.events.size():
+ if fresh or (phase!=sim.phase and sim.phase in ["shop","battle"]) or cursor>sim.event_sequence:
   states.clear()
-  cursor=sim.events.size()
+  cursor=sim.event_sequence
   phase=sim.phase
- var notices=sim.events.slice(cursor)
- cursor=sim.events.size()
+ var notices=sim.events_since(cursor)
+ cursor=sim.event_sequence
  for b in sim.blood:
   if not b.alive: states.erase(b.id); continue
   var state=states.get(b.id,{"look":Vector2.ZERO,"target":-1,"emotion":"calm","fear":0.0,"relief":0.0,"cry":0.0})

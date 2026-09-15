@@ -1,4 +1,5 @@
 extends RefCounted
+var revision_seen=-1
 var observed_sim
 var cursor=0
 var elapsed=0.0
@@ -8,8 +9,10 @@ var links={}
 var cooldowns={}
 var clock=0.0
 func update(sim,delta,faces):
- if observed_sim!=sim or cursor>sim.events.size() or sim.elapsed<elapsed:
-  cursor=sim.events.size()
+ var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
+ revision_seen=sim.presentation_revision
+ if fresh or cursor>sim.event_sequence or sim.elapsed<elapsed:
+  if fresh: cursor=sim.event_sequence
   links.clear()
   active={}
   cooldowns.clear()
@@ -23,11 +26,11 @@ func update(sim,delta,faces):
   if active.age>=1.0: active={}
  var candidates=[]
  var losses=[]
- for event in sim.events.slice(cursor):
+ for event in sim.events_since(cursor):
   if event.event=="blood_lost": losses.append(event.data.p)
   elif event.event=="virus_defeated" and event.data.get("key_threat",false):
    candidates.append({"priority":1,"kind":"cleared","p":event.data.p,"text":"THREAT CLEARED"})
- cursor=sim.events.size()
+ cursor=sim.event_sequence
  if not losses.is_empty():
   candidates.append({"priority":4,"kind":"loss","p":losses[0],"text":"CORE LOST"+(" x%d" % losses.size() if losses.size()>1 else "")})
  var current_links={}

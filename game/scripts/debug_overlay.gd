@@ -1,13 +1,15 @@
 extends RefCounted
 # Read-only diagnostics; positions are sampled even when overlays are hidden.
+var revision_seen=-1
 var observed_sim
 var phase=""
 var elapsed=0.0
 var round_no=-1
 var tracks={}
 func update(sim,delta):
- if observed_sim!=sim or round_no!=sim.round_no or sim.elapsed<elapsed or (sim.phase=="battle" and phase!="battle"):
+ if revision_seen!=sim.presentation_revision or observed_sim!=sim or round_no!=sim.round_no or sim.elapsed<elapsed or (sim.phase=="battle" and phase!="battle"):
   tracks.clear()
+ revision_seen=sim.presentation_revision
  observed_sim=sim
  round_no=sim.round_no
  var dt=sim.elapsed-elapsed if sim.phase=="battle" else delta

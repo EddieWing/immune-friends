@@ -12,6 +12,9 @@ var visuals
 var selected_id=-1
 var show_ranges=true
 var time=0.0
+var visual_elapsed=0.0
+var visual_revision=-1
+var visual_sim
 var playback_speed=1
 var staging=""
 var debug_geometry=false
@@ -29,6 +32,16 @@ var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
 
 func _process(delta):
+	var visual_delta=delta
+	if sim!=null:
+		if visual_sim!=sim or visual_revision!=sim.presentation_revision or sim.elapsed<visual_elapsed:
+			visual_elapsed=sim.elapsed
+			known_cells.clear()
+			arrivals.clear()
+		visual_delta=maxf(0,sim.elapsed-visual_elapsed) if sim.phase=="battle" else delta
+		visual_elapsed=sim.elapsed
+		visual_sim=sim
+		visual_revision=sim.presentation_revision
 	if sim!=null: diagnostics.update(sim,delta)
 	if sim!=null:
 		presentation.update(sim,delta)
@@ -52,8 +65,8 @@ func _process(delta):
 		for id in arrivals.keys():
 			arrivals[id]+=delta
 			if arrivals[id]>0.65: arrivals.erase(id)
-	if sim!=null: blood_faces.update(sim,delta)
-	time+=delta*(playback_speed if sim!=null and sim.phase=="battle" else 1)
+	if sim!=null: blood_faces.update(sim,visual_delta)
+	time+=visual_delta
 	queue_redraw()
 
 func text_at(p, text, size=14, color=Color("#d8e9e5")):
@@ -276,3 +289,6 @@ func draw_blood_cluster():
 	presentation.draw_bonds(self,"core")
 	for b in sim.blood:
 		if b.alive: blood_faces.draw(self,b,time)
+
+func has_transient_effects():
+	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty()

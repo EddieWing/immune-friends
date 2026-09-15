@@ -1,13 +1,15 @@
 extends RefCounted
 const MOVE_SECONDS=0.70
+var revision_seen=-1
 var observed_sim
 var seed_seen=-1
 var round_seen=-1
 var states={}
 var clock=0.0
 func update(sim,wave,positions,stage,delta):
- if observed_sim!=sim or seed_seen!=sim.seed_value or sim.round_no<round_seen:
+ if revision_seen!=sim.presentation_revision or observed_sim!=sim or seed_seen!=sim.seed_value or sim.round_no<round_seen:
   states.clear()
+ revision_seen=sim.presentation_revision
  observed_sim=sim
  seed_seen=sim.seed_value
  round_seen=sim.round_no

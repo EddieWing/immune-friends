@@ -1,4 +1,5 @@
 extends RefCounted
+var revision_seen=-1
 var observed_sim
 var round_seen=-1
 var phase_seen=""
@@ -9,11 +10,13 @@ var looks={}
 var effects=[]
 var attachments=[]
 func update(sim,delta):
- if observed_sim!=sim or round_seen!=sim.round_no or cursor>sim.events.size() or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
+ var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
+ revision_seen=sim.presentation_revision
+ if fresh or round_seen!=sim.round_no or cursor>sim.event_sequence or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
   feeding.clear()
   looks.clear()
   effects.clear()
-  cursor=0 if sim.phase=="battle" else sim.events.size()
+  cursor=sim.event_sequence if fresh else cursor
   elapsed=sim.elapsed
  observed_sim=sim
  round_seen=sim.round_no
@@ -25,14 +28,14 @@ func update(sim,delta):
   if feeding[id]<=0: feeding.erase(id)
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<0.65)
- for event in sim.events.slice(cursor):
+ for event in sim.events_since(cursor):
   if event.event in ["virus_fed","virus_attachment","virus_target"]:
    var e=event.data.duplicate()
    e.kind=event.event
    e.age=0.0
    effects.append(e)
    if event.event=="virus_fed": feeding[e.id]=0.55
- cursor=sim.events.size()
+ cursor=sim.event_sequence
  if effects.size()>32: effects=effects.slice(effects.size()-32)
  var alive={}
  for v in sim.viruses:

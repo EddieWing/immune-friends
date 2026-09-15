@@ -2,6 +2,7 @@ extends RefCounted
 # Cosmetic anticipation reads existing cooldowns; only real attacks trigger recoil.
 const WINDUP=0.30
 const RECOVERY=0.32
+var revision_seen=-1
 var observed_sim
 var previous_time=0.0
 var previous_phase=""
@@ -12,8 +13,10 @@ var poses={}
 var focus={}
 var focus_cooldown=0.0
 func update(sim,delta):
- if observed_sim!=sim or previous_round!=sim.round_no or sim.elapsed<previous_time or (sim.phase=="battle" and previous_phase!="battle"):
-  cursor=0 if sim.phase=="battle" else sim.events.size()
+ var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
+ revision_seen=sim.presentation_revision
+ if fresh or previous_round!=sim.round_no or sim.elapsed<previous_time or (sim.phase=="battle" and previous_phase!="battle"):
+  cursor=sim.event_sequence if fresh else cursor
   recoil.clear()
   poses.clear()
   focus={}
@@ -31,14 +34,14 @@ func update(sim,delta):
  for id in recoil.keys():
   recoil[id].age+=dt
   if recoil[id].age>=RECOVERY: recoil.erase(id)
- for event in sim.events.slice(cursor):
+ for event in sim.events_since(cursor):
   var data=event.data
   if event.event=="attack_fired" and data.key in ["cannon","sniper","pusher"]:
    recoil[data.id]={"age":0.0,"direction":data.direction}
   elif event.event=="virus_defeated" and data.get("key_threat",false) and focus_cooldown<=0:
    focus={"p":data.p,"age":0.0}
    focus_cooldown=1.2
- cursor=sim.events.size()
+ cursor=sim.event_sequence
  poses.clear()
  if sim.phase!="battle": return
  for c in sim.cells:

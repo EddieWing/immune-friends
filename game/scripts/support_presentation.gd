@@ -1,14 +1,17 @@
 extends RefCounted
+var revision_seen=-1
 var observed_sim
 var elapsed=0.0
 var cursor=0
 var effects=[]
 var buffs={}
 func update(sim,delta):
- if observed_sim!=sim or cursor>sim.events.size():
+ var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
+ revision_seen=sim.presentation_revision
+ if fresh or cursor>sim.event_sequence:
   effects.clear()
   buffs.clear()
-  cursor=sim.events.size()
+  if fresh: cursor=sim.event_sequence
   elapsed=sim.elapsed
  observed_sim=sim
  var dt=maxf(0,sim.elapsed-elapsed) if sim.phase=="battle" else delta
@@ -18,14 +21,14 @@ func update(sim,delta):
  elapsed=sim.elapsed
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
- for event in sim.events.slice(cursor):
+ for event in sim.events_since(cursor):
   if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split"] and event.data.has("p"):
    var e=event.data.duplicate()
    e.kind=event.event
    e.age=0.0
    e.life=1.1 if e.kind=="swap" else 0.65
    effects.append(e)
- cursor=sim.events.size()
+ cursor=sim.event_sequence
  var active={}
  for c in sim.cells:
   if not c.alive: continue
