@@ -48,7 +48,23 @@ func _ready():
  col.add_child(hint)
  game.button(col,"Back to main menu",game.leave_gym,Vector2(246,34))
  gym_panel.hide()
- debug_panel=game.panel(self,Rect2(1040,80,370,0),Color("#d8e8ed"))
+ debug_panel=game.panel(self,Rect2(12,12,370,0),Color.BLACK)
+ var debug_theme=Theme.new()
+ debug_theme.default_font=preload("res://assets/fonts/CascadiaMono.ttf")
+ debug_theme.default_font_size=13
+ for type in ["Label","Button"]:
+  for state in ["font_color","font_hover_color","font_pressed_color","font_focus_color"]:
+   debug_theme.set_color(state,type,Color("#e0f5e9"))
+  debug_theme.set_color("font_disabled_color",type,Color("#65766c"))
+ for state in ["normal","hover","pressed","disabled","focus"]:
+  var fill=Color("#101813") if state=="normal" else Color("#21362a")
+  if state=="focus": fill=Color.TRANSPARENT
+  var skin=game.style(fill,2,Color("#446454"))
+  debug_theme.set_stylebox(state,"Button",skin)
+ debug_panel.theme=debug_theme
+ var frame=game.style(Color.BLACK,2,Color("#547764"))
+ frame.set_border_width_all(1)
+ debug_panel.add_theme_stylebox_override("panel",frame)
  var debug=VBoxContainer.new()
  debug.add_theme_constant_override("separation",8)
  debug_panel.add_child(debug)
@@ -75,6 +91,7 @@ func arm(kind,key):
  hint.text="Click the field to "+("remove an object" if kind=="remove" else "place "+key.replace("_"," "))+". Esc cancels."
 func _process(delta):
  gym_panel.visible=game.gym_mode and not game.browsing_from_main_menu()
+ gym_panel.position.x=1150 if debug_panel.visible else 20
  clock+=delta
  if clock<0.2 or not debug_panel.visible: return
  clock=0
