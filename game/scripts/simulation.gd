@@ -400,12 +400,12 @@ func bond_path(start_id,end_id):
 			queue.append(next)
 	return []
 
-func heal(c, amount):
+func heal(c, amount, source={}):
 	if not c.alive: return
 	c.hp+=amount
 	c.flash=0.3
-	effect(c.p,Color("#a3e4b6"),"+1",24)
-	record("heal",{"id":c.id,"hp":c.hp})
+	effect(c.p,Color("#a3e4b6"),"+"+str(amount),24)
+	record("heal",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"from":source.get("p",c.p)})
 
 func damage_cell(c, amount, redirected=false, source={}):
 	if not c.alive: return
@@ -440,7 +440,7 @@ func damage_cell(c, amount, redirected=false, source={}):
 	if c.key=="bandage":
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<range_of(c):
-				heal(other,1)
+				heal(other,1,c)
 	record("cell_rest",{"id":c.id,"p":c.p})
 
 func damage_virus(v, amount, source={}):
@@ -528,7 +528,7 @@ func update(delta):
 							break
 				"heal":
 					for other in cells:
-						if other.alive and other.p.distance_to(c.p)<reach: heal(other,1)
+						if other.alive and other.p.distance_to(c.p)<reach: heal(other,1,c)
 				"push":
 					record("attack_fired",{"id":c.id,"p":c.p,"direction":Vector2.ZERO,"key":c.key})
 					effect(c.p,Color("#f7dec3"),"",reach)
@@ -549,9 +549,11 @@ func update(delta):
 				if p.kind=="food" and p.life>0 and p.p.distance_to(c.p)<45:
 					p.life=0
 					c.food+=1
+					record("generator_fed",{"id":c.id,"p":c.p,"from":p.p,"food":c.food})
 			if c.food>=8:
 				c.food-=8
 				c.charge+=8
+				record("generator_charged",{"id":c.id,"p":c.p,"amount":8})
 		if c.charge>0:
 			conduct(c)
 	# Spring-like position constraints allow entire connected components to move.
@@ -681,6 +683,7 @@ func update(delta):
 					var dir=p.v.normalized()
 					shoot(c,dir.rotated(-0.18),c.p+dir*48,true)
 					shoot(c,dir.rotated(0.18),c.p+dir*48,true)
+					record("bullet_split",{"p":c.p,"direction":dir})
 					break
 			if p.life<=0: continue
 			for v in viruses:
@@ -767,7 +770,7 @@ func next_round():
 		swap[0].hp=swap[3]
 		swap[1].max_hp=swap[2]
 		swap[1].hp=swap[2]
-		record("swap",{"a":swap[0].id,"b":swap[1].id})
+		record("swap",{"a":swap[0].id,"b":swap[1].id,"p":swap[0].p,"q":swap[1].p,"before_a":swap[2],"after_a":swap[3],"before_b":swap[3],"after_b":swap[2]})
 	round_no+=1
 	money=mini(round_no+3,10)
 	phase="shop"
