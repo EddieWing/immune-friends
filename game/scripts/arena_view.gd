@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var sources=preload("res://scripts/source_presentation.gd").new()
 var attacks=preload("res://scripts/attack_presentation.gd").new()
 var presentation=preload("res://scripts/battle_presentation.gd").new()
 var blood_faces=preload("res://scripts/blood_faces.gd").new()
@@ -28,6 +29,7 @@ func _process(delta):
 	if sim!=null:
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)
+		sources.update(sim,warning_wave if staging=="warning" else sim.wave,warning_sources if staging=="warning" else sim.infection_sources,staging,delta)
 	warning_time+=delta
 	if sim!=null:
 		if arrival_sim_seed!=sim.seed_value or arrival_round!=sim.round_no:
@@ -51,20 +53,10 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 
 func _draw():
 	if sim==null: return
-	var drawn_lanes=[]
-	var shown_wave=warning_wave if staging=="warning" else sim.wave
-	var shown_sources=warning_sources if staging=="warning" else sim.infection_sources
-	for entry in shown_wave:
-		if entry.lane in drawn_lanes: continue
-		drawn_lanes.append(entry.lane)
-		var start=shown_sources[entry.lane]
-		var end=sim.source_center
-		for n in range(14):
-			var a=start.lerp(end,n/15.0)
-			var b=start.lerp(end,(n+0.4)/15.0)
-			draw_line(a,b,Color(0.76,0.65,0.84,0.2),2,true)
-		draw_ink_source(start,entry.lane)
-		if staging=="warning": draw_warning(start,entry.lane)
+	for lane in sources.states:
+		var source=sources.states[lane]
+		sources.draw(self,lane)
+		if staging=="warning" and source.active: draw_warning(source.p,lane)
 	# Range underneath bodies and hands.
 	var selected=sim.cell_by_id(selected_id)
 	if not selected.is_empty() and selected.alive:
@@ -227,24 +219,6 @@ func draw_warning(center,lane):
 		draw_circle(marker,20,Color(0.82,0.91,0.96,0.7))
 		preload("res://scripts/virus_visuals.gd").draw(self,{"p":marker,"type":entry.type,"jump":false,"tag":0,"hp":1})
 		text_at(marker+Vector2(-8,32),str(entry.count),13,Color("#365b70"))
-
-func draw_ink_source(center,seed):
-	for layer in range(7):
-		var points=PackedVector2Array()
-		var radius=72-layer*7
-		for i in range(96):
-			var angle=i*TAU/96.0
-			var wobble=sin(angle*5+time*0.22+seed)*0.15+sin(angle*9-time*0.17)*0.08
-			points.append(center+Vector2.from_angle(angle)*(radius*(1+wobble)))
-		draw_colored_polygon(points,Color(0.22,0.12,0.32,0.045+layer*0.012))
-	for i in range(11):
-		var angle=i*TAU/11+seed
-		var trail=PackedVector2Array()
-		for j in range(18):
-			var t=j/17.0
-			trail.append(center+Vector2.from_angle(angle+sin(t*4+time*0.24+i)*0.23)*(25+t*55))
-		draw_polyline(trail,Color(0.29,0.16,0.38,0.08),3,true)
-	draw_circle(center,17,Color(0.18,0.09,0.25,0.38))
 
 func draw_blood_cluster():
 	var occupied={}
