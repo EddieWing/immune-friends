@@ -2,6 +2,11 @@ extends Node2D
 const Simulation = preload("res://scripts/simulation.gd")
 const ArenaView = preload("res://scripts/arena_view.gd")
 var sim=Simulation.new()
+var gym_mode=false
+var gym_return={}
+var gym_tool={}
+var gym_setup={}
+var lab_tools: Control
 var ui: Control
 var view: Node2D
 var shop: HBoxContainer
@@ -108,6 +113,12 @@ func _ready():
 	sim.reset(Time.get_ticks_usec()%100000,12)
 	refresh()
 	show_menu()
+	var lab_layer=CanvasLayer.new()
+	lab_layer.layer=20
+	add_child(lab_layer)
+	lab_tools=preload("res://scripts/ui/lab_tools.gd").new()
+	lab_tools.game=self
+	lab_layer.add_child(lab_tools)
 	if "--smoke" in OS.get_cmdline_user_args():
 		save_path="user://ui_smoke.json"
 		modal.hide()
@@ -419,6 +430,9 @@ func fit_modal(window):
 	if window.get_meta("field_report",false): window.position=Vector2(40,110)
 
 func show_menu():
+	if gym_mode:
+		leave_gym()
+		return
 	if entering_game: return
 	menu_open=true
 	modal.hide()
@@ -441,6 +455,7 @@ func show_menu():
 		button(column,"Load saved preparation",func(): enter_microscope(load_run),Vector2(370,52))
 	button(column,"New run · 12 rounds",func(): enter_microscope(func(): new_run(12)),Vector2(370,52))
 	button(column,"Codex",show_codex,Vector2(370,52))
+	button(column,"Gym",func(): enter_microscope(enter_gym),Vector2(370,52))
 	button(column,"How to play",show_help,Vector2(370,52))
 	button(column,"Quit",func(): save_run(); get_tree().quit(),Vector2(370,52))
 	for control in column.get_children():
@@ -542,6 +557,173 @@ func show_settings():
 	button(col,"Main menu",show_menu)
 	button(col,"Back",func(): modal.hide(); menu_open=false)
 
+func enter_gym():
+	if gym_mode: return
+	cancel_placement()
+	sim.release_blood()
+	dragging=false
+	rotating=false
+	dragging_blood=-1
+	gym_return={"sim":sim,"speed":playback_speed,"zoom":zoom_target,"position":view.position,"paused":paused,"auto":auto_camera}
+	gym_mode=true
+	sim=Simulation.new()
+	sim.reset(4242,12)
+	sim.gym_mode=true
+	sim.wave=[]
+	sim.offers=[]
+	view.sim=sim
+	view.blood_faces.states.clear()
+	view.blood_faces.cursor=0
+	view.blood_faces.phase=""
+	view.staging=""
+	view.warning_wave=[]
+	view.warning_sources=[]
+	view.position=Vector2(760,425)
+	view.scale=Vector2.ONE*0.88
+	zoom_target=0.88
+	auto_camera=false
+	paused=false
+	set_playback_speed(1)
+	gym_tool={}
+	gym_setup={}
+	selected={}
+	results_pending=false
+	results_stage=""
+	launch_remaining=0.0
+	clock_accum=0.0
+	last_phase="shop"
+	modal.hide()
+	refresh()
+
+func leave_gym():
+	if not gym_mode: return
+	cancel_placement()
+	dragging=false
+	rotating=false
+	dragging_blood=-1
+	sim=gym_return.sim
+	view.sim=sim
+	gym_mode=false
+	gym_tool={}
+	gym_setup={}
+	selected={}
+	view.selected_id=-1
+	view.drag_preview=Vector2.INF
+	view.blood_faces.states.clear()
+	view.blood_faces.cursor=0
+	view.blood_faces.phase=""
+	view.position=gym_return.position
+	zoom_target=gym_return.zoom
+	view.scale=Vector2.ONE*zoom_target
+	set_playback_speed(gym_return.speed)
+	paused=gym_return.paused
+	auto_camera=gym_return.auto
+	last_phase=""
+	clock_accum=0.0
+	gym_return={}
+	refresh()
+	show_menu()
+
+func gym_place(p):
+	if not gym_mode or gym_tool.is_empty() or (sim.phase=="battle" and not paused): return
+	var kind=gym_tool.kind
+	if kind=="cell" and gym_tool.key=="__core":
+		var id=0
+		for b in sim.blood: id=maxi(id,b.id+1)
+		var index=sim.blood.size()
+		sim.blood.append({"id":id,"p":p,"alive":true})
+		for i in range(index):
+			if sim.blood[i].alive and sim.blood[i].p.distance_to(p)<28: sim.blood_links.append({"a":i,"b":index,"rest":26.0})
+	elif kind=="cell":
+		var c=sim.make_cell(gym_tool.key,p)
+		c.rank=gym_tool.rank
+		c.hp*=c.rank
+		c.max_hp=c.hp
+		sim.cells.append(c)
+	elif kind=="virus":
+		sim.spawn_virus({"type":gym_tool.key,"lane":0})
+		var v=sim.viruses.back()
+		v.p=p
+		v.exit=p
+		v.emerging=false
+	elif kind=="remove":
+		var removed=false
+		for c in sim.cells.duplicate():
+			if sim.contains_cell(c,p,3):
+				sim.cells.erase(c)
+				removed=true
+				break
+		if not removed:
+			for v in sim.viruses.duplicate():
+				if v.p.distance_to(p)<18:
+					sim.viruses.erase(v)
+					removed=true
+					break
+		if not removed:
+			for core in sim.blood:
+				if core.alive and core.p.distance_to(p)<13:
+					core.alive=false
+					sim.record("blood_lost",{"id":core.id,"p":core.p})
+					break
+	selected={}
+	sim.rebuild_links()
+	refresh()
+
+func gym_run():
+	if not gym_mode: return
+	if lab_tools: lab_tools.hint.text="Test running. Pause to place objects; Reset setup to repeat."
+	gym_tool={}
+	view.drag_preview=Vector2.INF
+	if sim.phase=="shop":
+		gym_setup={"cells":sim.cells.duplicate(true),"blood":sim.blood.duplicate(true),"blood_links":sim.blood_links.duplicate(true),"viruses":sim.viruses.duplicate(true),"next_id":sim.next_id,"rng":sim.rng.state}
+		var enemies=sim.viruses.duplicate(true)
+		sim.begin_battle()
+		sim.viruses=enemies
+		sim.spawn_queue=[]
+	paused=false
+	clock_accum=0
+	refresh()
+
+func gym_reset_setup():
+	if not gym_mode: return
+	if not gym_setup.is_empty():
+		sim.cells=gym_setup.cells.duplicate(true)
+		sim.blood=gym_setup.blood.duplicate(true)
+		sim.blood_links=gym_setup.blood_links.duplicate(true)
+		sim.viruses=gym_setup.viruses.duplicate(true)
+		sim.next_id=gym_setup.next_id
+		sim.rng.state=gym_setup.rng
+	sim.phase="shop"
+	sim.elapsed=0
+	sim.spawn_queue=[]
+	sim.particles=[]
+	sim.effects=[]
+	sim.events=[]
+	sim.blood_velocity={}
+	sim.round_losses={"viruses":0,"core":0,"cells":0}
+	paused=false
+	selected={}
+	gym_tool={}
+	sim.rebuild_links()
+	refresh()
+
+func gym_clear():
+	if not gym_mode: return
+	gym_setup={}
+	sim.cells=[]
+	sim.viruses=[]
+	gym_reset_setup()
+
+func gym_restore_core():
+	if not gym_mode: return
+	paused=sim.phase=="battle"
+	update_transport()
+	var fresh=Simulation.new()
+	fresh.reset(4242,12)
+	sim.blood=fresh.blood.duplicate(true)
+	sim.blood_links=fresh.blood_links.duplicate(true)
+	sim.blood_velocity={}
+
 func show_codex():
 	var col=clear_modal("Codex","Discover the cells and viruses under the microscope.")
 	button(col,"Cells · 27",show_catalog)
@@ -605,7 +787,7 @@ func cell_icon(key):
 func refresh():
 	stats.text="%d/%d " % [sim.cells.size(),sim.capacity()]
 	stats.tooltip_text="Immune cells / capacity"
-	phase_panel.visible=sim.phase!="battle"
+	phase_panel.visible=not gym_mode and sim.phase!="battle"
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" and results_stage=="forecast" else sim.round_no,sim.target_rounds]
 	var display_wave=preview_wave if sim.phase=="recap" and not preview_wave.is_empty() else sim.wave
 	incoming.text="[color=#fff6df][b]Incoming infection[/b][/color]\n"
@@ -617,7 +799,7 @@ func refresh():
 			incoming.text+="[color=#fff7e7]"+virus_glyph(entry.type)+" ×"+str(entry.count)+"[/color]\n"
 	layout_incoming.call_deferred()
 	var is_shop=sim.phase=="shop"
-	animate_dock(is_shop and not shop_collapsed)
+	animate_dock(is_shop and not shop_collapsed and not gym_mode)
 	shop_toggle.hide()
 	update_transport()
 	if not is_shop:
@@ -661,7 +843,7 @@ func refresh():
 	next_button.visible=pages>1
 	previous_button.disabled=shop_page==0
 	next_button.disabled=shop_page==pages-1
-	if not sim.reward_choices.is_empty() and not modal.visible: show_reward()
+	if not gym_mode and not sim.reward_choices.is_empty() and not modal.visible: show_reward()
 
 func add_offer(key,index,reward):
 	var d=sim.catalog[key]
@@ -731,6 +913,9 @@ func show_reward():
 			changed(),Vector2(335,40))
 
 func start_battle():
+	if gym_mode:
+		gym_run()
+		return
 	if sim.phase!="shop" or not sim.reward_choices.is_empty() or launch_remaining>0: return
 	paused=false
 	sim.release_blood()
@@ -790,7 +975,17 @@ func _input(event):
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
 		sim.release_blood()
 	if event is InputEventKey and event.pressed:
+		if event.keycode==KEY_F3:
+			lab_tools.debug_panel.visible=not lab_tools.debug_panel.visible
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode==KEY_ESCAPE:
+			if gym_mode:
+				gym_tool={}
+				if lab_tools: lab_tools.hint.text="Placement cancelled. Choose an object to place, or run the test."
+				view.drag_preview=Vector2.INF
+				get_viewport().set_input_as_handled()
+				return
 			if launch_remaining>0: return
 			if is_instance_valid(main_menu) and main_menu.visible:
 				if modal.visible: modal.hide()
@@ -825,6 +1020,9 @@ func _unhandled_input(event):
 		if event.button_index==MOUSE_BUTTON_LEFT:
 			var world=view.get_global_transform().affine_inverse()*screen
 			if event.pressed:
+				if gym_mode and not gym_tool.is_empty():
+					gym_place(world)
+					return
 				if not pending_offer.is_empty() and sim.phase=="shop":
 					buy_offer_at(pending_offer.index,pending_offer.reward,world)
 					return
@@ -847,7 +1045,7 @@ func _unhandled_input(event):
 							break
 				refresh()
 			else:
-				if dragging and not selected.is_empty():
+				if dragging and not selected.is_empty() and not gym_mode:
 					for c in sim.cells.duplicate():
 						if c.id!=selected.id and c.p.distance_to(selected.p)<35 and sim.compatible(c,selected):
 							if sim.merge(c,selected): selected=c; break
@@ -858,7 +1056,7 @@ func _unhandled_input(event):
 				dragging_blood=-1
 	if event is InputEventMouseMotion:
 		var world=view.get_global_transform().affine_inverse()*event.position
-		if not pending_offer.is_empty(): view.drag_preview=world
+		if not pending_offer.is_empty() or not gym_tool.is_empty(): view.drag_preview=world
 		if panning:
 			view.position+=event.position-pan_previous
 			pan_previous=event.position
@@ -871,6 +1069,7 @@ func _unhandled_input(event):
 			sim.move_blood(dragging_blood,world)
 
 func save_run():
+	if gym_mode: return
 	if sim.phase!="shop": return
 	var cell_data=[]
 	for c in sim.cells:
@@ -1242,7 +1441,7 @@ func layout_incoming():
 	incoming.custom_minimum_size.y=clampf(incoming.get_content_height(),44,580)
 	income_panel.size.y=incoming.custom_minimum_size.y+18
 	income_panel.position.y=(900-income_panel.size.y)*0.5
-	var show_panel=sim.phase=="shop"
+	var show_panel=sim.phase=="shop" and not gym_mode
 	var destination=-8.0 if show_panel else -220.0
 	if incoming_tween and incoming_tween.is_running(): incoming_tween.kill()
 	if show_panel: income_panel.show()

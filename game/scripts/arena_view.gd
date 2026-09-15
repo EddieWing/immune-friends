@@ -7,6 +7,7 @@ var show_ranges=true
 var time=0.0
 var playback_speed=1
 var staging=""
+var debug_geometry=false
 var warning_wave=[]
 var warning_sources=[]
 var warning_time=0.0
@@ -110,6 +111,19 @@ func _draw():
 			draw_circle(tip,8,Color("#f4df9d"))
 			var d=Vector2.RIGHT.rotated(selected.angle)
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
+	if debug_geometry:
+		for b in sim.blood:
+			if b.alive: draw_arc(b.p,13,0,TAU,32,Color("#1bdde0"),1,true)
+		for c in sim.cells:
+			if not c.alive: continue
+			if sim.catalog[c.key].behavior=="wall":
+				draw_set_transform(c.p,c.angle)
+				draw_rect(Rect2(-43,-13,86,26),Color("#f1b43f"),false,1)
+				draw_set_transform(Vector2.ZERO)
+			else: draw_arc(c.p,18,0,TAU,32,Color("#f1b43f"),1,true)
+		for v in sim.viruses:
+			draw_arc(v.p,10,0,TAU,32,Color("#ed7283"),1,true)
+			if v.get("emerging",false): draw_line(v.p,v.exit,Color("#ed7283"),1,true)
 	if drag_preview!=Vector2.INF:
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
 

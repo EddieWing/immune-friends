@@ -25,6 +25,7 @@ var tier = 1
 var xp = 0
 var frozen = false
 var phase = "shop"
+var gym_mode=false
 var next_id = 1
 var elapsed = 0.0
 var spawn_timer = 0.0
@@ -570,6 +571,7 @@ func update(delta):
 		v.jump=v.type=="jumper" and fmod(v.age+v.phase,3.5)>2.8
 		var destination=nearest_blood(v.p)
 		if destination.is_empty():
+			if gym_mode: continue
 			finish(false)
 			return
 		var target_pos=destination.p
@@ -650,6 +652,7 @@ func update(delta):
 					break
 	particles=particles.filter(func(p): return p.life>0)
 	viruses=viruses.filter(func(v): return v.alive)
+	if gym_mode: return
 	if elapsed>=float(rules.max_battle_seconds) and not viruses.is_empty():
 		# Explicit provisional resolution for an otherwise infinite freeze/stall.
 		for v in viruses:
