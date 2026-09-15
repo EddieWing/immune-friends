@@ -343,7 +343,7 @@ func spawn_virus(entry):
 	var hp=2.0 if entry.type=="seeker" else 1.0
 	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"alive":true,
 		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"jump":false,"phase":rng.randf()*TAU,
-		"emerging":true,"exit":exit})
+		"emerging":true,"exit":exit,"spawn_position":p})
 	next_id+=1
 
 func nearest_virus(p, reach=10000.0):

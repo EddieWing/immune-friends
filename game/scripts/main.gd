@@ -632,7 +632,7 @@ func leave_gym():
 	show_menu()
 
 func gym_place(p):
-	if not gym_mode or gym_tool.is_empty() or (sim.phase=="battle" and not paused): return
+	if gym_tool.is_empty() or (not gym_mode and not gym_tool.get("debug",false)) or sim.phase not in ["shop","battle"] or (sim.phase=="battle" and not paused): return
 	var kind=gym_tool.kind
 	if kind=="cell" and gym_tool.key=="__core":
 		var id=0
@@ -647,10 +647,18 @@ func gym_place(p):
 		c.hp*=c.rank
 		c.max_hp=c.hp
 		sim.cells.append(c)
+	elif kind=="source":
+		var lane=sim.infection_sources.size()
+		sim.infection_sources.append(p)
+		var entry={"type":gym_tool.key,"count":gym_tool.count,"lane":lane}
+		sim.wave.append(entry)
+		if sim.phase=="battle":
+			for i in range(entry.count): sim.spawn_queue.append({"type":entry.type,"lane":lane})
 	elif kind=="virus":
 		sim.spawn_virus({"type":gym_tool.key,"lane":0})
 		var v=sim.viruses.back()
 		v.p=p
+		v.spawn_position=p
 		v.exit=p
 		v.emerging=false
 	elif kind=="remove":
@@ -672,6 +680,10 @@ func gym_place(p):
 					core.alive=false
 					sim.record("blood_lost",{"id":core.id,"p":core.p})
 					break
+	if gym_tool.get("debug",false):
+		gym_tool={}
+		view.drag_preview=Vector2.INF
+		lab_tools.debug_hint.text="Placed. Resume when ready."
 	selected={}
 	sim.rebuild_links()
 	refresh()
@@ -682,17 +694,17 @@ func gym_run():
 	gym_tool={}
 	view.drag_preview=Vector2.INF
 	if sim.phase=="shop":
-		gym_setup={"cells":sim.cells.duplicate(true),"blood":sim.blood.duplicate(true),"blood_links":sim.blood_links.duplicate(true),"viruses":sim.viruses.duplicate(true),"next_id":sim.next_id,"rng":sim.rng.state}
+		gym_setup={"cells":sim.cells.duplicate(true),"blood":sim.blood.duplicate(true),"blood_links":sim.blood_links.duplicate(true),"viruses":sim.viruses.duplicate(true),"next_id":sim.next_id,"rng":sim.rng.state,"wave":sim.wave.duplicate(true),"sources":sim.infection_sources.duplicate()}
 		var enemies=sim.viruses.duplicate(true)
 		sim.begin_battle()
 		sim.viruses=enemies
-		sim.spawn_queue=[]
 	paused=false
 	clock_accum=0
 	refresh()
 
 func gym_reset_setup():
 	if not gym_mode: return
+	view.diagnostics.tracks.clear()
 	if not gym_setup.is_empty():
 		sim.cells=gym_setup.cells.duplicate(true)
 		sim.blood=gym_setup.blood.duplicate(true)
@@ -700,6 +712,8 @@ func gym_reset_setup():
 		sim.viruses=gym_setup.viruses.duplicate(true)
 		sim.next_id=gym_setup.next_id
 		sim.rng.state=gym_setup.rng
+		sim.wave=gym_setup.wave.duplicate(true)
+		sim.infection_sources=gym_setup.sources.duplicate()
 	sim.phase="shop"
 	sim.elapsed=0
 	sim.spawn_queue=[]
@@ -719,7 +733,19 @@ func gym_clear():
 	gym_setup={}
 	sim.cells=[]
 	sim.viruses=[]
+	sim.wave=[]
 	gym_reset_setup()
+
+func debug_replenish_core():
+	if browsing_from_main_menu() or sim.phase not in ["shop","battle"]: return
+	var restored=0
+	for i in range(sim.blood.size()):
+		if not sim.blood[i].alive:
+			sim.blood[i].alive=true
+			sim.blood_velocity.erase(i)
+			restored+=1
+	lab_tools.debug_hint.text="Restored %d lost core cells." % restored
+	refresh()
 
 func gym_restore_core():
 	if not gym_mode: return
@@ -989,7 +1015,7 @@ func _input(event):
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode==KEY_ESCAPE:
-			if gym_mode:
+			if gym_mode or not gym_tool.is_empty():
 				gym_tool={}
 				if lab_tools: lab_tools.hint.text="Placement cancelled. Choose an object to place, or run the test."
 				view.drag_preview=Vector2.INF
@@ -1029,7 +1055,7 @@ func _unhandled_input(event):
 		if event.button_index==MOUSE_BUTTON_LEFT:
 			var world=view.get_global_transform().affine_inverse()*screen
 			if event.pressed:
-				if gym_mode and not gym_tool.is_empty():
+				if not gym_tool.is_empty():
 					gym_place(world)
 					return
 				if not pending_offer.is_empty() and sim.phase=="shop":

@@ -10,6 +10,10 @@ var rank: OptionButton
 var cell_keys=[]
 var virus_keys=["basic","wave","jumper","hungry","swarmer","seeker","avoider"]
 var clock=0.0
+var debug_hint: Label
+var debug_cells: OptionButton
+var debug_viruses: OptionButton
+var debug_count: SpinBox
 func _ready():
  mouse_filter=Control.MOUSE_FILTER_IGNORE
  theme=game.ui.theme
@@ -52,7 +56,7 @@ func _ready():
  var debug_theme=Theme.new()
  debug_theme.default_font=preload("res://assets/fonts/CascadiaMono.ttf")
  debug_theme.default_font_size=13
- for type in ["Label","Button"]:
+ for type in ["Label","Button","CheckButton","OptionButton","SpinBox","LineEdit"]:
   for state in ["font_color","font_hover_color","font_pressed_color","font_focus_color"]:
    debug_theme.set_color(state,type,Color("#e0f5e9"))
   debug_theme.set_color("font_disabled_color",type,Color("#65766c"))
@@ -60,20 +64,53 @@ func _ready():
   var fill=Color("#101813") if state=="normal" else Color("#21362a")
   if state=="focus": fill=Color.TRANSPARENT
   var skin=game.style(fill,2,Color("#446454"))
-  debug_theme.set_stylebox(state,"Button",skin)
+  for control in ["Button","OptionButton","LineEdit"]: debug_theme.set_stylebox(state,control,skin)
  debug_panel.theme=debug_theme
  var frame=game.style(Color.BLACK,2,Color("#547764"))
  frame.set_border_width_all(1)
  debug_panel.add_theme_stylebox_override("panel",frame)
  var debug=VBoxContainer.new()
  debug.add_theme_constant_override("separation",8)
- debug_panel.add_child(debug)
+ var scroll=ScrollContainer.new()
+ scroll.custom_minimum_size=Vector2(370,760)
+ scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+ debug_panel.add_child(scroll)
+ debug.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+ scroll.add_child(debug)
  readout=Label.new()
  readout.custom_minimum_size=Vector2(346,0)
  readout.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
  readout.add_theme_font_size_override("font_size",14)
  debug.add_child(readout)
- game.button(debug,"Collision outlines / spawn paths",func(): game.view.debug_geometry=not game.view.debug_geometry)
+ for entry in [["Colliders", "debug_geometry"], ["Travel paths", "debug_paths"], ["Movement vectors", "debug_vectors"]]:
+  var toggle=CheckButton.new()
+  toggle.text=entry[0]
+  toggle.button_pressed=game.view.get(entry[1])
+  toggle.toggled.connect(func(value): game.view.set(entry[1],value))
+  debug.add_child(toggle)
+ debug_cells=OptionButton.new()
+ for key in cell_keys: debug_cells.add_item("Core cell" if key=="__core" else game.sim.catalog[key].name)
+ debug_cells.select(1)
+ debug.add_child(debug_cells)
+ game.button(debug,"Spawn cell at click",func(): debug_arm("cell",cell_keys[debug_cells.selected]))
+ debug_viruses=OptionButton.new()
+ for key in virus_keys: debug_viruses.add_item(key.capitalize()+" Virus")
+ debug.add_child(debug_viruses)
+ var row=HBoxContainer.new()
+ debug.add_child(row)
+ debug_count=SpinBox.new()
+ debug_count.min_value=1
+ debug_count.max_value=100
+ debug_count.value=5
+ debug_count.tooltip_text="Viruses released by the new source."
+ row.add_child(debug_count)
+ game.button(row,"Spawn source",func(): debug_arm("source",virus_keys[debug_viruses.selected]))
+ game.button(debug,"Replenish lost core cells",game.debug_replenish_core)
+ debug_hint=Label.new()
+ debug_hint.custom_minimum_size=Vector2(346,0)
+ debug_hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+ debug_hint.text="Select a type, then click the field. Esc cancels."
+ debug.add_child(debug_hint)
  game.button(debug,"Pause / Resume",func():
   if game.sim.phase=="battle" and game.launch_remaining==0:
    game.paused=not game.paused
@@ -83,6 +120,15 @@ func _ready():
  game.button(debug,"+10 protein (current session)",func(): game.sim.money+=10; game.refresh())
  game.button(debug,"Close · F3",debug_panel.hide)
  debug_panel.hide()
+func debug_arm(kind,key):
+ if game.browsing_from_main_menu() or game.launch_remaining>0 or game.sim.phase not in ["shop","battle"]:
+  debug_hint.text="Enter preparation or infection first."
+  return
+ game.paused=game.sim.phase=="battle"
+ game.update_transport()
+ game.cancel_placement()
+ game.gym_tool={"kind":kind,"key":key,"rank":1,"debug":true,"count":int(debug_count.value)}
+ debug_hint.text="Click the field to place "+key.replace("_"," ")+". Esc cancels; resume manually."
 func arm(kind,key):
  if game.sim.phase=="battle" and not game.paused:
   hint.text="Pause the test before placing or removing objects."

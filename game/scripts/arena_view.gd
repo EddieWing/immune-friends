@@ -9,6 +9,9 @@ var time=0.0
 var playback_speed=1
 var staging=""
 var debug_geometry=false
+var debug_paths=false
+var debug_vectors=false
+var diagnostics=preload("res://scripts/debug_overlay.gd").new()
 var warning_wave=[]
 var warning_sources=[]
 var warning_time=0.0
@@ -20,6 +23,7 @@ var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
 
 func _process(delta):
+	if sim!=null: diagnostics.update(sim,delta)
 	if sim!=null: presentation.update(sim,delta)
 	warning_time+=delta
 	if sim!=null:
@@ -100,19 +104,7 @@ func _draw():
 			var d=Vector2.RIGHT.rotated(selected.angle)
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
 	presentation.draw_events(self)
-	if debug_geometry:
-		for b in sim.blood:
-			if b.alive: draw_arc(b.p,13,0,TAU,32,Color("#1bdde0"),1,true)
-		for c in sim.cells:
-			if not c.alive: continue
-			if sim.catalog[c.key].behavior=="wall":
-				draw_set_transform(c.p,c.angle)
-				draw_rect(Rect2(-43,-13,86,26),Color("#f1b43f"),false,1)
-				draw_set_transform(Vector2.ZERO)
-			else: draw_arc(c.p,18,0,TAU,32,Color("#f1b43f"),1,true)
-		for v in sim.viruses:
-			draw_arc(v.p,10,0,TAU,32,Color("#ed7283"),1,true)
-			if v.get("emerging",false): draw_line(v.p,v.exit,Color("#ed7283"),1,true)
+	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
 
