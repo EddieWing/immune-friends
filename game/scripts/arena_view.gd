@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var virus_behavior=preload("res://scripts/virus_behavior_presentation.gd").new()
 var reactions=preload("res://scripts/reaction_presentation.gd").new()
 var sources=preload("res://scripts/source_presentation.gd").new()
 var attacks=preload("res://scripts/attack_presentation.gd").new()
@@ -31,6 +32,7 @@ func _process(delta):
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)
 		reactions.update(sim,delta)
+		virus_behavior.update(sim,delta)
 		sources.update(sim,warning_wave if staging=="warning" else sim.wave,warning_sources if staging=="warning" else sim.infection_sources,staging,delta)
 	warning_time+=delta
 	if sim!=null:
@@ -81,6 +83,7 @@ func _draw():
 			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-6),p.p+Vector2(5,4),p.p+Vector2(-5,4)]),Color("#efc3d8"))
 		else:
 			draw_circle(p.p,3.5,Color("#ccb6e2"))
+	virus_behavior.draw_links(self)
 	for v in sim.viruses:
 		if v.alive: draw_virus(v)
 	for e in sim.effects:
@@ -102,6 +105,7 @@ func _draw():
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
 	presentation.draw_events(self)
 	reactions.draw(self)
+	virus_behavior.draw_effects(self)
 	attacks.draw_focus(self)
 	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
@@ -188,6 +192,7 @@ func capsule_style(color):
 
 func draw_virus(v):
 	var reaction=reactions.pose("virus",v.id)
+	reaction.squash*=virus_behavior.scale_of(v.id)
 	var windup=attacks.jumper_pose(v)
 	var recovery=attacks.jumper_recovery(v)
 	var stretch=0.14 if v.jump else -recovery*0.1
@@ -195,8 +200,13 @@ func draw_virus(v):
 	var rendered=v.duplicate()
 	rendered.p=Vector2.ZERO
 	rendered.hurt=reaction.hurt
+	rendered.look=virus_behavior.looks.get(v.id,Vector2.ZERO)
+	rendered.feeding=virus_behavior.feeding.has(v.id)
 	preload("res://scripts/virus_visuals.gd").draw(self,rendered)
 	draw_set_transform(Vector2.ZERO)
+	if v.get("visual_avoiding",false) and v.get("freeze",0)<=0:
+		var heading=v.get("visual_heading",Vector2.ZERO).angle()
+		draw_arc(v.p,19,heading-0.4,heading+0.4,12,Color("#d6b2e5"),1.5,true)
 	if windup>0:
 		draw_arc(v.p,21,PI*0.1,PI*0.9,20,Color(0.58,0.27,0.66,windup),2,true)
 

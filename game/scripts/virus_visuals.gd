@@ -29,9 +29,10 @@ static func draw(canvas,v):
 			canvas.draw_line(eye+Vector2(-2,-1),eye+Vector2(2,1),ink,1.5,true)
 		else:
 			canvas.draw_circle(eye,2.1,Color("#fff0cd"))
-			canvas.draw_circle(eye+Vector2(-side*0.4,0.3),1.0,ink)
+			canvas.draw_circle(eye+Vector2(-side*0.4,0.3)+v.get("look",Vector2.ZERO)*1.1,1.0,ink)
 		canvas.draw_line(p+Vector2(side*7,-5),p+Vector2(side*2,-3),ink,1.8,true)
-	canvas.draw_arc(p+Vector2(0,7),3.2,PI*1.15,PI*1.85,12,ink,1.5,true)
+	if v.get("feeding",false): canvas.draw_circle(p+Vector2(0,6),3,ink)
+	else: canvas.draw_arc(p+Vector2(0,7),3.2,PI*1.15,PI*1.85,12,ink,1.5,true)
 	if v.get("freeze",0)>0:
 		for i in range(6):
 			var d=Vector2.from_angle(i*TAU/6)

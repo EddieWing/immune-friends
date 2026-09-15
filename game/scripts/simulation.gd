@@ -607,21 +607,29 @@ func update(delta):
 			finish(false)
 			return
 		var target_pos=destination.p
+		var target_key="core:"+str(destination.id)
 		if v.type=="seeker":
 			var nearest=125.0
 			for c in cells:
 				if c.alive and c.p.distance_to(v.p)<nearest:
 					target_pos=c.p
+					target_key="cell:"+str(c.id)
 					nearest=c.p.distance_to(v.p)
+		if v.type=="seeker" and v.get("visual_target","")!=target_key:
+			record("virus_target",{"id":v.id,"p":v.p,"target":target_pos})
+		v.visual_target=target_key
 		var dir=v.p.direction_to(target_pos)
 		var speed=float(rules.virus_speed)
 		if v.type=="wave": dir=dir.rotated(sin(v.age*3+v.phase)*0.8)
 		if v.type=="jumper": speed=130 if v.jump else 20
+		v.visual_avoiding=false
 		if v.type=="avoider":
 			for c in cells:
 				if c.alive and c.p.distance_to(v.p)<80:
 					dir=(dir+(v.p-c.p).normalized()*1.8).normalized()
+					v.visual_avoiding=true
 		if v.type=="swarmer":
+			var old_host=v.get("host",-1)
 			var host={}
 			for other in viruses:
 				if other.id==v.get("host",-1) and other.alive: host=other
@@ -635,6 +643,9 @@ func update(delta):
 						dir=v.p.direction_to(other.p)
 						if other.p.distance_to(v.p)<22: v.host=other.id
 						break
+			if old_host!=v.get("host",-1):
+				record("virus_attachment",{"id":v.id,"p":v.p,"old_host":old_host,"host":v.get("host",-1)})
+		v.visual_heading=dir
 		if v.freeze<=0: v.p+=dir*speed*movement_delta
 		if v.type=="hungry":
 			for p in particles:
@@ -642,6 +653,7 @@ func update(delta):
 					p.life=0
 					v.hp+=1
 					v.peak_hp=maxf(v.get("peak_hp",v.hp),v.hp)
+					record("virus_fed",{"id":v.id,"p":v.p,"from":p.p,"hp":v.hp})
 		for c in cells:
 			if not c.alive or v.jump: continue
 			if contains_cell(c,v.p,10):
