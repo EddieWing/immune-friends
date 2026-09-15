@@ -322,12 +322,12 @@ func build_ui():
 	term_text.fit_content=true
 	term_panel.add_child(term_text)
 	term_panel.hide()
-	income_panel=panel(ui,Rect2(-220,350,204,0),Color("#eb7b6a"))
+	income_panel=panel(ui,Rect2(-220,350,146,0),Color("#eb7b6a"))
 	incoming=RichTextLabel.new()
 	incoming.bbcode_enabled=true
 	incoming.add_theme_font_override("normal_font",symbol_font)
 	incoming.add_theme_font_override("bold_font",symbol_font)
-	incoming.custom_minimum_size=Vector2(180,0)
+	incoming.custom_minimum_size=Vector2(112,0)
 	incoming.scroll_active=true
 	income_panel.get_theme_stylebox("panel").content_margin_left=22
 	income_panel.add_child(incoming)
@@ -824,13 +824,13 @@ func refresh():
 	phase_panel.visible=not gym_mode and sim.phase!="battle"
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" and results_stage=="forecast" else sim.round_no,sim.target_rounds]
 	var display_wave=preview_wave if sim.phase=="recap" and not preview_wave.is_empty() else sim.wave
-	incoming.text="[color=#fff6df][b]Infection[/b][/color]\n"
+	incoming.text="[color=#fff6df][b]Infection[/b][/color]"
 	for lane in range(3):
 		var items=display_wave.filter(func(e): return e.lane==lane)
 		if items.is_empty(): continue
-		incoming.text+="\n[color=#663e4a]Source "+str(lane+1)+"[/color]\n"
+		incoming.text+="\n[color=#663e4a]Source "+str(lane+1)+"[/color]"
 		for entry in items:
-			incoming.text+="[color=#fff7e7]"+virus_glyph(entry.type)+" ×"+str(entry.count)+"[/color]\n"
+			incoming.text+="\n[color=#fff7e7]"+virus_glyph(entry.type)+" ×"+str(entry.count)+"[/color]"
 	layout_incoming.call_deferred()
 	var is_shop=sim.phase=="shop"
 	animate_dock(is_shop and not shop_collapsed and not gym_mode)
