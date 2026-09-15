@@ -381,6 +381,24 @@ func shoot(c, direction, origin=Vector2.INF, split=false):
 		"life":4.0,"r":radius,"owner":c.id,"split":split})
 	effect(p,Color(catalog[c.key].color),"",10)
 
+func bond_path(start_id,end_id):
+	# Read-only provenance for a transfer already chosen by network().
+	var queue=[start_id]
+	var paths={start_id:[cell_by_id(start_id).p]}
+	while not queue.is_empty():
+		var id=queue.pop_front()
+		if id==end_id: return paths[id]
+		for link in links:
+			var next=-1
+			if link.a==id: next=link.b
+			elif link.b==id: next=link.a
+			if next<0 or paths.has(next): continue
+			var cell=cell_by_id(next)
+			if cell.is_empty(): continue
+			paths[next]=paths[id]+[cell.p]
+			queue.append(next)
+	return []
+
 func heal(c, amount):
 	if not c.alive: return
 	c.hp+=amount
@@ -388,17 +406,18 @@ func heal(c, amount):
 	effect(c.p,Color("#a3e4b6"),"+1",24)
 	record("heal",{"id":c.id,"hp":c.hp})
 
-func damage_cell(c, amount, redirected=false):
+func damage_cell(c, amount, redirected=false, source={}):
 	if not c.alive: return
 	if not redirected:
 		for id in network(c.id):
 			var guard=cell_by_id(id)
 			if guard.id!=c.id and guard.key=="bodyguard" and guard.alive:
-				damage_cell(guard,amount,true)
+				record("transfer",{"path":bond_path(c.id,guard.id)})
+				damage_cell(guard,amount,true,source)
 				return
 	c.hp-=amount
 	c.flash=0.25
-	record("damage",{"id":c.id,"hp":c.hp})
+	record("damage",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"source_kind":source.get("kind","unknown"),"source_id":source.get("id",-1),"from":source.get("p",c.p)})
 	if c.key=="impact_wall":
 		var dir=Vector2.RIGHT.rotated(c.angle)
 		shoot(c,dir,c.p+dir*42)
@@ -416,7 +435,7 @@ func damage_cell(c, amount, redirected=false):
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<reach:
 				other.p+=(other.p-c.p).normalized()*28
-				damage_cell(other,float(rules.bomb_damage))
+				damage_cell(other,float(rules.bomb_damage),false,{"kind":"cell","id":c.id,"p":c.p})
 	if c.key=="bandage":
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<range_of(c):
@@ -617,7 +636,7 @@ func update(delta):
 				v.p+=away*speed*movement_delta
 				if v.cool<=0:
 					v.cool=float(rules.contact_interval)
-					damage_cell(c,float(rules.contact_damage))
+					damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
 					damage_virus(v,float(rules.contact_damage))
 		if v.alive and v.p.distance_to(destination.p)<19:
 			destination.alive=false
@@ -672,6 +691,7 @@ func update(delta):
 func conduct(c):
 	# Provisional graph: objects within charge_range conduct one charge per victim.
 	var points=[c.p]
+	var paths=[[c.p]]
 	var seen={}
 	var cursor=0
 	while cursor<points.size() and cursor<200:
@@ -682,17 +702,20 @@ func conduct(c):
 				c.charge-=1
 				effects.append({"p":p,"end":v.p,"color":Color("#fff3a9"),"text":"","r":0,"life":0.35,"max":0.35})
 				damage_virus(v,999)
+				record("discharge",{"path":paths[cursor-1]+[v.p],"source":c.id,"target":v.id})
 				record("charge_kill",{"source":c.id})
 				return
 		for other in cells:
 			if other.alive and not seen.has(other.id) and p.distance_to(other.p)<float(rules.charge_range):
 				seen[other.id]=true
 				points.append(other.p)
+				paths.append(paths[cursor-1]+[other.p])
 		for i in range(particles.size()):
 			var particle=particles[i]
 			if particle.life>0 and not seen.has(-i-1) and p.distance_to(particle.p)<float(rules.charge_range):
 				seen[-i-1]=true
 				points.append(particle.p)
+				paths.append(paths[cursor-1]+[particle.p])
 
 func next_round():
 	if phase!="recap": return

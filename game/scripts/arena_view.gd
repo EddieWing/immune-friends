@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var presentation=preload("res://scripts/battle_presentation.gd").new()
 var blood_faces=preload("res://scripts/blood_faces.gd").new()
 var visuals
 var selected_id=-1
@@ -19,6 +20,7 @@ var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
 
 func _process(delta):
+	if sim!=null: presentation.update(sim,delta)
 	warning_time+=delta
 	if sim!=null:
 		if arrival_sim_seed!=sim.seed_value or arrival_round!=sim.round_no:
@@ -65,21 +67,7 @@ func _draw():
 			draw_range_ring(selected.p,radius,Color("#245a70"))
 		if selected.key=="orbiter" and show_ranges:
 			draw_range_ring(Vector2.ZERO,maxf(100,selected.p.length()),Color("#794e96"),true)
-	for l in sim.links:
-		var a=sim.cell_by_id(l.a)
-		var b=sim.cell_by_id(l.b)
-		if not a.alive or not b.alive: continue
-		var dir=a.p.direction_to(b.p)
-		var p=a.p+dir*14
-		var q=b.p-dir*14
-		var mid=(p+q)*0.5
-		var curve=dir.orthogonal()*sin(time*2+l.a)*3
-		draw_line(p,mid+curve,Color("#30454f"),10,true)
-		draw_line(mid+curve,q,Color("#30454f"),10,true)
-		draw_line(p,mid+curve,Color(sim.catalog[a.key].color).lightened(0.12),6,true)
-		draw_line(mid+curve,q,Color(sim.catalog[b.key].color).lightened(0.12),6,true)
-		draw_circle(mid+curve,6,Color("#f5dfcb"))
-		draw_arc(mid+curve,6,-PI/2,PI/2,12,Color("#998a87"),1,true)
+	presentation.draw_bonds(self,"immune")
 	draw_blood_cluster()
 	for c in sim.cells:
 		if c.alive: draw_cell(c)
@@ -111,6 +99,7 @@ func _draw():
 			draw_circle(tip,8,Color("#f4df9d"))
 			var d=Vector2.RIGHT.rotated(selected.angle)
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
+	presentation.draw_events(self)
 	if debug_geometry:
 		for b in sim.blood:
 			if b.alive: draw_arc(b.p,13,0,TAU,32,Color("#1bdde0"),1,true)
@@ -246,7 +235,6 @@ func draw_ink_source(center,seed):
 
 func draw_blood_cluster():
 	var occupied={}
-	var grips=[]
 	for link in sim.blood_links:
 		var a=sim.blood[link.a]
 		var b=sim.blood[link.b]
@@ -259,7 +247,6 @@ func draw_blood_cluster():
 		if occupied.has(key_a) or occupied.has(key_b): continue
 		occupied[key_a]=true
 		occupied[key_b]=true
-		grips.append({"a":a.p,"b":b.p,"sa":slot_a,"sb":slot_b})
 	for b in sim.blood:
 		if not b.alive: continue
 		draw_circle(b.p+Vector2(1,2),12,Color(0.05,0.13,0.17,0.22))
@@ -277,15 +264,6 @@ func draw_blood_cluster():
 			var center=b.p+Vector2.from_angle(slot*TAU/6)*10.8
 			draw_circle(center,2.2,Color("#b96b82"))
 			draw_circle(center,1.5,Color("#f3b0b8"))
-	for grip in grips:
-		var start=grip.a+Vector2.from_angle(grip.sa*TAU/6)*9.5
-		var end=grip.b+Vector2.from_angle(grip.sb*TAU/6)*9.5
-		var middle=(grip.a+grip.b)*0.5
-		draw_line(start,middle,Color("#ad647d"),4.2,true)
-		draw_line(middle,end,Color("#ad647d"),4.2,true)
-		draw_line(start,middle,Color("#f2acb8"),2.6,true)
-		draw_line(middle,end,Color("#f2acb8"),2.6,true)
-		draw_circle(middle,2.3,Color("#f8c4c8"))
-		draw_arc(middle,1.5,-PI/2,PI/2,8,Color("#ad647d"),0.7,true)
+	presentation.draw_bonds(self,"core")
 	for b in sim.blood:
 		if b.alive: blood_faces.draw(self,b,time)
