@@ -6,10 +6,32 @@ var selected_id=-1
 var show_ranges=true
 var time=0.0
 var playback_speed=1
+var staging=""
+var warning_wave=[]
+var warning_sources=[]
+var warning_time=0.0
+var arrivals={}
+var known_cells={}
+var arrival_sim_seed=-1
+var arrival_round=-1
 var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
 
 func _process(delta):
+	warning_time+=delta
+	if sim!=null:
+		if arrival_sim_seed!=sim.seed_value or arrival_round!=sim.round_no:
+			known_cells.clear()
+			arrivals.clear()
+			arrival_sim_seed=sim.seed_value
+			arrival_round=sim.round_no
+			for c in sim.cells: known_cells[c.id]=true
+		for c in sim.cells:
+			if not known_cells.has(c.id) and sim.phase=="shop": arrivals[c.id]=0.0
+			known_cells[c.id]=true
+		for id in arrivals.keys():
+			arrivals[id]+=delta
+			if arrivals[id]>0.65: arrivals.erase(id)
 	if sim!=null: blood_faces.update(sim,delta)
 	time+=delta*(playback_speed if sim!=null and sim.phase=="battle" else 1)
 	queue_redraw()
@@ -20,16 +42,19 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 func _draw():
 	if sim==null: return
 	var drawn_lanes=[]
-	for entry in sim.wave:
+	var shown_wave=warning_wave if staging=="warning" else sim.wave
+	var shown_sources=warning_sources if staging=="warning" else sim.infection_sources
+	for entry in shown_wave:
 		if entry.lane in drawn_lanes: continue
 		drawn_lanes.append(entry.lane)
-		var start=sim.infection_sources[entry.lane]
+		var start=shown_sources[entry.lane]
 		var end=sim.source_center
 		for n in range(14):
 			var a=start.lerp(end,n/15.0)
 			var b=start.lerp(end,(n+0.4)/15.0)
 			draw_line(a,b,Color(0.76,0.65,0.84,0.2),2,true)
 		draw_ink_source(start,entry.lane)
+		if staging=="warning": draw_warning(start,entry.lane)
 	# Range underneath bodies and hands.
 	var selected=sim.cell_by_id(selected_id)
 	if not selected.is_empty() and selected.alive:
@@ -88,16 +113,20 @@ func _draw():
 	if drag_preview!=Vector2.INF:
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
 
-func face(p, factor, id, hurt):
+func face(p, factor, id, hurt, look=Vector2.ZERO):
 	var blink=fmod(time+id*0.71,4.8)<0.14
 	for x in [-6,6]:
 		var eye=p+Vector2(x,-2)*factor
-		if blink or hurt:
+		if blink or hurt or staging=="aftermath":
 			draw_line(eye+Vector2(-2,0)*factor,eye+Vector2(2,0)*factor,Color("#33434c"),1.8,true)
 		else:
-			draw_circle(eye,2.0*factor,Color("#33434c"))
-			draw_circle(eye+Vector2(-0.5,-0.5)*factor,0.55*factor,Color("#fff7e6"))
-	draw_arc(p+Vector2(0,1)*factor,3.5*factor,0.15,PI-0.15,12,Color("#6c5260"),1.4,true)
+			draw_circle(eye+look,2.0*factor,Color("#33434c"))
+			draw_circle(eye+look+Vector2(-0.5,-0.5)*factor,0.55*factor,Color("#fff7e6"))
+	if staging=="launch":
+		draw_line(p+Vector2(-3,4)*factor,p+Vector2(3,4)*factor,Color("#6c5260"),1.4,true)
+	elif staging=="aftermath" and (sim.round_losses.core>0 or sim.round_losses.cells>0):
+		draw_line(p+Vector2(-3,5)*factor,p+Vector2(3,5)*factor,Color("#6c5260"),1.2,true)
+	else: draw_arc(p+Vector2(0,1)*factor,3.5*factor,0.15,PI-0.15,12,Color("#6c5260"),1.4,true)
 	for x in [-11,11]:
 		draw_circle(p+Vector2(x,3)*factor,2.6*factor,Color(0.95,0.51,0.59,0.38))
 
@@ -105,6 +134,8 @@ func draw_cell(c):
 	var d=sim.catalog[c.key]
 	var color=Color(d.color)
 	var pulse=1+sin(time*2+c.id)*0.035
+	if staging=="launch": pulse=0.97
+	if arrivals.has(c.id): pulse*=lerpf(0.55,1.0,smoothstep(0,0.4,arrivals[c.id]))
 	var p=c.p
 	var wall=d.behavior=="wall"
 	var texture=visuals.body(c.key,d)
@@ -114,7 +145,19 @@ func draw_cell(c):
 	draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
 	draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
 	draw_set_transform(Vector2.ZERO)
-	face(p,0.95,c.id,c.flash>0)
+	var look=Vector2.ZERO
+	if sim.phase=="shop":
+		var nearest={}
+		var distance=120.0
+		for other in sim.cells:
+			if other.id!=c.id and other.alive and p.distance_to(other.p)<distance:
+				nearest=other
+				distance=p.distance_to(other.p)
+		if not nearest.is_empty(): look=p.direction_to(nearest.p)*1.3
+	face(p,0.95,c.id,c.flash>0,look)
+	if arrivals.has(c.id):
+		var arrival=arrivals[c.id]/0.65
+		draw_arc(p,20+arrival*22,0,TAU,40,Color(0.8,1,1,1-arrival),1.5,true)
 	if c.key=="bandage":
 		draw_line(p+Vector2(-8,-12),p+Vector2(8,-12),Color("#fff7df"),5,true)
 	if c.key=="bank":
@@ -154,6 +197,20 @@ func draw_range_ring(center,radius,color,dashed=false):
 			draw_arc(center,radius,start,start+TAU/48.0*0.62,8,color,2.5/zoom,true)
 	else:
 		draw_arc(center,radius,0,TAU,segments,color,2.5/zoom,true)
+
+func draw_warning(center,lane):
+	# These are forecast markers only: no virus actors or collision bodies exist yet.
+	for ring in range(3):
+		var progress=fmod(warning_time*0.45+ring/3.0,1.0)
+		draw_arc(center,38+progress*48,0,TAU,64,Color(0.76,0.92,1,(1-progress)*0.55),2,true)
+	text_at(center+Vector2(-30,-66),"SOURCE %d" % (lane+1),12,Color("#365b70"))
+	var entries=warning_wave.filter(func(e): return e.lane==lane)
+	for i in range(entries.size()):
+		var entry=entries[i]
+		var marker=center+Vector2((i-(entries.size()-1)*0.5)*46,55)
+		draw_circle(marker,20,Color(0.82,0.91,0.96,0.7))
+		preload("res://scripts/virus_visuals.gd").draw(self,{"p":marker,"type":entry.type,"jump":false,"tag":0,"hp":1})
+		text_at(marker+Vector2(-8,32),str(entry.count),13,Color("#365b70"))
 
 func draw_ink_source(center,seed):
 	for layer in range(7):

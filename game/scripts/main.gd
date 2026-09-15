@@ -68,7 +68,11 @@ var showing_recap=false
 var results_pending=false
 var results_delay=0.0
 var results_stage=""
-const RESULTS_PAUSE=0.65
+const RESULTS_PAUSE=1.25
+const LAUNCH_SECONDS=0.9
+var launch_remaining=0.0
+var preview_sources=[]
+var preview_center=Vector2.ZERO
 var shade: ColorRect
 var speed_buttons=[]
 var playback_speed=1
@@ -412,6 +416,7 @@ func fit_modal(window):
 	if not is_instance_valid(window): return
 	window.size.y=window.get_combined_minimum_size().y
 	window.position=(Vector2(1440,900)-window.size)*0.5
+	if window.get_meta("field_report",false): window.position=Vector2(40,110)
 
 func show_menu():
 	if entering_game: return
@@ -471,6 +476,10 @@ func enter_microscope(action: Callable):
 		if tutorial: show_help())
 
 func new_run(rounds):
+	launch_remaining=0.0
+	view.staging=""
+	view.warning_wave=[]
+	view.warning_sources=[]
 	results_pending=false
 	results_stage=""
 	cancel_placement()
@@ -626,7 +635,7 @@ func refresh():
 		view.selected_id=selected.id
 	sell_button.disabled=selected.is_empty() or not is_shop
 	dock_play.disabled=not is_shop or not sim.reward_choices.is_empty()
-	start_button.disabled=sim.phase not in ["shop","battle"] or not sim.reward_choices.is_empty()
+	start_button.disabled=launch_remaining>0 or sim.phase not in ["shop","battle"] or not sim.reward_choices.is_empty()
 	xp_button.disabled=sim.money<3 or sim.tier>=4 or not is_shop
 	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 protein" % [sim.tier,sim.xp]
 	refresh_button.disabled=sim.money<1 or not is_shop
@@ -722,11 +731,14 @@ func show_reward():
 			changed(),Vector2(335,40))
 
 func start_battle():
+	if sim.phase!="shop" or not sim.reward_choices.is_empty() or launch_remaining>0: return
 	paused=false
 	sim.release_blood()
 	cancel_placement()
 	save_run()
 	sim.begin_battle()
+	launch_remaining=LAUNCH_SECONDS
+	view.staging="launch"
 	beep(420,0.16)
 	dragging=false
 	rotating=false
@@ -758,6 +770,7 @@ func _process(delta):
 			results_pending=true
 			results_delay=RESULTS_PAUSE
 			results_stage="settling"
+			view.staging="aftermath"
 			modal.hide()
 	advance_results(delta)
 	if not modal.visible:
@@ -778,6 +791,7 @@ func _input(event):
 		sim.release_blood()
 	if event is InputEventKey and event.pressed:
 		if event.keycode==KEY_ESCAPE:
+			if launch_remaining>0: return
 			if is_instance_valid(main_menu) and main_menu.visible:
 				if modal.visible: modal.hide()
 				elif not entering_game: enter_microscope(func(): pass)
@@ -798,7 +812,7 @@ func _input(event):
 			elif detail_key!="" and detail_panel.visible: detail.text=description(detail_key,true)
 
 func _unhandled_input(event):
-	if modal.visible: return
+	if modal.visible or launch_remaining>0: return
 	if event is InputEventMouseButton:
 		var screen=event.position
 		if event.button_index==MOUSE_BUTTON_RIGHT:
@@ -876,6 +890,10 @@ func save_run():
 	if file: file.store_string(JSON.stringify(data))
 
 func load_run():
+	launch_remaining=0.0
+	view.staging=""
+	view.warning_wave=[]
+	view.warning_sources=[]
 	var data=JSON.parse_string(FileAccess.get_file_as_string(save_path))
 	if not data is Dictionary or data.get("version",0)!=1:
 		sim.last_message="Could not read the saved game."
@@ -1002,7 +1020,7 @@ func set_playback_speed(value):
 func update_transport():
 	for b in speed_buttons:
 		b.active=(b.mode==0 if paused else b.mode==playback_speed)
-		b.disabled=sim.phase not in ["shop","battle"] or (sim.phase=="shop" and (b.mode==0 or not sim.reward_choices.is_empty()))
+		b.disabled=launch_remaining>0 or sim.phase not in ["shop","battle"] or (sim.phase=="shop" and (b.mode==0 or not sim.reward_choices.is_empty()))
 		b.queue_redraw()
 
 func animate_dock(open):
@@ -1027,6 +1045,12 @@ func position_scanner():
 	scanner.queue_redraw()
 
 func advance_simulation(delta):
+	if launch_remaining>0:
+		launch_remaining=maxf(0,launch_remaining-delta)
+		if launch_remaining==0:
+			view.staging=""
+			update_transport()
+		return
 	if paused and sim.phase=="battle": return
 	if sim.phase=="battle":
 		clock_accum+=minf(delta,0.1)*playback_speed
@@ -1091,7 +1115,12 @@ func show_infection_results():
 	var text="Viral cells destroyed: %d" % losses.viruses
 	if losses.core>0: text+="\nCore cells lost: %d" % losses.core
 	text+="\nImmune cells lost: %d" % losses.cells
+	if sim.phase=="recap": text+="\n\nNext preparation budget: %d protein\nAvailable when preparation begins." % mini(sim.round_no+4,10)
+	if not sim.rewards.is_empty(): text+="\nFree cells available: %d" % sim.rewards.size()
 	var col=clear_modal("Infection phase complete",text)
+	modal_panel.set_meta("field_report",true)
+	modal_panel.size.x=430
+	shade.color=Color(0,0,0,0)
 	button(col,"OK",func():
 		if sim.phase=="recap": show_recap()
 		else: show_run_result())
@@ -1107,8 +1136,15 @@ func show_recap():
 	var next_sim=Simulation.new()
 	next_sim.reset(sim.seed_value,sim.target_rounds)
 	next_sim.round_no=sim.round_no+1
+	next_sim.blood=sim.blood.duplicate(true)
 	next_sim.make_wave()
 	preview_wave=next_sim.wave.duplicate(true)
+	preview_sources=next_sim.infection_sources.duplicate()
+	preview_center=next_sim.source_center
+	view.warning_wave=preview_wave
+	view.warning_sources=preview_sources
+	view.staging="warning"
+	view.warning_time=0.0
 	var changes=""
 	for lane in range(3):
 		var types=[]
@@ -1124,8 +1160,15 @@ func show_recap():
 			if before!=after:
 				changes+="Lane %d · %s: %d to %d%s\n" % [lane+1,type.capitalize(),before,after," (new)" if before==0 else ""]
 	if changes.is_empty(): changes="The infection lineup is unchanged.\n"
+	var kinds=[]
+	for entry in preview_wave:
+		if entry.type not in kinds: kinds.append(entry.type)
+	for kind in kinds:
+		changes+="\n"+kind.capitalize()+": "+wave_trait(kind)+"\n"
 	changes+="\nPreparation protein: %d" % mini(sim.round_no+4,10)
-	var col=clear_modal("Next round · %d" % (sim.round_no+1),changes)
+	var col=clear_modal("Incoming infection · %d" % (sim.round_no+1),changes)
+	modal_panel.set_meta("field_report",true)
+	modal_panel.size.x=440
 	showing_recap=true
 	shade.color=Color(0,0,0,0)
 	button(col,"OK",advance_recap)
@@ -1135,12 +1178,22 @@ func advance_recap():
 	results_stage=""
 	if sim.phase!="recap": return
 	sim.next_round()
+	if not preview_sources.is_empty():
+		sim.infection_sources=preview_sources.duplicate()
+		sim.source_center=preview_center
+	view.warning_wave=[]
+	view.warning_sources=[]
+	view.staging=""
+	preview_sources=[]
 	preview_wave=[]
 	showing_recap=false
 	shop_page=0
 	modal.hide()
 	menu_open=false
 	changed()
+
+func wave_trait(kind):
+	return {"basic":"Heads toward core cells.","wave":"Weaves while approaching.","jumper":"Leaps forward; invulnerable during the leap.","hungry":"Consumes virus protein to gain health.","swarmer":"Groups with nearby viruses.","seeker":"Can divert toward immune cells.","avoider":"Avoids nearby immune cells."}.get(kind,"")
 
 func virus_description(key):
 	return {

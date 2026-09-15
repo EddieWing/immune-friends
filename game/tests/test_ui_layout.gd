@@ -77,9 +77,12 @@ func run():
 		await process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://artifacts/ui-preparation.png")
+	var launch_positions=scene.sim.cells.map(func(c): return c.p)
 	scene.start_battle()
 	await create_timer(0.4).timeout
 	check(not scene.dock.visible,"battle slides away the entire dock")
+	check(scene.sim.elapsed==0 and scene.sim.viruses.is_empty(),"launch clears HUD before any virus or attack begins")
+	check(scene.sim.cells.map(func(c): return c.p)==launch_positions,"launch pose does not change the formation")
 	scene.set_process(false)
 	scene.sim.phase="recap"
 	scene.sim.round_losses={"viruses":7,"core":2,"cells":3}
@@ -93,19 +96,22 @@ func run():
 	scene.sim.update(1.0)
 	scene.advance_results(0.3)
 	check(scene.results_stage=="settling","short pause follows completed effects")
-	scene.advance_results(0.4)
+	scene.advance_results(scene.RESULTS_PAUSE)
 	check(scene.results_stage=="losses","infection losses appear before next-round forecast")
 	var result_column=scene.modal_panel.get_child(0)
 	check("7" in result_column.get_child(1).text and "Core cells lost: 2" in result_column.get_child(1).text,"results show the round loss counters")
 	result_column.get_child(result_column.get_child_count()-1).pressed.emit()
 	check(scene.results_stage=="forecast" and scene.sim.phase=="recap","first OK opens forecast without starting preparation")
 	var forecast=scene.preview_wave.duplicate(true)
+	var sources=scene.preview_sources.duplicate()
+	check(scene.view.staging=="warning" and scene.view.warning_wave==forecast,"warning shows actual next-wave markers")
 	check(scene.shade.color.a==0 and scene.showing_recap,"recap leaves microscope visible")
 	if "--capture" in OS.get_cmdline_user_args():
 		await process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://artifacts/ui-recap.png")
 	scene.advance_recap()
+	check(scene.sim.infection_sources==sources and scene.view.warning_wave.is_empty(),"warning source positions exactly match preparation")
 	check(scene.sim.wave==forecast and scene.bottom_panel.visible,"recap forecast matches next preparation")
 	for screen in ["show_menu","show_settings","show_help","show_catalog","show_virus_catalog","show_reward"]:
 		if screen=="show_reward": scene.sim.reward_choices=[["accelerator","tag_sprayer"]]
@@ -118,6 +124,12 @@ func run():
 		check(Rect2(0,0,1440,900).encloses(window.get_global_rect()),screen+" fits inside the viewport")
 		for child in window.get_child(0).get_children():
 			check(window.get_global_rect().encloses(child.get_global_rect()),screen+" content stays inside window")
+	scene.sim.phase="recap"
+	scene.sim.round_no=11
+	scene.sim.make_wave()
+	scene.show_recap()
+	for frame in range(5): await process_frame
+	check(Rect2(0,0,1440,900).encloses(scene.modal_panel.get_global_rect()),"late-wave warning report fits the viewport")
 	scene.queue_free()
 	await process_frame
 	DirAccess.remove_absolute("user://ui_layout_test.json")

@@ -46,6 +46,8 @@ func update(sim,delta):
    state.target=nearest.id
    if distance<=float(config.danger_radius): state.fear=maxf(state.fear,0.2)
   state.emotion="crying" if state.cry>0 else "scared" if state.fear>0 else ("relieved" if state.relief>0 else ("surprised" if not nearest.is_empty() else "calm"))
+  if sim.phase in ["recap","win","lose"] and state.cry<=0:
+   state.emotion="tired" if sim.phase=="lose" or sim.round_losses.core>0 or sim.round_losses.cells>0 else "relieved"
   state.look=state.look.lerp(goal,1-exp(-delta/float(config.look_smoothing)))
   states[b.id]=state
 func draw(canvas,b,time):
@@ -62,6 +64,8 @@ func draw(canvas,b,time):
    var drop=eye+Vector2(side*0.7,3+fmod(time*7+b.id*0.8,5.0))
    canvas.draw_line(eye+Vector2(0,1),drop,Color("#92dcef"),1.5,true)
    canvas.draw_circle(drop,1.5,Color("#b9efff"))
+  elif emotion=="tired":
+   canvas.draw_line(eye+Vector2(-1.5,0),eye+Vector2(1.5,0),ink,1.1,true)
   elif emotion=="relieved" or (blink and emotion=="calm"):
    canvas.draw_arc(eye,1.5,0.1,PI-0.1,10,ink,1.2,true)
   else:
@@ -72,6 +76,8 @@ func draw(canvas,b,time):
  var mouth=p+Vector2(0,4.5)+look*0.3
  if emotion=="crying":
   canvas.draw_arc(mouth+Vector2(0,1),2.3,PI+0.15,TAU-0.15,12,ink,1.2,true)
+ elif emotion=="tired":
+  canvas.draw_line(mouth+Vector2(-2,0),mouth+Vector2(2,0),ink,1.1,true)
  elif emotion in ["surprised","scared"]:
   canvas.draw_circle(mouth,2.3 if emotion=="scared" else 1.6,ink)
  else:

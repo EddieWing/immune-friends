@@ -62,6 +62,8 @@ func run():
  check(scene.sim.phase=="shop" and scene.sim.elapsed==elapsed_before,"preparation remains untimed at x5")
  scene.speed_buttons[0].pressed.emit()
  check(scene.sim.phase=="battle" and scene.playback_speed==1,"Play starts preparation at normal speed")
+ scene.advance_simulation(scene.LAUNCH_SECONDS)
+ check(scene.sim.elapsed==0 and scene.launch_remaining==0,"launch delay does not consume simulated battle time")
  scene.speed_buttons[3].pressed.emit()
  var paused_time=scene.sim.elapsed
  scene.advance_simulation(0.1)
