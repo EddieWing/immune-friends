@@ -27,6 +27,20 @@ func run():
   scene.gym_tool={"kind":"virus","key":key,"rank":1}
   scene.gym_place(Vector2(250,0))
  check(scene.sim.viruses.size()==7 and scene.sim.viruses.all(func(v): return not v.emerging),"all viruses spawn at the chosen position")
+ scene.gym_tool={}
+ var click=InputEventMouseButton.new()
+ click.button_index=MOUSE_BUTTON_LEFT
+ click.pressed=true
+ click.position=scene.view.to_global(Vector2(250,0))
+ scene._unhandled_input(click)
+ check(not scene.detail_panel.visible,"single click on a virus does not open its card")
+ click.double_click=true
+ scene._unhandled_input(click)
+ check(scene.detail_panel.visible and not scene.inspected_virus.is_empty(),"double click opens the virus card")
+ click.double_click=false
+ click.position=Vector2(650,600)
+ scene._unhandled_input(click)
+ check(not scene.detail_panel.visible,"clicking the field closes the inspected card")
  scene.gym_tool={"kind":"cell","key":"wall","rank":1}
  scene.gym_place(Vector2(160,0))
  var start=scene.sim.cells[0].p

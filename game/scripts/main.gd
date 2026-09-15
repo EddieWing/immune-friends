@@ -56,6 +56,9 @@ var save_path="user://run.json"
 var detail_panel: PanelContainer
 var detail_icon: TextureRect
 var detail_key=""
+var inspected_cell=-1
+var inspected_virus={}
+var detail_virus: Control
 var term_panel: PanelContainer
 var term_text: RichTextLabel
 var income_panel: PanelContainer
@@ -300,6 +303,10 @@ func build_ui():
 	detail_icon.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 	detail_icon.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	column.add_child(detail_icon)
+	detail_virus=preload("res://scripts/ui/virus_preview.gd").new()
+	detail_virus.custom_minimum_size=Vector2(300,98)
+	column.add_child(detail_virus)
+	detail_virus.hide()
 	detail=RichTextLabel.new()
 	detail.bbcode_enabled=true
 	detail.custom_minimum_size=Vector2(310,0)
@@ -805,7 +812,7 @@ func refresh():
 	if not is_shop:
 		detail_panel.hide()
 		term_panel.hide()
-	elif not selected.is_empty() and sim.cells.has(selected):
+	elif not selected.is_empty() and sim.cells.has(selected) and selected.id==inspected_cell:
 		show_cell_card(selected.key,selected)
 	elif pending_offer.is_empty():
 		detail_panel.hide()
@@ -826,6 +833,8 @@ func refresh():
 	freeze_button.set("glyph","❄" if not sim.frozen else "❄▣")
 	freeze_button.queue_redraw()
 	freeze_button.tooltip_text="Shop frozen. Click to unfreeze." if sim.frozen else "Keep offers for the next round · free"
+	if not inspected_virus.is_empty() and inspected_virus.get("alive",false) and sim.viruses.has(inspected_virus):
+		show_field_virus(inspected_virus)
 	message.visible=is_shop
 	message.text=sim.last_message
 	var entries=[]
@@ -864,7 +873,7 @@ func add_offer(key,index,reward):
 		beep(510,0.025,true)
 		show_cell_card(key))
 	card.mouse_exited.connect(func():
-		if not selected.is_empty(): show_cell_card(selected.key,selected)
+		if not selected.is_empty() and selected.id==inspected_cell: show_cell_card(selected.key,selected)
 		elif pending_offer.is_empty():
 			detail_panel.hide()
 			term_panel.hide())
@@ -1031,17 +1040,27 @@ func _unhandled_input(event):
 					if world.distance_to(handle)<14:
 						rotating=true
 						return
+				inspected_virus={}
+				inspected_cell=-1
+				detail_panel.hide()
+				term_panel.hide()
 				selected={}
 				for c in sim.cells:
 					if c.alive and sim.contains_cell(c,world,6):
 						selected=c
 				if not selected.is_empty():
+					if event.double_click: inspected_cell=selected.id
 					dragging=sim.phase=="shop"
 					mouse_offset=selected.p-world
 				elif sim.phase=="shop":
 					for i in range(sim.blood.size()):
 						if sim.blood[i].alive and sim.blood[i].p.distance_to(world)<16:
 							dragging_blood=i
+							break
+				if selected.is_empty() and event.double_click:
+					for virus in sim.viruses:
+						if virus.alive and virus.p.distance_to(world)<20:
+							inspected_virus=virus
 							break
 				refresh()
 			else:
@@ -1232,8 +1251,12 @@ func animate_dock(open):
 	if not open: dock_tween.tween_callback(dock.hide)
 
 func position_scanner():
+	if not inspected_virus.is_empty() and (not inspected_virus.get("alive",false) or not sim.viruses.has(inspected_virus)):
+		inspected_virus={}
+		detail_panel.hide()
 	if not scanner or not detail_panel.visible: return
 	var anchor=card_anchor
+	if not inspected_virus.is_empty(): anchor=view.to_global(inspected_virus.p)
 	if not card_cell.is_empty() and sim.cells.has(card_cell):
 		anchor=view.to_global(card_cell.p)
 	var right=anchor.x<720
@@ -1262,6 +1285,8 @@ func advance_simulation(delta):
 		sim.update(delta)
 
 func show_cell_card(key,c={}):
+	detail_icon.show()
+	detail_virus.hide()
 	if sim.phase!="shop": return
 	detail_key=key
 	card_cell=c
@@ -1290,6 +1315,20 @@ func show_cell_card(key,c={}):
 		explanation="Electricity travels through immune cells, proteins and viruses."
 	term_text.text="[b]"+term+"[/b]\n"+explanation
 	detail.text+="\n\n[color=#537a83][b]"+term+"[/b] · "+explanation+"[/color]"
+	position_scanner.call_deferred()
+
+func show_field_virus(virus):
+	inspected_virus=virus
+	card_cell={}
+	detail_key=""
+	detail_icon.hide()
+	detail_virus.kind=virus.type
+	detail_virus.show()
+	detail.text="[b]"+virus.type.capitalize()+" Virus[/b]\n\n"+virus_description(virus.type)+"\n\nCurrent HP: "+str(snappedf(virus.hp,0.1))
+	sell_button.hide()
+	term_panel.hide()
+	detail_panel.show()
+	detail_panel.size.y=0
 	position_scanner.call_deferred()
 
 func virus_glyph(key):
