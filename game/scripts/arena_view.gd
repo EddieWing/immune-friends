@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var attention=preload("res://scripts/attention_presentation.gd").new()
 var support=preload("res://scripts/support_presentation.gd").new()
 var virus_behavior=preload("res://scripts/virus_behavior_presentation.gd").new()
 var reactions=preload("res://scripts/reaction_presentation.gd").new()
@@ -35,6 +36,7 @@ func _process(delta):
 		reactions.update(sim,delta)
 		virus_behavior.update(sim,delta)
 		support.update(sim,delta)
+		attention.update(sim,delta,blood_faces)
 		sources.update(sim,warning_wave if staging=="warning" else sim.wave,warning_sources if staging=="warning" else sim.infection_sources,staging,delta)
 	warning_time+=delta
 	if sim!=null:
@@ -109,7 +111,7 @@ func _draw():
 	reactions.draw(self)
 	virus_behavior.draw_effects(self)
 	support.draw(self)
-	attacks.draw_focus(self)
+	attention.draw(self)
 	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)

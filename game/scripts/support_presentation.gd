@@ -60,7 +60,7 @@ func draw_cell(canvas,c):
    var p=c.p+Vector2(-21+i*4,-20)
    canvas.draw_polyline(PackedVector2Array([p+Vector2(-2,-3),p,p+Vector2(-2,3)]),Color("#ead792"),1.5,true)
 func draw(canvas):
- for e in effects:
+ for e in effects.slice(maxi(0,effects.size()-12)):
   var t=e.age/e.life
   var color=Color(0.62,0.9,0.72,1-t)
   if e.kind=="heal" or e.kind=="generator_fed":

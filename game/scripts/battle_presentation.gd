@@ -86,7 +86,7 @@ func draw_bonds(canvas,kind):
     canvas.draw_circle(hand,radius*0.75,Color("#f5dfcb"))
     canvas.draw_line(hand,hand+direction.orthogonal()*radius,Color("#f5dfcb"),1.5,true)
 func draw_events(canvas):
- for pulse in signals:
+ for pulse in signals.slice(maxi(0,signals.size()-8)):
   var path=pulse.path
   var progress=clampf(pulse.age/0.65,0,1)
   var lengths=[]
@@ -105,7 +105,8 @@ func draw_events(canvas):
    canvas.draw_line(path[i],end,Color(color, color.a*0.45),3,true)
    if remaining<=lengths[i]: canvas.draw_circle(end,4,color)
    remaining-=lengths[i]
- for hit in hits:
+ var labels=0
+ for hit in hits.slice(maxi(0,hits.size()-16)):
   var color=Color("#efbd58") if hit.kind=="cell" else Color("#f07887") if hit.kind in ["virus","core"] else Color("#dcebf0")
   color.a=1-hit.age/0.65
   var radius=18+hit.age*20
@@ -114,7 +115,8 @@ func draw_events(canvas):
    var direction=hit.p.direction_to(hit["from"])
    var tip=hit.p+direction*24
    canvas.draw_polyline(PackedVector2Array([tip+direction*8+direction.orthogonal()*4,tip,tip+direction*8-direction.orthogonal()*4]),color,2,true)
-  if hit.kind=="cell":
+  if hit.kind=="cell" and labels<3:
+   labels+=1
    canvas.draw_string(ThemeDB.fallback_font,hit.p+Vector2(-16,-29-hit.age*12),"ALLY",HORIZONTAL_ALIGNMENT_LEFT,-1,11,color)
   elif hit.kind=="core":
    canvas.draw_line(hit.p+Vector2(-5,-5),hit.p+Vector2(5,5),color,2,true)

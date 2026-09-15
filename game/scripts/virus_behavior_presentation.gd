@@ -57,7 +57,7 @@ func draw_links(canvas):
    var p=middle+d.orthogonal()*side*3
    canvas.draw_polyline(PackedVector2Array([p-d*3,p,p+d*3+d.orthogonal()*side*2]),Color("#d5a4d4"),1.5,true)
 func draw_effects(canvas):
- for e in effects:
+ for e in effects.slice(maxi(0,effects.size()-10)):
   var t=e.age/0.65
   var color=Color(0.92,0.7,0.91,1-t)
   if e.kind=="virus_fed":

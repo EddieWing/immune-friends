@@ -38,7 +38,7 @@ func pose(kind,id):
  var weight=1-smoothstep(0,0.38,r.age)
  return {"squash":1+weight*(0.12 if r.push else -0.16),"offset":r.direction*weight*2,"hurt":not r.push and weight>0.25}
 func draw(canvas):
- for b in bursts:
+ for b in bursts.slice(maxi(0,bursts.size()-16)):
   var t=b.age/0.5
   var color=Color(0.76,0.9,1,1-t) if b.kind in ["thawed","tagged"] else Color(0.94,0.64,0.75,1-t)
   if b.kind=="pushed":
