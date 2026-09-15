@@ -824,11 +824,11 @@ func refresh():
 	phase_panel.visible=not gym_mode and sim.phase!="battle"
 	round_label.text="Round %d / %d" % [mini(sim.round_no+1,sim.target_rounds) if sim.phase=="recap" and results_stage=="forecast" else sim.round_no,sim.target_rounds]
 	var display_wave=preview_wave if sim.phase=="recap" and not preview_wave.is_empty() else sim.wave
-	incoming.text="[color=#fff6df][b]Incoming infection[/b][/color]\n"
+	incoming.text="[color=#fff6df][b]Infection[/b][/color]\n"
 	for lane in range(3):
 		var items=display_wave.filter(func(e): return e.lane==lane)
 		if items.is_empty(): continue
-		incoming.text+="\n[color=#663e4a]Lane "+str(lane+1)+"[/color]\n"
+		incoming.text+="\n[color=#663e4a]Source "+str(lane+1)+"[/color]\n"
 		for entry in items:
 			incoming.text+="[color=#fff7e7]"+virus_glyph(entry.type)+" ×"+str(entry.count)+"[/color]\n"
 	layout_incoming.call_deferred()
@@ -1424,7 +1424,7 @@ func show_recap():
 			for entry in preview_wave:
 				if entry.lane==lane and entry.type==type: after+=entry.count
 			if before!=after:
-				changes+="Lane %d · %s: %d to %d%s\n" % [lane+1,type.capitalize(),before,after," (new)" if before==0 else ""]
+				changes+="Source %d · %s: %d to %d%s\n" % [lane+1,type.capitalize(),before,after," (new)" if before==0 else ""]
 	if changes.is_empty(): changes="The infection lineup is unchanged.\n"
 	var kinds=[]
 	for entry in preview_wave:
@@ -1432,7 +1432,7 @@ func show_recap():
 	for kind in kinds:
 		changes+="\n"+kind.capitalize()+": "+wave_trait(kind)+"\n"
 	changes+="\nPreparation protein: %d" % mini(sim.round_no+4,10)
-	var col=clear_modal("Incoming infection · %d" % (sim.round_no+1),changes)
+	var col=clear_modal("Infection · %d" % (sim.round_no+1),changes)
 	modal_panel.set_meta("field_report",true)
 	modal_panel.size.x=440
 	showing_recap=true
