@@ -442,6 +442,7 @@ func show_menu():
 		return
 	if entering_game: return
 	menu_open=true
+	zoom_target=view.scale.x
 	modal.hide()
 	if main_menu: main_menu.queue_free()
 	main_menu=Control.new()
@@ -1238,6 +1239,7 @@ func toggle_shop():
 	refresh()
 
 func set_zoom(value):
+	if browsing_from_main_menu() or entering_game: return
 	zoom_target=clampf(value,0.45,1.5)
 	update_zoom()
 

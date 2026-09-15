@@ -12,6 +12,24 @@ func run():
  await process_frame
  scene.set_process(false)
  scene.modal.hide()
+ var menu_zoom=scene.zoom_target
+ var menu_wheel=InputEventMouseButton.new()
+ menu_wheel.position=Vector2(900,300)
+ menu_wheel.pressed=true
+ menu_wheel.button_index=MOUSE_BUTTON_WHEEL_UP
+ scene._unhandled_input(menu_wheel)
+ scene.set_zoom(1.5)
+ check(scene.zoom_target==menu_zoom,"main menu blocks wheel and slider zoom")
+ scene.main_menu.hide()
+ scene.entering_game=true
+ scene.set_zoom(1.5)
+ check(scene.zoom_target==menu_zoom,"microscope entrance blocks manual zoom")
+ scene.entering_game=false
+ scene.set_zoom(1.2)
+ check(scene.zoom_target==1.2,"zoom is available after entering gameplay")
+ scene.show_menu()
+ check(scene.zoom_target==scene.view.scale.x,"opening menu cancels residual zoom easing")
+ scene.main_menu.hide()
  var sources_sim=load("res://scripts/simulation.gd").new()
  sources_sim.reset(42,12)
  var original_sources=sources_sim.infection_sources.duplicate()
