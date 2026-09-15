@@ -341,7 +341,7 @@ func spawn_virus(entry):
 	var inward=p.direction_to(source_center)
 	var exit=p+inward*maxf(1,config.exit_distance)+inward.orthogonal()*rng.randf_range(-config.exit_spread,config.exit_spread)
 	var hp=2.0 if entry.type=="seeker" else 1.0
-	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"alive":true,
+	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"peak_hp":hp,"alive":true,
 		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"jump":false,"phase":rng.randf()*TAU,
 		"emerging":true,"exit":exit,"spawn_position":p})
 	next_id+=1
@@ -371,6 +371,7 @@ func effect(p, color, label="", radius=30.0):
 
 func shoot(c, direction, origin=Vector2.INF, split=false):
 	var p=c.p if origin==Vector2.INF else origin
+	record("attack_fired",{"id":c.id,"p":p,"direction":direction.normalized(),"key":c.key})
 	var radius=5.0
 	if c.key=="cannon":
 		var count=0
@@ -444,12 +445,15 @@ func damage_cell(c, amount, redirected=false, source={}):
 
 func damage_virus(v, amount):
 	if not v.alive or v.jump: return
+	var prior_hp=v.hp
 	v.hp-=amount
 	if v.hp>0: return
 	v.alive=false
 	particles.append({"kind":"food","p":v.p,"v":Vector2.ZERO,"life":float(rules.protein_lifetime),"r":4.0,"owner":-1})
 	effect(v.p,Color("#d4b8e7"),"",20)
-	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p})
+	var core=nearest_blood(v.p)
+	var key_threat=v.type=="seeker" or v.get("peak_hp",prior_hp)>=3 or (not core.is_empty() and core.p.distance_to(v.p)<80)
+	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat})
 
 func contains_cell(c, p, extra=0.0):
 	var local=(p-c.p).rotated(-c.angle)
@@ -520,6 +524,7 @@ func update(delta):
 					for other in cells:
 						if other.alive and other.p.distance_to(c.p)<reach: heal(other,1)
 				"push":
+					record("attack_fired",{"id":c.id,"p":c.p,"direction":Vector2.ZERO,"key":c.key})
 					effect(c.p,Color("#f7dec3"),"",reach)
 					for v in viruses:
 						if v.alive and v.p.distance_to(c.p)<reach: v.p+=(v.p-c.p).normalized()*30
@@ -628,6 +633,7 @@ func update(delta):
 				if p.kind=="food" and p.life>0 and p.p.distance_to(v.p)<20:
 					p.life=0
 					v.hp+=1
+					v.peak_hp=maxf(v.get("peak_hp",v.hp),v.hp)
 		for c in cells:
 			if not c.alive or v.jump: continue
 			if contains_cell(c,v.p,10):

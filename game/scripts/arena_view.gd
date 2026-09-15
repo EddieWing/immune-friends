@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var attacks=preload("res://scripts/attack_presentation.gd").new()
 var presentation=preload("res://scripts/battle_presentation.gd").new()
 var blood_faces=preload("res://scripts/blood_faces.gd").new()
 var visuals
@@ -24,7 +25,9 @@ var drag_preview=Vector2.INF
 
 func _process(delta):
 	if sim!=null: diagnostics.update(sim,delta)
-	if sim!=null: presentation.update(sim,delta)
+	if sim!=null:
+		presentation.update(sim,delta)
+		attacks.update(sim,delta)
 	warning_time+=delta
 	if sim!=null:
 		if arrival_sim_seed!=sim.seed_value or arrival_round!=sim.round_no:
@@ -104,11 +107,12 @@ func _draw():
 			var d=Vector2.RIGHT.rotated(selected.angle)
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
 	presentation.draw_events(self)
+	attacks.draw_focus(self)
 	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
 
-func face(p, factor, id, hurt, look=Vector2.ZERO):
+func face(p, factor, id, hurt, look=Vector2.ZERO,focused=false):
 	var blink=fmod(time+id*0.71,4.8)<0.14
 	for x in [-6,6]:
 		var eye=p+Vector2(x,-2)*factor
@@ -117,7 +121,10 @@ func face(p, factor, id, hurt, look=Vector2.ZERO):
 		else:
 			draw_circle(eye+look,2.0*factor,Color("#33434c"))
 			draw_circle(eye+look+Vector2(-0.5,-0.5)*factor,0.55*factor,Color("#fff7e6"))
-	if staging=="launch":
+	if focused:
+		for side in [-1,1]:
+			draw_line(p+Vector2(side*8,-7)*factor,p+Vector2(side*3,-5)*factor,Color("#33434c"),1.5,true)
+	if staging=="launch" or focused:
 		draw_line(p+Vector2(-3,4)*factor,p+Vector2(3,4)*factor,Color("#6c5260"),1.4,true)
 	elif staging=="aftermath" and (sim.round_losses.core>0 or sim.round_losses.cells>0):
 		draw_line(p+Vector2(-3,5)*factor,p+Vector2(3,5)*factor,Color("#6c5260"),1.2,true)
@@ -131,7 +138,12 @@ func draw_cell(c):
 	var pulse=1+sin(time*2+c.id)*0.035
 	if staging=="launch": pulse=0.97
 	if arrivals.has(c.id): pulse*=lerpf(0.55,1.0,smoothstep(0,0.4,arrivals[c.id]))
-	var p=c.p
+	var pose=attacks.poses.get(c.id,{})
+	var windup=pose.get("windup",0.0)
+	var kick=pose.get("kick",0.0)
+	pulse*=1-windup*0.12+kick*0.16
+	var p=c.p-pose.get("direction",Vector2.ZERO)*(windup*1.5+kick*3)
+	attacks.draw_intent(self,c)
 	var wall=d.behavior=="wall"
 	var texture=visuals.body(c.key,d)
 	var extent=Vector2(106,80) if wall else Vector2(58,58)
@@ -140,7 +152,7 @@ func draw_cell(c):
 	draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
 	draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
 	draw_set_transform(Vector2.ZERO)
-	var look=Vector2.ZERO
+	var look=pose.get("look",Vector2.ZERO)
 	if sim.phase=="shop":
 		var nearest={}
 		var distance=120.0
@@ -149,7 +161,7 @@ func draw_cell(c):
 				nearest=other
 				distance=p.distance_to(other.p)
 		if not nearest.is_empty(): look=p.direction_to(nearest.p)*1.3
-	face(p,0.95,c.id,c.flash>0,look)
+	face(p,0.95,c.id,c.flash>0,look,windup>0.2 or kick>0.5)
 	if arrivals.has(c.id):
 		var arrival=arrivals[c.id]/0.65
 		draw_arc(p,20+arrival*22,0,TAU,40,Color(0.8,1,1,1-arrival),1.5,true)
@@ -179,7 +191,16 @@ func capsule_style(color):
 	return s
 
 func draw_virus(v):
-	preload("res://scripts/virus_visuals.gd").draw(self,v)
+	var windup=attacks.jumper_pose(v)
+	var recovery=attacks.jumper_recovery(v)
+	var stretch=0.14 if v.jump else -recovery*0.1
+	draw_set_transform(v.p,0,Vector2(1+windup*0.2+stretch,1-windup*0.18-stretch))
+	var rendered=v.duplicate()
+	rendered.p=Vector2.ZERO
+	preload("res://scripts/virus_visuals.gd").draw(self,rendered)
+	draw_set_transform(Vector2.ZERO)
+	if windup>0:
+		draw_arc(v.p,21,PI*0.1,PI*0.9,20,Color(0.58,0.27,0.66,windup),2,true)
 
 func draw_range_ring(center,radius,color,dashed=false):
 	# Keep the boundary readable at every camera zoom, including on bright art.
