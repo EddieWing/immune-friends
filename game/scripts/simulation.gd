@@ -431,11 +431,11 @@ func damage_cell(c, amount, redirected=false, source={}):
 		effect(c.p,Color("#f9b8d1"),"Pop!",reach)
 		for v in viruses:
 			if v.alive and c.p.distance_to(v.p)<reach:
-				v.p+=(v.p-c.p).normalized()*40
-				damage_virus(v,float(rules.bomb_damage))
+				push_object(v,(v.p-c.p).normalized()*40,"virus",c.p)
+				damage_virus(v,float(rules.bomb_damage),{"p":c.p,"cause":"blast"})
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<reach:
-				other.p+=(other.p-c.p).normalized()*28
+				push_object(other,(other.p-c.p).normalized()*28,"cell",c.p)
 				damage_cell(other,float(rules.bomb_damage),false,{"kind":"cell","id":c.id,"p":c.p})
 	if c.key=="bandage":
 		for other in cells:
@@ -443,10 +443,11 @@ func damage_cell(c, amount, redirected=false, source={}):
 				heal(other,1)
 	record("cell_rest",{"id":c.id,"p":c.p})
 
-func damage_virus(v, amount):
+func damage_virus(v, amount, source={}):
 	if not v.alive or v.jump: return
 	var prior_hp=v.hp
 	v.hp-=amount
+	record("virus_hit",{"id":v.id,"p":v.p,"amount":amount,"from":source.get("p",v.p),"cause":source.get("cause","contact")})
 	if v.hp>0: return
 	v.alive=false
 	particles.append({"kind":"food","p":v.p,"v":Vector2.ZERO,"life":float(rules.protein_lifetime),"r":4.0,"owner":-1})
@@ -454,6 +455,11 @@ func damage_virus(v, amount):
 	var core=nearest_blood(v.p)
 	var key_threat=v.type=="seeker" or v.get("peak_hp",prior_hp)>=3 or (not core.is_empty() and core.p.distance_to(v.p)<80)
 	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat})
+
+func push_object(object,offset,kind,origin):
+	object.p+=offset
+	if offset.length_squared()>0:
+		record("pushed",{"id":object.id,"p":object.p,"kind":kind,"from":origin,"direction":offset.normalized()})
 
 func contains_cell(c, p, extra=0.0):
 	var local=(p-c.p).rotated(-c.angle)
@@ -527,9 +533,9 @@ func update(delta):
 					record("attack_fired",{"id":c.id,"p":c.p,"direction":Vector2.ZERO,"key":c.key})
 					effect(c.p,Color("#f7dec3"),"",reach)
 					for v in viruses:
-						if v.alive and v.p.distance_to(c.p)<reach: v.p+=(v.p-c.p).normalized()*30
+						if v.alive and v.p.distance_to(c.p)<reach: push_object(v,(v.p-c.p).normalized()*30,"virus",c.p)
 					for other in cells:
-						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: other.p+=(other.p-c.p).normalized()*20
+						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*20,"cell",c.p)
 				"drop":
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":8.0,"r":5.0,"owner":c.id})
 				"spray":
@@ -582,6 +588,8 @@ func update(delta):
 		if not v.alive: continue
 		v.age+=delta
 		v.cool=maxf(0,v.cool-delta)
+		if v.tag>0 and v.tag<=delta: record("tag_ended",{"id":v.id,"p":v.p})
+		if v.freeze>0 and v.freeze<=delta: record("thawed",{"id":v.id,"p":v.p})
 		v.tag=maxf(0,v.tag-delta)
 		v.freeze=maxf(0,v.freeze-delta)
 		if v.get("emerging",false):
@@ -643,7 +651,7 @@ func update(delta):
 				if v.cool<=0:
 					v.cool=float(rules.contact_interval)
 					damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
-					damage_virus(v,float(rules.contact_damage))
+					damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
 		if v.alive and v.p.distance_to(destination.p)<19:
 			destination.alive=false
 			v.alive=false
@@ -665,7 +673,7 @@ func update(delta):
 			if p.life<=0: continue
 			for v in viruses:
 				if v.alive and not v.jump and v.p.distance_to(p.p)<12+p.r:
-					damage_virus(v,float(rules.bullet_damage))
+					damage_virus(v,float(rules.bullet_damage),{"p":p.p-p.v.normalized()*20,"cause":"bullet"})
 					p.life=0
 					break
 		elif p.kind=="tag":
@@ -673,6 +681,7 @@ func update(delta):
 				if v.alive and v.p.distance_to(p.p)<17:
 					v.tag=4
 					v.freeze=1
+					record("tagged",{"id":v.id,"p":v.p,"from":p.p,"owner":p.owner})
 					p.life=0
 					break
 	particles=particles.filter(func(p): return p.life>0)
@@ -707,7 +716,7 @@ func conduct(c):
 			if v.alive and not v.jump and p.distance_to(v.p)<float(rules.charge_range):
 				c.charge-=1
 				effects.append({"p":p,"end":v.p,"color":Color("#fff3a9"),"text":"","r":0,"life":0.35,"max":0.35})
-				damage_virus(v,999)
+				damage_virus(v,999,{"p":p,"cause":"electric"})
 				record("discharge",{"path":paths[cursor-1]+[v.p],"source":c.id,"target":v.id})
 				record("charge_kill",{"source":c.id})
 				return

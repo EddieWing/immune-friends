@@ -1,5 +1,6 @@
 extends Node2D
 var sim
+var reactions=preload("res://scripts/reaction_presentation.gd").new()
 var sources=preload("res://scripts/source_presentation.gd").new()
 var attacks=preload("res://scripts/attack_presentation.gd").new()
 var presentation=preload("res://scripts/battle_presentation.gd").new()
@@ -29,6 +30,7 @@ func _process(delta):
 	if sim!=null:
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)
+		reactions.update(sim,delta)
 		sources.update(sim,warning_wave if staging=="warning" else sim.wave,warning_sources if staging=="warning" else sim.infection_sources,staging,delta)
 	warning_time+=delta
 	if sim!=null:
@@ -99,6 +101,7 @@ func _draw():
 			var d=Vector2.RIGHT.rotated(selected.angle)
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
 	presentation.draw_events(self)
+	reactions.draw(self)
 	attacks.draw_focus(self)
 	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
@@ -133,8 +136,9 @@ func draw_cell(c):
 	var pose=attacks.poses.get(c.id,{})
 	var windup=pose.get("windup",0.0)
 	var kick=pose.get("kick",0.0)
-	pulse*=1-windup*0.12+kick*0.16
-	var p=c.p-pose.get("direction",Vector2.ZERO)*(windup*1.5+kick*3)
+	var reaction=reactions.pose("cell",c.id)
+	pulse*=(1-windup*0.12+kick*0.16)*reaction.squash
+	var p=c.p-pose.get("direction",Vector2.ZERO)*(windup*1.5+kick*3)+reaction.offset
 	attacks.draw_intent(self,c)
 	var wall=d.behavior=="wall"
 	var texture=visuals.body(c.key,d)
@@ -153,7 +157,7 @@ func draw_cell(c):
 				nearest=other
 				distance=p.distance_to(other.p)
 		if not nearest.is_empty(): look=p.direction_to(nearest.p)*1.3
-	face(p,0.95,c.id,c.flash>0,look,windup>0.2 or kick>0.5)
+	face(p,0.95,c.id,c.flash>0 or reaction.hurt,look,windup>0.2 or kick>0.5)
 	if arrivals.has(c.id):
 		var arrival=arrivals[c.id]/0.65
 		draw_arc(p,20+arrival*22,0,TAU,40,Color(0.8,1,1,1-arrival),1.5,true)
@@ -183,12 +187,14 @@ func capsule_style(color):
 	return s
 
 func draw_virus(v):
+	var reaction=reactions.pose("virus",v.id)
 	var windup=attacks.jumper_pose(v)
 	var recovery=attacks.jumper_recovery(v)
 	var stretch=0.14 if v.jump else -recovery*0.1
-	draw_set_transform(v.p,0,Vector2(1+windup*0.2+stretch,1-windup*0.18-stretch))
+	draw_set_transform(v.p+reaction.offset,0,Vector2((1+windup*0.2+stretch)*reaction.squash,(1-windup*0.18-stretch)/reaction.squash))
 	var rendered=v.duplicate()
 	rendered.p=Vector2.ZERO
+	rendered.hurt=reaction.hurt
 	preload("res://scripts/virus_visuals.gd").draw(self,rendered)
 	draw_set_transform(Vector2.ZERO)
 	if windup>0:
