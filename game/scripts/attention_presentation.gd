@@ -36,10 +36,10 @@ func update(sim,delta,faces):
  var current_links={}
  if sim.phase=="battle":
   for link in sim.links:
-   var a=sim.cell_by_id(link.a)
-   var b=sim.cell_by_id(link.b)
+   var a=sim.endpoint_by_id(link.a)
+   var b=sim.endpoint_by_id(link.b)
    if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue
-   var key="cell:%d:%d" % [mini(a.id,b.id),maxi(a.id,b.id)]
+   var key="cell:%d:%d" % [mini(link.a,link.b),maxi(link.a,link.b)]
    current_links[key]=(a.p+b.p)*0.5
   for link in sim.blood_links:
    var a=sim.blood[link.a]

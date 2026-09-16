@@ -508,7 +508,9 @@ func new_run(rounds):
 	cancel_placement()
 	shop_collapsed=false
 	shop_page=0
+	sim.experimental=bool(settings.get_value("gameplay","experimental",false))
 	sim.reset(Time.get_ticks_usec()%100000,rounds)
+	lab_tools.refresh_available()
 	view.position=Vector2(720,425)
 	view.scale=Vector2.ONE*0.88
 	update_zoom()
@@ -529,7 +531,7 @@ func show_help():
 	button(col,"Got it",func(): modal.hide(); menu_open=false)
 
 func show_settings():
-	var col=clear_modal("Settings")
+	var col=clear_modal("Settings","Version "+str(ProjectSettings.get_setting("application/config/version","dev")))
 	modal_panel.position=Vector2(430,40)
 	modal_panel.size=Vector2(580,0)
 	col.add_theme_constant_override("separation",8)
@@ -547,6 +549,18 @@ func show_settings():
 		var index=i
 		slider.value_changed.connect(func(v): volumes[index]=v; settings.set_value("audio",str(index),v); settings.save(settings_path); ambient.volume_db=linear_to_db(maxf(0.0001,volumes[0]*volumes[1])))
 		col.add_child(slider)
+	var experimental_toggle=CheckBox.new()
+	experimental_toggle.name="ExperimentalToggle"
+	experimental_toggle.text="Turn on experimental"
+	for color_key in ["font_color","font_hover_color","font_pressed_color","font_hover_pressed_color","font_focus_color"]:
+		experimental_toggle.add_theme_color_override(color_key,Color("#34464c"))
+	experimental_toggle.button_pressed=bool(settings.get_value("gameplay","experimental",false))
+	experimental_toggle.toggled.connect(func(value): settings.set_value("gameplay","experimental",value); settings.save(settings_path))
+	col.add_child(experimental_toggle)
+	var experimental_note=Label.new()
+	experimental_note.text="Adds 8 cells and Pusher Virus to new runs and Gym.\nCurrent and saved runs keep their own mode."
+	experimental_note.add_theme_font_size_override("font_size",13)
+	col.add_child(experimental_note)
 	var tutorial=CheckBox.new()
 	tutorial.text="Skip tutorial when starting a run"
 	tutorial.button_pressed=settings.get_value("tutorial","disabled",false)
@@ -575,7 +589,9 @@ func enter_gym():
 	gym_return={"sim":sim,"speed":playback_speed,"zoom":zoom_target,"position":view.position,"paused":paused,"auto":auto_camera}
 	gym_mode=true
 	sim=Simulation.new()
+	sim.experimental=bool(settings.get_value("gameplay","experimental",false))
 	sim.reset(4242,12)
+	lab_tools.refresh_available()
 	sim.gym_mode=true
 	sim.wave=[]
 	sim.offers=[]
@@ -610,6 +626,7 @@ func leave_gym():
 	rotating=false
 	dragging_blood=-1
 	sim=gym_return.sim
+	lab_tools.refresh_available()
 	view.sim=sim
 	gym_mode=false
 	gym_tool={}
@@ -635,6 +652,8 @@ func leave_gym():
 func gym_place(p):
 	if gym_tool.is_empty() or (not gym_mode and not gym_tool.get("debug",false)) or sim.phase not in ["shop","battle"] or (sim.phase=="battle" and not paused): return
 	var kind=gym_tool.kind
+	if kind=="cell" and gym_tool.key!="__core" and not sim.available_cell_keys().has(gym_tool.key): return
+	if kind in ["virus","source"] and not sim.available_virus_keys().has(gym_tool.key): return
 	if kind=="cell" and gym_tool.key=="__core":
 		var id=0
 		for b in sim.blood: id=maxi(id,b.id+1)
@@ -695,7 +714,7 @@ func gym_run():
 	gym_tool={}
 	view.drag_preview=Vector2.INF
 	if sim.phase=="shop":
-		gym_setup={"cells":sim.cells.duplicate(true),"blood":sim.blood.duplicate(true),"blood_links":sim.blood_links.duplicate(true),"viruses":sim.viruses.duplicate(true),"next_id":sim.next_id,"rng":sim.rng.state,"wave":sim.wave.duplicate(true),"sources":sim.infection_sources.duplicate()}
+		gym_setup={"cells":sim.cells.duplicate(true),"blood":sim.blood.duplicate(true),"blood_links":sim.blood_links.duplicate(true),"viruses":sim.viruses.duplicate(true),"next_id":sim.next_id,"rng":sim.rng.state,"wave":sim.wave.duplicate(true),"sources":sim.infection_sources.duplicate(),"particles":sim.particles.duplicate(true)}
 		var enemies=sim.viruses.duplicate(true)
 		sim.begin_battle()
 		sim.viruses=enemies
@@ -719,7 +738,9 @@ func gym_reset_setup():
 	sim.phase="shop"
 	sim.elapsed=0
 	sim.spawn_queue=[]
-	sim.particles=[]
+	sim.particles=gym_setup.get("particles",[]).duplicate(true)
+	sim.pending_cells=[]
+	sim.battle_income=0
 	sim.effects=[]
 	sim.events=[]
 	sim.blood_velocity={}
@@ -762,8 +783,8 @@ func gym_restore_core():
 
 func show_codex():
 	var col=clear_modal("Codex","Discover the cells and viruses under the microscope.")
-	button(col,"Cells · 27",show_catalog)
-	button(col,"Viruses · 7",show_virus_catalog)
+	button(col,"Cells · "+str(sim.available_cell_keys().size()),show_catalog)
+	button(col,"Viruses · "+str(sim.available_virus_keys().size()),show_virus_catalog)
 	button(col,"Back to main menu",func(): modal.hide())
 
 func browsing_from_main_menu():
@@ -787,7 +808,7 @@ func show_catalog():
 	text.custom_minimum_size=Vector2(520,470)
 	text.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	split.add_child(text)
-	var keys=sim.catalog.keys()
+	var keys=sim.available_cell_keys()
 	for key in keys:
 		list.add_item(sim.catalog[key].name,cell_icon(key))
 	list.item_selected.connect(func(index): catalogue_key=keys[index]; text.text=description(keys[index],false))
@@ -806,12 +827,12 @@ func description(key, elite=false):
 		if key=="seeker": r=40
 		if key=="bomb": r=20
 		if key=="tag_dropper": interval=0.25
-	var title=("Elite " if elite else "")+d.name
+	var title=("Elite " if elite else "")+d.name+(" · Experimental" if d.get("experimental",false) else "")
 	var txt="[font_size=23][color=#34464c]"+title+"[/color][/font_size]\n"
 	txt+="[color=#5b686a]"+d.category+"-cell  ·  "+("Reward" if d.tier==0 else "Level "+str(int(d.tier)))+"[/color]\n\n"
 	txt+="Health  [b]"+str(hp)+"[/b]\n"
 	if r>0: txt+="Range  [b]"+str(r)+"[/b]\n"
-	if d.speed>0: txt+="Speed  [b]"+str(d.speed)+"[/b]\n"
+	if d.speed>0: txt+="Speed  [b]"+str(25 if elite and key=="orbiter" else d.speed)+"[/b]\n"
 	if interval>0: txt+="Interval  [b]"+str(interval)+" s[/b]\n"
 	txt+="\n"+d.description+"\n\n[color=#847467]Space — view elite stats[/color]"
 	if key=="accelerator": txt+="\n[color=#975535]Provisional ability: the original effect is not yet known.[/color]"
@@ -854,7 +875,7 @@ func refresh():
 	sell_button.disabled=selected.is_empty() or not is_shop
 	dock_play.disabled=not is_shop or not sim.reward_choices.is_empty()
 	start_button.disabled=launch_remaining>0 or sim.phase not in ["shop","battle"] or not sim.reward_choices.is_empty()
-	xp_button.disabled=sim.money<3 or sim.tier>=4 or not is_shop
+	xp_button.disabled=sim.money<3 or sim.tier>=5 or not is_shop
 	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 protein" % [sim.tier,sim.xp]
 	refresh_button.disabled=sim.money<1 or not is_shop
 	refresh_button.tooltip_text="Refresh offers · 1 protein"
@@ -1080,6 +1101,7 @@ func _unhandled_input(event):
 				if not selected.is_empty():
 					if event.double_click: inspected_cell=selected.id
 					dragging=sim.phase=="shop"
+					if dragging: sim.proteins.pickup(sim,selected)
 					mouse_offset=selected.p-world
 				elif sim.phase=="shop":
 					for i in range(sim.blood.size()):
@@ -1111,7 +1133,7 @@ func _unhandled_input(event):
 		if rotating and not selected.is_empty():
 			selected.angle=(world-selected.p).angle()
 		elif dragging and not selected.is_empty():
-			selected.p=(world+mouse_offset).clamp(Vector2(-590,-345),Vector2(590,325))
+			sim.proteins.drag(sim,selected,(world+mouse_offset).clamp(Vector2(-590,-345),Vector2(590,325)))
 			sim.rebuild_links()
 		elif dragging_blood>=0:
 			sim.move_blood(dragging_blood,world)
@@ -1128,9 +1150,10 @@ func save_run():
 	var blood_data=[]
 	for b in sim.blood: blood_data.append({"p":[b.p.x,b.p.y],"alive":b.alive,"id":b.id})
 	var data={"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
-		"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
+		"experimental":sim.experimental,"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
 		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
 		"choices":sim.reward_choices,"rng_state":str(sim.rng.state),
+		"setup_particles":sim.particles.filter(func(p):return p.get("setup",false)).map(func(p):return {"p":[p.p.x,p.p.y],"owner":p.owner}),
 		"infection_sources":sim.infection_sources.map(func(p): return [p.x,p.y]),
 		"source_center":[sim.source_center.x,sim.source_center.y]}
 	var file=FileAccess.open(save_path,FileAccess.WRITE)
@@ -1145,7 +1168,9 @@ func load_run():
 	if not data is Dictionary or data.get("version",0)!=1:
 		sim.last_message="Could not read the saved game."
 		return
+	sim.experimental=bool(data.get("experimental",false))
 	sim.reset(int(data.seed),int(data.rounds))
+	lab_tools.refresh_available()
 	sim.round_no=int(data.round)
 	sim.money=int(data.money)
 	sim.tier=int(data.tier)
@@ -1162,6 +1187,9 @@ func load_run():
 	else: sim.rebuild_blood_links()
 	sim.offers=data.offers
 	sim.rewards=data.rewards
+	sim.particles=[]
+	for p in data.get("setup_particles",[]):
+		sim.particles.append({"kind":"tag","p":Vector2(p.p[0],p.p[1]),"v":Vector2.ZERO,"life":8.0,"r":5.0,"owner":p.owner,"setup":true})
 	sim.reward_choices=data.choices
 	sim.rng.state=int(data.rng_state)
 	sim.make_wave()
@@ -1330,6 +1358,10 @@ func show_cell_card(key,c={}):
 	if not c.is_empty():
 		detail.text+="\n[b]Current: "+str(snappedf(c.hp,0.1))+" HP  ·  "+str(c.rank)+"/3[/b]"
 		sell_button.text="Sell · "+str(c.sale)
+		if key=="tag_drag": detail.text+="\nTags left: "+str(c.get("tags",15))+" / 15"
+		if c.get("temporary",false): detail.text+="\nThis battle only"
+		if key=="greed_wall": detail.text+="\nBase HP: "+str(c.max_hp)+" · next battle bonus: +"+str(2*sim.money)
+		if key=="survivor_bomb": detail.text+="\nCurrent radius: "+str(sim.range_of(c)/float(sim.rules.scale))+" · growth: +"+str(c.get("radius_growth",0))+" this run"
 	var behavior=sim.catalog[key].behavior
 	term_panel.show()
 	var term="B-Cell" if sim.catalog[key].category=="B" else "T-Cell"
@@ -1402,6 +1434,7 @@ func show_run_result():
 func show_recap():
 	results_stage="forecast"
 	var next_sim=Simulation.new()
+	next_sim.experimental=sim.experimental
 	next_sim.reset(sim.seed_value,sim.target_rounds)
 	next_sim.round_no=sim.round_no+1
 	next_sim.blood=sim.blood.duplicate(true)
@@ -1471,11 +1504,12 @@ func virus_description(key):
 		"hungry":"Absorbs Virus Protein to gain health.",
 		"swarmer":"Health: 1\nAttracted to other viruses and attaches to them.",
 		"seeker":"Health: 2\nSeeks immune cells within range.",
-		"avoider":"Health: 1\nAvoids nearby immune cells."
+		"avoider":"Health: 1\nAvoids nearby immune cells.",
+		"pusher":"Experimental · Health: 1\nPushes nearby immune cells when killed."
 	}.get(key,"")
 
 func show_virus_catalog():
-	var col=clear_modal("Virus atlas · 7 viruses","Meet the invaders emerging from infection sources.")
+	var col=clear_modal("Virus atlas · "+str(sim.available_virus_keys().size())+" viruses","Meet the invaders emerging from infection sources.")
 	modal_panel.size=Vector2(940,0)
 	var row=HBoxContainer.new()
 	row.add_theme_constant_override("separation",24)
@@ -1493,7 +1527,7 @@ func show_virus_catalog():
 	facts.bbcode_enabled=true
 	facts.custom_minimum_size=Vector2(540,240)
 	info.add_child(facts)
-	var keys=["basic","wave","jumper","hungry","swarmer","seeker","avoider"]
+	var keys=sim.available_virus_keys()
 	var select=func(index):
 		var key=keys[index]
 		preview.kind=key

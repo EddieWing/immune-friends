@@ -87,6 +87,13 @@ func _draw():
 			draw_range_ring(selected.p,radius,Color("#245a70"))
 		if selected.key=="orbiter" and show_ranges:
 			draw_range_ring(Vector2.ZERO,maxf(100,selected.p.length()),Color("#794e96"),true)
+	if sim.phase=="shop" and not selected.is_empty() and selected.key=="bodyguard":
+		for link in sim.links:
+			if link.owner!=selected.id: continue
+			var other=sim.endpoint_by_id(link.b)
+			if other.is_empty(): continue
+			draw_line(selected.p,other.p,Color("#f4cf79"),2,true)
+			text_at(other.p+Vector2(-20,-28),"Protected",12,Color("#245a70"))
 	presentation.draw_bonds(self,"immune")
 	draw_blood_cluster()
 	for c in sim.cells:

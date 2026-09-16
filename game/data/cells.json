@@ -201,7 +201,7 @@
     "interval": 0.05,
     "behavior": "spray",
     "color": "#c59bd9",
-    "description": "Sprays tags across a 180° arc."
+    "description": "Sprays tags across a 180\u00b0 arc."
   },
   "zapper": {
     "name": "Virus Zapper",
@@ -261,7 +261,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#9aceb7",
-    "description": "Increases the range of connected cells."
+    "description": "Connects two nearby cells. Adds 20 microns of range to connected cells."
   },
   "swapper": {
     "name": "Swapper Bond",
@@ -322,5 +322,181 @@
     "behavior": "push",
     "color": "#ecc2a0",
     "description": "Pushes everything nearby once per second."
+  },
+  "mortar": {
+    "name": "Mortar",
+    "hp": 1,
+    "tier": 4,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "mortar",
+    "color": "#7eaecb",
+    "description": "Consumes 4 Bullet Proteins to launch a Bomb. Produced cells last for this battle."
+  },
+  "mint": {
+    "name": "Mint",
+    "hp": 4,
+    "tier": 0,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "mint",
+    "color": "#e3ce74",
+    "description": "Consumes Virus Protein to earn Carbs for the next shop. Conversion rate is provisional."
+  },
+  "tag_splitter": {
+    "name": "Tag Seeker Splitter",
+    "hp": 2,
+    "tier": 0,
+    "category": "T",
+    "range": 30,
+    "speed": 18,
+    "interval": 0,
+    "behavior": "seek",
+    "color": "#b391d5",
+    "description": "Seeks viruses and Tag Protein. Consumes 3 tags to split in two. Extra copies last for this battle."
+  },
+  "tag_drag": {
+    "name": "Tag Drag Dropper",
+    "hp": 8,
+    "tier": 0,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "tag_drag",
+    "color": "#c591c9",
+    "description": "Drag in preparation to place a Tag Protein every 15 microns. Holds 15; picking up next round refills it."
+  },
+  "greed_wall": {
+    "name": "Greed Wall",
+    "hp": 2,
+    "tier": 3,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "wall",
+    "color": "#d9c081",
+    "description": "At battle start gains 2 HP for each leftover Carb. Bonus lasts for this battle only."
+  },
+  "survivor_bomb": {
+    "name": "Survivor Bomb",
+    "hp": 1,
+    "tier": 3,
+    "category": "B",
+    "range": 12,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "bomb",
+    "color": "#d998ad",
+    "description": "Death damages nearby viruses AND immune cells and pushes them. Each survived round adds 8 to its radius for this run."
+  },
+  "electric_wall": {
+    "name": "Electric Wall",
+    "hp": 6,
+    "tier": 0,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0.1,
+    "behavior": "wall",
+    "color": "#efbca1",
+    "description": "Gains Electric Charge when immune cells or viruses touch it.",
+    "experimental": true
+  },
+  "electromagnet": {
+    "name": "Electromagnet",
+    "hp": 6,
+    "tier": 0,
+    "category": "B",
+    "range": 20,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "magnet",
+    "color": "#e9a4c1",
+    "description": "Draws nearby charge when no virus is in reach. Its magnetic field grows with stored charge.",
+    "experimental": true
+  },
+  "kinetic_generator": {
+    "name": "Kinetic Generator",
+    "hp": 6,
+    "tier": 4,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "generator",
+    "color": "#e7c77f",
+    "description": "Generates 1 Electric Charge per 12 microns moved. Cannot move by itself.",
+    "experimental": true
+  },
+  "tag_proof": {
+    "name": "Tag-Proof Seeker",
+    "hp": 6,
+    "tier": 4,
+    "category": "T",
+    "range": 30,
+    "speed": 18,
+    "interval": 0,
+    "behavior": "seek",
+    "color": "#92d4bd",
+    "description": "Seeks viruses. Immune to contact damage from tagged viruses.",
+    "experimental": true
+  },
+  "seeker_factory": {
+    "name": "Seeker Factory",
+    "hp": 8,
+    "tier": 5,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "mortar",
+    "color": "#7eaecb",
+    "description": "Consumes 1 Virus Protein and 2 Bullet Proteins to create a Seeker. Friendly shooters try to feed it.",
+    "experimental": true
+  },
+  "gatling": {
+    "name": "Gatling Gun",
+    "hp": 4,
+    "tier": 5,
+    "category": "T",
+    "range": 40,
+    "speed": 0,
+    "interval": 2,
+    "behavior": "shoot",
+    "color": "#8bc6df",
+    "description": "Shoots nearby viruses. Each kill reduces its firing interval by 0.25 seconds for this battle.",
+    "experimental": true
+  },
+  "kinetic_bond": {
+    "name": "Kinetic Bond",
+    "hp": 2,
+    "tier": 0,
+    "category": "B",
+    "range": 0,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "bond",
+    "color": "#bea7d8",
+    "description": "Connected cells gain health as they move. Distance per health point is experimental.",
+    "experimental": true
+  },
+  "hungry_bomb": {
+    "name": "Hungry Bomb",
+    "hp": 1,
+    "tier": 0,
+    "category": "B",
+    "range": 10,
+    "speed": 0,
+    "interval": 0,
+    "behavior": "bomb",
+    "color": "#edacbf",
+    "description": "Consumes Virus Protein to grow its blast radius during this battle. Damages enemies AND immune cells.",
+    "experimental": true
   }
 }

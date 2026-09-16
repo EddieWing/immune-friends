@@ -21,7 +21,7 @@ func add(s,key,p=Vector2.ZERO):
 func run():
 	var s=Sim.new()
 	s.reset(42,12)
-	check(s.catalog.size()==27,"27 cell definitions")
+	check(s.catalog.size()>=31 and s.catalog.has("mortar") and s.catalog.has("tag_drag"),"original catalogue plus production cells")
 	check(s.money==4 and s.capacity()==4,"starting economy")
 	s.offers=["wall","wall","wall"]
 	check(s.purchase(0,Vector2(150,0)),"purchase deducts")

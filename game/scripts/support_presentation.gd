@@ -41,7 +41,7 @@ func update(sim,delta):
    if current[key]!=1.0:
     for id in sim.network(c.id):
      var provider=sim.cell_by_id(id)
-     if provider.key==("radar" if key=="range" else "accelerator"):
+     if provider.get("key","")==("radar" if key=="range" else "accelerator"):
       route=sim.bond_path(provider.id,c.id)
       break
    effects.append({"kind":"buff","p":c.p,"buff":key,"gained":current[key]!=1.0,"path":route,"age":0.0,"life":0.65})

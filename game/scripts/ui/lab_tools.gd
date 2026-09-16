@@ -26,7 +26,7 @@ func _ready():
  title.add_theme_font_size_override("font_size",24)
  col.add_child(title)
  cells=OptionButton.new()
- cell_keys=["__core"]+game.sim.catalog.keys()
+ cell_keys=["__core"]+game.sim.available_cell_keys()
  for key in cell_keys: cells.add_item("Core cell" if key=="__core" else game.sim.catalog[key].name)
  col.add_child(cells)
  rank=OptionButton.new()
@@ -149,3 +149,16 @@ func _process(delta):
  text+="\nRecent events:"
  for i in range(maxi(0,sim.events.size()-3),sim.events.size()): text+="\n"+sim.events[i].event
  readout.text=text
+
+func refresh_available():
+ cell_keys=["__core"]+game.sim.available_cell_keys()
+ virus_keys=game.sim.available_virus_keys()
+ for dropdown in [cells,debug_cells]:
+  dropdown.clear()
+  for key in cell_keys: dropdown.add_item("Core cell" if key=="__core" else game.sim.catalog[key].name)
+  dropdown.select(1)
+ for dropdown in [viruses,debug_viruses]:
+  dropdown.clear()
+  for key in virus_keys: dropdown.add_item(key.capitalize()+" Virus")
+  dropdown.select(0)
+ rank.disabled=false

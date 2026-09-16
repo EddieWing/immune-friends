@@ -17,11 +17,11 @@ func run():
  scene.enter_gym()
  scene.main_menu.hide()
  check(scene.sim!=original and scene.sim.gym_mode,"Gym uses an isolated simulation")
- check(scene.lab_tools.cell_keys.size()==28 and scene.lab_tools.virus_keys.size()==7,"Gym exposes every immune cell plus core cells and every virus")
- for key in scene.sim.catalog:
+ check(scene.lab_tools.cell_keys.size()==scene.sim.available_cell_keys().size()+1 and scene.lab_tools.virus_keys.size()==7,"Gym exposes every immune cell plus core cells and every virus")
+ for key in scene.sim.available_cell_keys():
   scene.gym_tool={"kind":"cell","key":key,"rank":3}
   scene.gym_place(Vector2(180,0))
- check(scene.sim.cells.size()==27 and scene.sim.cells.all(func(c): return c.rank==3),"all cell types can be placed as elites without economy limits")
+ check(scene.sim.cells.size()==scene.sim.available_cell_keys().size() and scene.sim.cells.all(func(c): return c.rank==3),"all cell types can be placed as elites without economy limits")
  scene.gym_clear()
  for key in scene.lab_tools.virus_keys:
   scene.gym_tool={"kind":"virus","key":key,"rank":1}

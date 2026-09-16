@@ -1,5 +1,10 @@
 extends RefCounted
 # Rules marked provisional are centralized in data/assumptions.json.
+var experimental=false
+var experiments=preload("res://scripts/experimental_system.gd").new()
+var proteins=preload("res://scripts/protein_system.gd").new()
+var pending_cells=[]
+var battle_income=0
 var catalog: Dictionary
 var rules: Dictionary
 var rng = RandomNumberGenerator.new()
@@ -66,6 +71,8 @@ func reset(seed_number = 42, rounds = 12):
 	presentation_revision+=1
 	elapsed=0.0
 	spawn_timer=0.0
+	battle_income=0
+	pending_cells.clear()
 	spawn_queue.clear()
 	round_losses={"viruses":0,"core":0,"cells":0}
 	rng.seed = seed_number
@@ -103,6 +110,14 @@ func reset(seed_number = 42, rounds = 12):
 	make_wave()
 	record("new_run", {"seed":seed_number,"rounds":rounds})
 
+func available_cell_keys():
+	return catalog.keys().filter(func(key):return experimental or not catalog[key].get("experimental",false))
+
+func available_virus_keys():
+	var keys=["basic","wave","jumper","hungry","swarmer","seeker","avoider"]
+	if experimental: keys.append("pusher")
+	return keys
+
 func capacity():
 	return 4 + (tier-1)*3
 
@@ -138,7 +153,7 @@ func merge(a, b):
 
 func queue_reward():
 	var pool: Array = []
-	for key in catalog:
+	for key in available_cell_keys():
 		if int(catalog[key].tier)==0:
 			pool.append(key)
 	var a = pool[rng.randi_range(0,pool.size()-1)]
@@ -159,6 +174,7 @@ func purchase(index: int, p: Vector2, reward = false):
 	if index < 0 or index >= source.size():
 		return false
 	var key = source[index]
+	if not available_cell_keys().has(key): return false
 	if not reward and money < 2:
 		last_message = "You need 2 coins"
 		return false
@@ -205,7 +221,7 @@ func roll_shop(pay = true):
 	if pay:
 		money-=1
 	var pool: Array = []
-	for key in catalog:
+	for key in available_cell_keys():
 		if int(catalog[key].tier)>0 and int(catalog[key].tier)<=tier:
 			pool.append(key)
 	offers.clear()
@@ -214,7 +230,7 @@ func roll_shop(pay = true):
 	record("shop_roll")
 
 func buy_xp():
-	if phase!="shop" or money<3 or tier>=4:
+	if phase!="shop" or money<3 or tier>=5:
 		return false
 	money-=3
 	xp+=1
@@ -229,13 +245,42 @@ func cell_by_id(id):
 			return c
 	return {}
 
+func endpoint_by_id(id):
+	if id < -1:
+		for b in blood:
+			if -2-int(b.id)==id: return b
+		return {}
+	return cell_by_id(id)
+
+func core_endpoint(b):
+	return -2-int(b.id)
+
+func hit_core(b, v):
+	# One intercepted contact consumes the attacking virus, as a normal breach does.
+	# Exact excess-damage behavior is provisional; no recursive guard redirection.
+	for id in network(core_endpoint(b)):
+		var guard=cell_by_id(id)
+		if not guard.is_empty() and guard.get("key","")=="bodyguard" and guard.alive:
+			record("transfer",{"path":bond_path(core_endpoint(b),guard.id)})
+			damage_cell(guard,float(rules.contact_damage),true,{"kind":"virus","id":v.id,"p":v.p})
+			v.alive=false
+			record("core_protected",{"id":b.id,"guard":guard.id,"p":b.p})
+			return
+	b.alive=false
+	v.alive=false
+	effect(b.p,Color("#eb8f9d"),"",35)
+	record("blood_lost",{"id":b.id,"p":b.p})
+
 func rebuild_links():
 	links.clear()
 	for c in cells:
 		if catalog[c.key].behavior!="bond":
 			continue
-		var near = cells.duplicate()
+		var near = cells.filter(func(item): return item.alive)
 		near.erase(c)
+		if c.key=="bodyguard":
+			for b in blood:
+				if b.alive: near.append({"id":core_endpoint(b),"p":b.p})
 		near.sort_custom(func(a,b): return a.p.distance_squared_to(c.p)<b.p.distance_squared_to(c.p))
 		var count = 1 if c.key=="swapper" else 2
 		for other in near:
@@ -261,7 +306,7 @@ func network(id):
 			var other=l.b if l.a==here else (l.a if l.b==here else -1)
 			if other==-1 or found.has(other):
 				continue
-			var c=cell_by_id(other)
+			var c=endpoint_by_id(other)
 			if not c.is_empty() and c.alive:
 				found.append(other)
 	return found
@@ -270,10 +315,22 @@ func range_of(c):
 	var r=float(catalog[c.key].range)*float(rules.scale)
 	if c.rank==3:
 		if c.key=="seeker": r=40*float(rules.scale)
-		if c.key=="bomb": r=20*float(rules.scale)
-	return r*float(c.range_buff)
+		if c.key in ["bomb","survivor_bomb","hungry_bomb"]: r=20*float(rules.scale)
+	if c.key=="survivor_bomb": r+=float(c.get("radius_growth",0))*float(rules.scale)
+	if c.key=="hungry_bomb": r+=float(c.get("radius_growth",0))*float(rules.scale)
+	if c.key=="electromagnet": r+=float(c.charge)*2.0*float(rules.scale)
+	return r+float(c.get("range_bonus",0))
+
+func speed_of(c):
+	return 25.0 if c.key=="orbiter" and c.rank==3 else float(catalog[c.key].speed)
+
+func apply_radar(c):
+	c["range_bonus"]=float(rules.radar_bonus)*float(rules.scale)
+	# Retain the ratio for existing presentation; gameplay uses additive range.
+	c.range_buff=1.0+c.range_bonus/maxf(1,float(catalog[c.key].range)*float(rules.scale))
 
 func interval_of(c):
+	if c.key=="gatling": return maxf(0.05,2.0-0.25*float(c.get("kills",0)))
 	if c.key=="tag_dropper" and c.rank==3:
 		return 0.25
 	return float(catalog[c.key].interval)
@@ -290,6 +347,8 @@ func make_wave():
 		wave.append({"type":"seeker" if seed_value%2==0 else "swarmer","count":8 if round_no==7 else 17,"lane":2})
 	if round_no>=9:
 		wave.append({"type":"swarmer","count":12+(round_no-9)*14,"lane":1})
+	if experimental and round_no>=9:
+		wave.append({"type":"pusher","count":12+(round_no-9)*4,"lane":2})
 	if round_no>=11:
 		wave.append({"type":"avoider","count":12+(round_no-11)*8,"lane":0})
 
@@ -301,7 +360,10 @@ func begin_battle():
 	elapsed=0
 	spawn_timer=0
 	viruses.clear()
-	particles.clear()
+	particles=particles.filter(func(p):return p.get("setup",false))
+	for p in particles: p.life=8.0
+	battle_income=0
+	pending_cells.clear()
 	spawn_queue.clear()
 	rebuild_links()
 	for c in cells:
@@ -310,16 +372,26 @@ func begin_battle():
 		c.cool=0.1
 		c.contact=0
 		c.range_buff=1.0
+		c["range_bonus"]=0.0
 		c.speed_buff=1.0
 		c.orbit=c.p.angle()
 		c.alive=true
 		c.hp=c.max_hp
+		c.food=0
+		c["bullet_food"]=0
+		c["kills"]=0
+		c["distance_charge"]=0.0
+		c["distance_health"]=0.0
+		c["travel_x"]=c.p.x
+		c["travel_y"]=c.p.y
+		if c.key=="hungry_bomb": c["radius_growth"]=0.0
+		if c.key=="greed_wall": c.hp+=2*money
 		c.charge=2 if c.key=="zapper" else 0
 	for c in cells:
 		for id in network(c.id):
 			var n=cell_by_id(id)
-			if n.key=="radar": c.range_buff=float(rules.radar_multiplier)
-			if n.key=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
+			if n.get("key","")=="radar": apply_radar(c)
+			if n.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
 	for entry in wave:
 		for i in range(entry.count):
 			spawn_queue.append({"type":entry.type,"lane":entry.lane})
@@ -348,6 +420,7 @@ func make_infection_sources():
 		infection_sources.append(source_center+direction*source_rng.randf_range(minimum,maximum))
 
 func spawn_virus(entry):
+	if not available_virus_keys().has(entry.type): return
 	var config=rules.infection_sources
 	var p=infection_sources[entry.lane]
 	var inward=p.direction_to(source_center)
@@ -388,7 +461,7 @@ func shoot(c, direction, origin=Vector2.INF, split=false):
 	if c.key=="cannon":
 		var count=0
 		for n in cells:
-			if catalog[n.key].category=="B": count+=1
+			if catalog[n.get("key","")].category=="B": count+=1
 		radius+=count*0.65
 	particles.append({"kind":"bullet","p":p,"v":direction.normalized()*float(rules.bullet_speed),
 		"life":4.0,"r":radius,"owner":c.id,"split":split})
@@ -397,7 +470,7 @@ func shoot(c, direction, origin=Vector2.INF, split=false):
 func bond_path(start_id,end_id):
 	# Read-only provenance for a transfer already chosen by network().
 	var queue=[start_id]
-	var paths={start_id:[cell_by_id(start_id).p]}
+	var paths={start_id:[endpoint_by_id(start_id).p]}
 	while not queue.is_empty():
 		var id=queue.pop_front()
 		if id==end_id: return paths[id]
@@ -405,8 +478,8 @@ func bond_path(start_id,end_id):
 			var next=-1
 			if link.a==id: next=link.b
 			elif link.b==id: next=link.a
-			if next<0 or paths.has(next): continue
-			var cell=cell_by_id(next)
+			if next==-1 or paths.has(next): continue
+			var cell=endpoint_by_id(next)
 			if cell.is_empty(): continue
 			paths[next]=paths[id]+[cell.p]
 			queue.append(next)
@@ -421,10 +494,13 @@ func heal(c, amount, source={}):
 
 func damage_cell(c, amount, redirected=false, source={}):
 	if not c.alive: return
+	if experimental and c.key=="tag_proof" and source.get("kind","")=="virus":
+		for v in viruses:
+			if v.id==source.get("id",-1) and v.tag>0: return
 	if not redirected:
 		for id in network(c.id):
 			var guard=cell_by_id(id)
-			if guard.id!=c.id and guard.key=="bodyguard" and guard.alive:
+			if not guard.is_empty() and guard.id!=c.id and guard.get("key","")=="bodyguard" and guard.alive:
 				record("transfer",{"path":bond_path(c.id,guard.id)})
 				damage_cell(guard,amount,true,source)
 				return
@@ -438,7 +514,7 @@ func damage_cell(c, amount, redirected=false, source={}):
 	if c.hp>0: return
 	c.alive=false
 	effect(c.p,Color(catalog[c.key].color),"",40)
-	if c.key=="bomb":
+	if c.key in ["bomb","survivor_bomb","hungry_bomb"]:
 		var reach=range_of(c)
 		effect(c.p,Color("#f9b8d1"),"Pop!",reach)
 		for v in viruses:
@@ -462,6 +538,9 @@ func damage_virus(v, amount, source={}):
 	record("virus_hit",{"id":v.id,"p":v.p,"amount":amount,"from":source.get("p",v.p),"cause":source.get("cause","contact")})
 	if v.hp>0: return
 	v.alive=false
+	experiments.virus_death(self,v)
+	var shooter=cell_by_id(source.get("owner",-1))
+	if experimental and shooter.get("key","")=="gatling": shooter["kills"]=int(shooter.get("kills",0))+1
 	particles.append({"kind":"food","p":v.p,"v":Vector2.ZERO,"life":float(rules.protein_lifetime),"r":4.0,"owner":-1})
 	effect(v.p,Color("#d4b8e7"),"",20)
 	var core=nearest_blood(v.p)
@@ -469,9 +548,17 @@ func damage_virus(v, amount, source={}):
 	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat})
 
 func push_object(object,offset,kind,origin):
-	object.p+=offset
+	move_body(object,offset,origin)
 	if offset.length_squared()>0:
 		record("pushed",{"id":object.id,"p":object.p,"kind":kind,"from":origin,"direction":offset.normalized()})
+
+func move_body(c, offset, contact=Vector2.INF):
+	c.p+=offset
+	if not c.has("key") or catalog[c.key].behavior!="wall": return
+	# Provisional torque: an off-centre force rotates a free wall.
+	if contact!=Vector2.INF:
+		var lever=contact-c.p
+		c.angle+=clampf(lever.cross(offset)/1800.0,-0.08,0.08)
 
 func contains_cell(c, p, extra=0.0):
 	var local=(p-c.p).rotated(-c.angle)
@@ -494,24 +581,33 @@ func update(delta):
 	for c in cells:
 		if not c.alive: continue
 		c.range_buff=1.0
+		c["range_bonus"]=0.0
 		c.speed_buff=1.0
 		for id in network(c.id):
 			var provider=cell_by_id(id)
-			if provider.key=="radar": c.range_buff=float(rules.radar_multiplier)
-			if provider.key=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
+			if provider.get("key","")=="radar": apply_radar(c)
+			if provider.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
+		proteins.tick(self,c,delta)
+		experiments.tick(self,c,delta)
 		c.cool-=delta
 		c.contact=maxf(0,c.contact-delta)
 		var d=catalog[c.key]
 		var velocity=Vector2.ZERO
 		var reach=range_of(c)
 		var target=nearest_virus(c.p,reach)
+		if c.key=="tag_splitter":
+			var distance=reach if target.is_empty() else c.p.distance_to(target.p)
+			for p in particles:
+				if p.life>0 and p.kind=="tag" and p.p.distance_to(c.p)<distance:
+					target={"p":p.p}
+					distance=p.p.distance_to(c.p)
 		if target.is_empty() and d.category=="T" and reach>0:
 			for candidate in viruses:
 				if candidate.alive and candidate.tag>0 and c.p.distance_to(candidate.p)<reach*2:
 					target=candidate
 					break
 		if d.behavior=="forward" or d.behavior=="drop":
-			velocity=Vector2.RIGHT.rotated(c.angle)*float(d.speed)*3
+			velocity=Vector2.RIGHT.rotated(c.angle)*speed_of(c)*3
 		elif d.behavior=="seek":
 			# Tagged targets can be detected at twice the normal distance.
 			if target.is_empty():
@@ -519,22 +615,29 @@ func update(delta):
 					if v.alive and v.tag>0 and c.p.distance_to(v.p)<reach*2:
 						target=v
 						break
-			if not target.is_empty(): velocity=c.p.direction_to(target.p)*float(d.speed)*3
+			if not target.is_empty(): velocity=c.p.direction_to(target.p)*speed_of(c)*3
 		elif d.behavior=="orbit":
 			var radius=maxf(100,c.start.length())
-			c.orbit-=float(d.speed)*3/radius*movement_delta
+			c.orbit-=speed_of(c)*3/radius*movement_delta
 			var desired=Vector2.from_angle(c.orbit)*radius
-			velocity=(desired-c.p).limit_length(float(d.speed)*3)
+			velocity=(desired-c.p).limit_length(speed_of(c)*3)
+		if c.get("launch_remaining",0.0)>0:
+			velocity=Vector2.RIGHT.rotated(c.angle)*150.0
+			c.launch_remaining=maxf(0,c.launch_remaining-delta)
 		c.p+=velocity*movement_delta*float(c.speed_buff)
 		c.p=c.p.clamp(Vector2(-620,-365),Vector2(620,350))
 		if c.cool<=0:
 			c.cool=maxf(0.05,interval_of(c))
 			match d.behavior:
 				"shoot":
-					if not target.is_empty(): shoot(c,target.p-c.p)
+					var feeder=experiments.feed_target(self,c)
+					if not feeder.is_empty(): shoot(c,feeder.p-c.p)
+					elif not target.is_empty(): shoot(c,target.p-c.p)
 				"sniper":
 					var dir=Vector2.RIGHT.rotated(c.angle)
-					for candidate in viruses:
+					var feeder=experiments.feed_target(self,c)
+					if not feeder.is_empty(): shoot(c,dir)
+					for candidate in ([] if not feeder.is_empty() else viruses):
 						if candidate.alive and c.p.distance_to(candidate.p)<reach and absf(dir.angle_to(candidate.p-c.p))<0.20:
 							shoot(c,dir)
 							break
@@ -566,20 +669,25 @@ func update(delta):
 				c.food-=8
 				c.charge+=8
 				record("generator_charged",{"id":c.id,"p":c.p,"amount":8})
-		if c.charge>0:
+		if c.charge>0 and c.key!="electromagnet":
 			conduct(c)
+	for c in pending_cells:
+		if cells.size()<int(rules.produced_cell_limit): cells.append(c)
+	pending_cells.clear()
 	# Spring-like position constraints allow entire connected components to move.
 	for pass_no in range(3):
 		for l in links:
-			var a=cell_by_id(l.a)
-			var b=cell_by_id(l.b)
-			if not a.alive or not b.alive: continue
+			var a=endpoint_by_id(l.a)
+			var b=endpoint_by_id(l.b)
+			if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue
 			var offset=b.p-a.p
 			var length=offset.length()
 			if length>1:
 				var correction=offset/length*(length-l.rest)*float(rules.bond_stiffness)*0.5
-				a.p+=correction
-				b.p-=correction
+				var arm_a=Vector2.RIGHT.rotated(a.get("angle",0.0))*25
+				var arm_b=Vector2.RIGHT.rotated(b.get("angle",0.0))*25
+				move_body(a,correction,a.p+arm_a)
+				move_body(b,-correction,b.p+arm_b)
 	# Soft body separation; walls use their oriented rectangle, not a circular hitbox.
 	for i in range(cells.size()):
 		var a=cells[i]
@@ -594,8 +702,8 @@ func update(delta):
 			var radius_b=body_radius(b,-direction)
 			if length<radius_a+radius_b:
 				var correction=direction*(radius_a+radius_b-length)*0.3
-				a.p-=correction
-				b.p+=correction
+				move_body(a,-correction,b.p)
+				move_body(b,correction,a.p)
 	for c in cells:
 		c.p=c.p.clamp(Vector2(-620,-365),Vector2(620,350))
 	for v in viruses:
@@ -674,16 +782,13 @@ func update(delta):
 				var away=(v.p-c.p).normalized()
 				if away==Vector2.ZERO: away=Vector2.RIGHT
 				v.p+=away*speed*movement_delta
+				move_body(c,-away*speed*movement_delta*0.15,v.p)
 				if v.cool<=0:
 					v.cool=float(rules.contact_interval)
 					damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
 					damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
 		if v.alive and v.p.distance_to(destination.p)<19:
-			destination.alive=false
-			v.alive=false
-			record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p})
-			effect(destination.p,Color("#eb8f9d"),"",35)
-			record("blood_lost",{"id":destination.id,"p":destination.p})
+			hit_core(destination,v)
 	for p in particles:
 		if p.life<=0: continue
 		p.life-=delta
@@ -700,7 +805,7 @@ func update(delta):
 			if p.life<=0: continue
 			for v in viruses:
 				if v.alive and not v.jump and v.p.distance_to(p.p)<12+p.r:
-					damage_virus(v,float(rules.bullet_damage),{"p":p.p-p.v.normalized()*20,"cause":"bullet"})
+					damage_virus(v,float(rules.bullet_damage),{"p":p.p-p.v.normalized()*20,"cause":"bullet","owner":p.owner})
 					p.life=0
 					break
 		elif p.kind=="tag":
@@ -761,10 +866,17 @@ func conduct(c):
 
 func next_round():
 	if phase!="recap": return
+	cells=cells.filter(func(c):return not c.get("temporary",false))
+	links=links.filter(func(l):return not endpoint_by_id(l.a).is_empty() and not endpoint_by_id(l.b).is_empty())
 	for c in cells:
 		if c.key=="bank" and c.alive: c.sale+=1
+		if c.key=="survivor_bomb" and c.alive:
+			c["radius_growth"]=float(c.get("radius_growth",0))+8.0
+			record("permanent_growth",{"id":c.id,"p":c.p,"amount":8})
 		c.p=c.start
 		c.angle=c.start_angle
+		c.range_buff=1.0
+		c["range_bonus"]=0.0
 		c.hp=c.max_hp
 		c.alive=true
 		c.charge=2 if c.key=="zapper" else 0
@@ -784,7 +896,8 @@ func next_round():
 		swap[1].hp=swap[2]
 		record("swap",{"a":swap[0].id,"b":swap[1].id,"p":swap[0].p,"q":swap[1].p,"before_a":swap[2],"after_a":swap[3],"before_b":swap[3],"after_b":swap[2]})
 	round_no+=1
-	money=mini(round_no+3,10)
+	money=mini(round_no+3,10)+battle_income
+	battle_income=0
 	phase="shop"
 	particles.clear()
 	effects.clear()
@@ -832,14 +945,16 @@ func solve_blood():
 		for link in blood_links:
 			var a=blood[link.a]
 			var b=blood[link.b]
-			if not a.alive or not b.alive: continue
+			if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue
 			var offset=b.p-a.p
 			var distance=offset.length()
 			if distance>26.05:
 				adjusted=true
 				var correction=offset/distance*(distance-26.0)*0.35
-				a.p+=correction
-				b.p-=correction
+				var arm_a=Vector2.RIGHT.rotated(a.get("angle",0.0))*25
+				var arm_b=Vector2.RIGHT.rotated(b.get("angle",0.0))*25
+				move_body(a,correction,a.p+arm_a)
+				move_body(b,-correction,b.p+arm_b)
 		for i in range(blood.size()):
 			var a=blood[i]
 			if not a.alive: continue
@@ -887,7 +1002,7 @@ func step_blood(delta):
 		for link in blood_links:
 			var a=blood[link.a]
 			var b=blood[link.b]
-			if not a.alive or not b.alive: continue
+			if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue
 			var offset=b.p-a.p
 			var distance=offset.length()
 			if distance<0.001: continue

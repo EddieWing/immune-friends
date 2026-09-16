@@ -22,10 +22,10 @@ func update(sim,delta):
  elapsed=sim.elapsed
  var active={}
  for link in sim.links:
-  var a=sim.cell_by_id(link.a)
-  var b=sim.cell_by_id(link.b)
+  var a=sim.endpoint_by_id(link.a)
+  var b=sim.endpoint_by_id(link.b)
   if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue
-  observe_link(active,"immune",a.id,b.id,a.p,b.p,Color(sim.catalog[a.key].color),Color(sim.catalog[b.key].color),a,b)
+  observe_link(active,"immune",link.a,link.b,a.p,b.p,Color(sim.catalog[a.key].color) if a.has("key") else Color("#f2acb8"),Color(sim.catalog[b.key].color) if b.has("key") else Color("#f2acb8"),a,b)
  for link in sim.blood_links:
   var a=sim.blood[link.a]
   var b=sim.blood[link.b]
