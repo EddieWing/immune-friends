@@ -36,7 +36,7 @@ func run():
  var distances_ok=true
  for source in original_sources:
   var distance=source.distance_to(sources_sim.source_center)
-  distances_ok=distances_ok and distance>=340 and distance<=440
+  distances_ok=distances_ok and distance>=510 and distance<=660
  check(distances_ok,"infection sources respect configured distance range")
  sources_sim.make_wave()
  check(sources_sim.infection_sources==original_sources,"source positions are stable for the same seed and round")

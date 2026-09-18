@@ -47,8 +47,8 @@
   "stalemate_resolution": "After 180 seconds, remaining viruses each remove one blood cell; provisional safeguard, original unknown",
   "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured",
   "infection_sources": {
-    "distance_min": 340.0,
-    "distance_max": 440.0,
+    "distance_min": 510.0,
+    "distance_max": 660.0,
     "angle_jitter_degrees": 25.0,
     "exit_distance": 70.0,
     "exit_spread": 85.0,
