@@ -103,6 +103,7 @@ var background_motion=1.0
 var optical_intensity=1.0
 var flash_intensity=1.0
 var visor_radius=0.54
+var visor_preparation=0.0
 var background_material: ShaderMaterial
 var zoom_gauge: Control
 const OfferButton=preload("res://scripts/ui/offer.gd")
@@ -1378,6 +1379,8 @@ func advance_visor(delta):
 		if view.drag_preview!=Vector2.INF: target=maxf(target,(view.to_global(view.drag_preview)-Vector2(720,450)).length()/900.0+0.06)
 	visor_radius=lerpf(visor_radius,minf(target,1.2),1.0-exp(-delta*3.5))
 	lens.set_shader_parameter("radius",visor_radius)
+	visor_preparation=lerpf(visor_preparation,1.0 if sim.phase=="shop" and view.staging!="warning" else 0.0,1.0-exp(-delta*5.0))
+	lens.set_shader_parameter("preparation",visor_preparation)
 
 func update_zoom():
 	if zoom_gauge: zoom_gauge.queue_redraw()
