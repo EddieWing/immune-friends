@@ -1,4 +1,5 @@
 extends RefCounted
+var intensity=1.0
 var revision_seen=-1
 var observed_sim
 var round_seen=-1
@@ -44,6 +45,7 @@ func draw(canvas):
  for b in bursts.slice(maxi(0,bursts.size()-16)):
   var t=b.age/0.5
   var color=Color(0.76,0.9,1,1-t) if b.kind in ["thawed","tagged"] else Color(0.94,0.64,0.75,1-t)
+  color.a*=intensity
   if b.kind=="pushed":
    var d=b.direction
    var p=b.p-d*(23+t*8)

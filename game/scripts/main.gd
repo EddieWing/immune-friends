@@ -48,6 +48,11 @@ var ambient: AudioStreamPlayer
 var bottom_panel: PanelContainer
 var shop_toggle: Button
 var auto_camera=true
+var camera_director=preload("res://scripts/camera_director.gd").new()
+var camera_phase=""
+var camera_requested=0.88
+var camera_buttons=[]
+var camera_warning_sources=[]
 var catalogue_key=""
 var catalogue_text: RichTextLabel
 var volumes=[0.45,0.3,0.6,0.3]
@@ -93,6 +98,10 @@ var card_cell={}
 var card_anchor=Vector2(720,780)
 var zoom_target=0.88
 var water_time=0.0
+var background_motion=1.0
+var optical_intensity=1.0
+var flash_intensity=1.0
+var visor_radius=0.54
 var background_material: ShaderMaterial
 var zoom_gauge: Control
 var auto_button: Button
@@ -112,6 +121,9 @@ func _ready():
 	if settings.has_section("graphics"):
 		settings.erase_section("graphics")
 		settings.save(settings_path)
+	background_motion=float(settings.get_value("comfort","motion",1.0))
+	optical_intensity=float(settings.get_value("comfort","optics",1.0))
+	flash_intensity=float(settings.get_value("comfort","flashes",1.0))
 	make_ambient()
 	sim.reset(Time.get_ticks_usec()%100000,12)
 	refresh()
@@ -258,12 +270,20 @@ func build_ui():
 	ui.add_child(vignette)
 	var gear=absolute_button("⚙",Vector2(24,12),Vector2(42,42),show_settings)
 	gear.add_theme_font_size_override("font_size",30)
-	gear.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
+	var gear_background=StyleBoxFlat.new()
+	gear_background.bg_color=Color("#f5f1e5")
+	gear_background.set_corner_radius_all(8)
+	gear.add_theme_stylebox_override("normal",gear_background)
 	zoom_gauge=preload("res://scripts/ui/zoom_gauge.gd").new()
 	zoom_gauge.game=self
 	zoom_gauge.position=Vector2(1376,320)
 	zoom_gauge.size=Vector2(40,260)
 	ui.add_child(zoom_gauge)
+	for preset in [["400x",0.45],["800x",0.88],["1000x",1.5]]:
+		var z=absolute_button(preset[0],Vector2(855+camera_buttons.size()*70,12),Vector2(66,36),func(): set_zoom(preset[1]))
+		camera_buttons.append(z)
+	auto_button=absolute_button("Auto",Vector2(1068,12),Vector2(66,36),func(): auto_camera=true; camera_phase=""; update_zoom())
+	auto_button.tooltip_text="Resume automatic framing; zoom remains independent"
 	for value in [1,2,5,0]:
 		var b=preload("res://scripts/ui/transport.gd").new()
 		b.mode=value
@@ -295,6 +315,8 @@ func build_ui():
 	phase_panel.add_child(round_label)
 	detail_panel=panel(ui,Rect2(194,85,340,0),Color("#d7edefef"))
 	detail_panel.get_theme_stylebox("panel").border_color=Color("#efffff")
+	var paper=preload("res://scripts/ui/lab_paper.gd").new()
+	detail_panel.add_child(paper)
 	var column=VBoxContainer.new()
 	column.add_theme_constant_override("separation",8)
 	detail_panel.add_child(column)
@@ -449,10 +471,15 @@ func show_menu():
 	main_menu.size=Vector2(1440,900)
 	main_menu.mouse_filter=Control.MOUSE_FILTER_STOP
 	ui.add_child(main_menu)
+	var menu_background=ColorRect.new()
+	menu_background.size=Vector2(1440,900)
+	menu_background.color=Color("#102832")
+	menu_background.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	main_menu.add_child(menu_background)
 	ui.move_child(modal,ui.get_child_count()-1)
-	var title=label(main_menu,"MICROCOSM",Vector2(700,320),72,Color("#254b5c"))
+	var title=label(main_menu,"MICROCOSM",Vector2(700,320),72,Color("#e0f0ea"))
 	title.size=Vector2(680,100)
-	menu_tagline=label(main_menu,"Tiny Cells Big Job",Vector2(825,550),27,Color("#416876"))
+	menu_tagline=label(main_menu,"Tiny Cells Big Job",Vector2(825,550),27,Color("#b5d1d3"))
 	var column=VBoxContainer.new()
 	column.position=Vector2(150,280)
 	column.size=Vector2(370,0)
@@ -467,6 +494,7 @@ func show_menu():
 	button(column,"How to play",show_help,Vector2(370,52))
 	button(column,"Quit",func(): save_run(); get_tree().quit(),Vector2(370,52))
 	for control in column.get_children():
+		control.add_theme_color_override("font_color",Color("#e0f0ea"))
 		control.alignment=HORIZONTAL_ALIGNMENT_LEFT
 		control.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
 		control.add_theme_font_size_override("font_size",23)
@@ -530,8 +558,33 @@ func show_help():
 	col.add_child(t)
 	button(col,"Got it",func(): modal.hide(); menu_open=false)
 
+func show_visual_comfort():
+	var col=clear_modal("Visual comfort","Essential numbers, symbols and event signals remain visible.")
+	modal_panel.set_meta("pause_for_settings",true)
+	for option in [["Background motion","motion",background_motion],["Optical distortion and halos","optics",optical_intensity],["Decorative flashes","flashes",flash_intensity]]:
+		var title=Label.new()
+		title.text=option[0]
+		col.add_child(title)
+		var slider=HSlider.new()
+		slider.name="Comfort_"+option[1]
+		slider.custom_minimum_size=Vector2(400,32)
+		slider.min_value=0
+		slider.max_value=1
+		slider.step=0.1
+		slider.value=option[2]
+		var key=option[1]
+		slider.value_changed.connect(func(v):
+			settings.set_value("comfort",key,v)
+			settings.save(settings_path)
+			if key=="motion": background_motion=v
+			elif key=="optics": optical_intensity=v
+			else: flash_intensity=v)
+		col.add_child(slider)
+	button(col,"Back",show_settings)
+
 func show_settings():
 	var col=clear_modal("Settings","Version "+str(ProjectSettings.get_setting("application/config/version","dev")))
+	modal_panel.set_meta("pause_for_settings",true)
 	modal_panel.position=Vector2(430,40)
 	modal_panel.size=Vector2(580,0)
 	col.add_theme_constant_override("separation",8)
@@ -549,6 +602,7 @@ func show_settings():
 		var index=i
 		slider.value_changed.connect(func(v): volumes[index]=v; settings.set_value("audio",str(index),v); settings.save(settings_path); ambient.volume_db=linear_to_db(maxf(0.0001,volumes[0]*volumes[1])))
 		col.add_child(slider)
+	button(col,"Visual comfort",show_visual_comfort,Vector2(272,36))
 	var experimental_toggle=CheckBox.new()
 	experimental_toggle.name="ExperimentalToggle"
 	experimental_toggle.text="Turn on experimental"
@@ -980,6 +1034,8 @@ func start_battle():
 	sim.release_blood()
 	cancel_placement()
 	save_run()
+	auto_camera=true
+	camera_phase=""
 	sim.begin_battle()
 	launch_remaining=LAUNCH_SECONDS
 	view.staging="launch"
@@ -1019,16 +1075,11 @@ func _process(delta):
 	advance_results(delta)
 	if not modal.visible:
 		var movement=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
-		view.position+=movement*delta*280
+		if movement.length_squared()>0:
+			auto_camera=false
+			view.position+=movement*delta*280
 	if sim.phase=="battle":
 		stats.text="%d/%d " % [sim.cells.size(),sim.capacity()]
-		if auto_camera and not panning:
-			var focus=Vector2.ZERO
-			var count=0
-			for b in sim.blood:
-				if b.alive: focus+=b.p; count+=1
-			if count>0: focus/=count
-			view.position=view.position.lerp(Vector2(720,425)-focus*view.scale.x,delta*1.2)
 
 func _input(event):
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
@@ -1071,6 +1122,7 @@ func _unhandled_input(event):
 		var screen=event.position
 		if event.button_index==MOUSE_BUTTON_RIGHT:
 			panning=event.pressed and board_rect.has_point(screen)
+			if panning: auto_camera=false
 			pan_previous=screen
 		if not board_rect.has_point(screen) and event.pressed: return
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
@@ -1270,20 +1322,63 @@ func toggle_shop():
 
 func set_zoom(value):
 	if browsing_from_main_menu() or entering_game: return
-	zoom_target=clampf(value,0.45,1.5)
+	camera_phase="warning" if view.staging=="warning" else sim.phase
+	camera_requested=clampf(value,0.45,1.5)
+	zoom_target=camera_requested
 	update_zoom()
 
+func camera_safe_rect():
+	var safe=Rect2(210,100,1090,650 if sim.phase=="shop" else 680)
+	if detail_panel.visible:
+		if detail_panel.position.x<720: safe.position.x=550; safe.size.x=750
+		else: safe.size.x=760
+	if view.staging=="warning": safe=Rect2(550,110,750,630)
+	return safe
+
 func advance_camera(delta):
+	var follow=auto_camera and not panning and not gym_mode and not browsing_from_main_menu() and not entering_game
+	var phase="warning" if view.staging=="warning" else sim.phase
+	if phase!=camera_phase:
+		camera_phase=phase
+		if follow and phase=="shop": camera_requested=0.88
+		elif follow and phase=="warning": camera_requested=0.88
+	if follow and phase in ["shop","battle","warning"]:
+		var framing=camera_director.frame(sim,phase,camera_safe_rect(),camera_requested,camera_warning_sources)
+		zoom_target=framing.zoom
+		var target=camera_safe_rect().get_center()-framing.focus*view.scale.x
+		if view.position.distance_to(target)>8: view.position=view.position.lerp(target,1.0-exp(-delta*3.0))
 	var value=lerpf(view.scale.x,zoom_target,1.0-exp(-delta/0.065))
 	if absf(value-zoom_target)<0.0001: value=zoom_target
 	view.scale=Vector2.ONE*value
-	water_time+=delta
+	advance_visor(delta)
+	water_time+=delta*background_motion
+	view.optical_intensity=optical_intensity
+	view.flash_intensity=flash_intensity
+	view.microscope_effects.intensity=flash_intensity
+	view.reactions.intensity=flash_intensity
+	background_material.set_shader_parameter("optical_intensity",optical_intensity)
+	background_material.set_shader_parameter("camera_offset",(Vector2(720,450)-view.position)/maxf(value,0.01))
+	ui.get_node("MicroscopeVignette").material.set_shader_parameter("optical_intensity",optical_intensity)
 	background_material.set_shader_parameter("camera_zoom",value)
 	background_material.set_shader_parameter("flow_time",water_time)
 	update_zoom()
 
+func advance_visor(delta):
+	var lens=ui.get_node("MicroscopeVignette").material
+	var menu=browsing_from_main_menu()
+	lens.set_shader_parameter("visibility",hud_opacity if entering_game else (0.0 if menu else 1.0))
+	if menu or entering_game: return
+	var target=0.86 if sim.phase!="shop" or view.staging=="warning" else 0.54
+	if sim.phase=="shop":
+		for c in sim.cells+sim.blood:
+			if c.alive: target=maxf(target,(view.to_global(c.p)-Vector2(720,450)).length()/900.0+0.06)
+		if view.drag_preview!=Vector2.INF: target=maxf(target,(view.to_global(view.drag_preview)-Vector2(720,450)).length()/900.0+0.06)
+	visor_radius=lerpf(visor_radius,minf(target,1.2),1.0-exp(-delta*3.5))
+	lens.set_shader_parameter("radius",visor_radius)
+
 func update_zoom():
 	if zoom_gauge: zoom_gauge.queue_redraw()
+	for i in range(camera_buttons.size()): camera_buttons[i].modulate=Color.WHITE if absf(camera_requested-[0.45,0.88,1.5][i])<0.02 else Color("#95a5ab")
 	if auto_button: auto_button.modulate=Color.WHITE if auto_camera else Color("#95a5ab")
 
 func set_playback_speed(value):
@@ -1325,6 +1420,7 @@ func position_scanner():
 	scanner.queue_redraw()
 
 func advance_simulation(delta):
+	if modal.visible and is_instance_valid(modal_panel) and modal_panel.get_meta("pause_for_settings",false): return
 	if launch_remaining>0:
 		launch_remaining=maxf(0,launch_remaining-delta)
 		if launch_remaining==0:
@@ -1442,6 +1538,18 @@ func show_recap():
 	preview_wave=next_sim.wave.duplicate(true)
 	preview_sources=next_sim.infection_sources.duplicate()
 	preview_center=next_sim.source_center
+	camera_warning_sources=[]
+	var most_growth=-1
+	var selected_lane=0
+	for lane in range(preview_sources.size()):
+		var growth=0
+		for entry in preview_wave:
+			if entry.lane==lane: growth+=entry.count
+		for entry in sim.wave:
+			if entry.lane==lane: growth-=entry.count
+		if growth>most_growth: most_growth=growth; selected_lane=lane
+	if not preview_sources.is_empty(): camera_warning_sources=[preview_sources[selected_lane]]
+	auto_camera=true
 	view.warning_wave=preview_wave
 	view.warning_sources=preview_sources
 	view.staging="warning"
@@ -1478,6 +1586,8 @@ func show_recap():
 func advance_recap():
 	results_stage=""
 	if sim.phase!="recap": return
+	auto_camera=true
+	camera_phase=""
 	sim.next_round()
 	if not preview_sources.is_empty():
 		sim.infection_sources=preview_sources.duplicate()

@@ -147,7 +147,7 @@ func merge(a, b):
 	if a.rank == 3:
 		queue_reward()
 	rebuild_links()
-	record("merge",{"key":a.key,"hp":a.hp,"rank":a.rank})
+	record("merge",{"key":a.key,"hp":a.hp,"rank":a.rank,"p":a.p})
 	effect(a.p,Color("#f6de8d"),"Hug!",48)
 	return true
 
@@ -489,7 +489,7 @@ func heal(c, amount, source={}):
 	if not c.alive: return
 	c.hp+=amount
 	c.flash=0.3
-	effect(c.p,Color("#a3e4b6"),"+"+str(amount),24)
+	effect(c.p,Color("#a3e4b6"),"+"+str(amount)+" Health",24)
 	record("heal",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"from":source.get("p",c.p)})
 
 func damage_cell(c, amount, redirected=false, source={}):

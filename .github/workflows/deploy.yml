@@ -30,7 +30,7 @@ jobs:
         run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path game --import
       - name: Check game systems
         run: |
-          for test in test_simulation test_systems test_ui_save test_ui_layout test_graphics test_speed_zoom test_gym test_presentation test_debug test_attack_presentation test_source_presentation test_reactions test_virus_behavior test_support_presentation test_attention test_staging_lifecycle test_playtest_iterations test_experimental; do
+          for test in test_simulation test_systems test_ui_save test_ui_layout test_graphics test_speed_zoom test_gym test_presentation test_debug test_attack_presentation test_source_presentation test_reactions test_virus_behavior test_support_presentation test_attention test_staging_lifecycle test_playtest_iterations test_experimental test_microscope; do
             timeout 60s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/$test.gd
           done
       - name: Export browser game

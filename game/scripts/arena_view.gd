@@ -1,5 +1,8 @@
 extends Node2D
 var sim
+var optical_intensity=1.0
+var flash_intensity=1.0
+var microscope_effects=preload("res://scripts/microscope_effects.gd").new()
 var attention=preload("res://scripts/attention_presentation.gd").new()
 var support=preload("res://scripts/support_presentation.gd").new()
 var virus_behavior=preload("res://scripts/virus_behavior_presentation.gd").new()
@@ -44,6 +47,7 @@ func _process(delta):
 		visual_revision=sim.presentation_revision
 	if sim!=null: diagnostics.update(sim,delta)
 	if sim!=null:
+		microscope_effects.update(sim,delta)
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)
 		reactions.update(sim,delta)
@@ -74,6 +78,7 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 
 func _draw():
 	if sim==null: return
+	microscope_effects.draw_under(self)
 	for lane in sources.states:
 		var source=sources.states[lane]
 		sources.draw(self,lane)
@@ -82,10 +87,10 @@ func _draw():
 	var selected=sim.cell_by_id(selected_id)
 	if not selected.is_empty() and selected.alive:
 		var radius=sim.range_of(selected)
-		if radius>0 and show_ranges:
+		if radius>0 and show_ranges and sim.phase=="shop":
 			draw_circle(selected.p,radius,Color(0.08,0.36,0.46,0.11))
 			draw_range_ring(selected.p,radius,Color("#245a70"))
-		if selected.key=="orbiter" and show_ranges:
+		if selected.key=="orbiter" and show_ranges and sim.phase=="shop":
 			draw_range_ring(Vector2.ZERO,maxf(100,selected.p.length()),Color("#794e96"),true)
 	if sim.phase=="shop" and not selected.is_empty() and selected.key=="bodyguard":
 		for link in sim.links:
@@ -104,20 +109,21 @@ func _draw():
 			draw_circle(p.p,p.r,Color("#bbe5ee"))
 			draw_arc(p.p,p.r,0,TAU,14,Color("#e8faf9"),1,true)
 		elif p.kind=="tag":
-			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-6),p.p+Vector2(5,4),p.p+Vector2(-5,4)]),Color("#efc3d8"))
+			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-6),p.p+Vector2(5,4),p.p+Vector2(-5,4)]),Color("#ef9cbe"))
+			draw_polyline(PackedVector2Array([p.p+Vector2(0,-6),p.p+Vector2(5,4),p.p+Vector2(-5,4),p.p+Vector2(0,-6)]),Color("#803f64"),1.2,true)
 		else:
-			draw_circle(p.p,3.5,Color("#ccb6e2"))
+			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-4),p.p+Vector2(4,0),p.p+Vector2(0,4),p.p+Vector2(-4,0)]),Color("#795791"))
 	virus_behavior.draw_links(self)
 	for v in sim.viruses:
 		if v.alive: draw_virus(v)
 	for e in sim.effects:
 		var alpha=e.life/e.max
-		var color=Color(e.color,alpha)
+		var color=Color(e.color,alpha*flash_intensity)
 		if e.has("end"):
 			draw_line(e.p,e.end,color,3,true)
 		else:
 			draw_arc(e.p,e.r*(1.3-alpha*0.5),0,TAU,36,color,2,true)
-			if e.text!="": text_at(e.p+Vector2(-12,-30-(1-alpha)*20),e.text,15,color)
+			if e.text!="": text_at(e.p+Vector2(-12,-30-(1-alpha)*20),e.text,15,Color(e.color,alpha))
 	if not selected.is_empty() and selected.alive:
 		var p=selected.p
 		draw_arc(p,27,0,TAU,48,Color("#f8e3a7"),2,true)
@@ -127,6 +133,7 @@ func _draw():
 			draw_circle(tip,8,Color("#f4df9d"))
 			var d=Vector2.RIGHT.rotated(selected.angle)
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
+	microscope_effects.draw_over(self)
 	presentation.draw_events(self)
 	reactions.draw(self)
 	virus_behavior.draw_effects(self)
@@ -174,9 +181,14 @@ func draw_cell(c):
 	var extent=Vector2(106,80) if wall else Vector2(58,58)
 	draw_set_transform(p+Vector2(2,4),c.angle,Vector2(pulse,1/pulse))
 	draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
+	if optical_intensity>0:
+		draw_set_transform(p,c.angle)
+		draw_texture_rect(texture,Rect2(-extent*0.54,extent*1.08),false,Color(0.78,0.94,1,0.14*optical_intensity))
 	draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
 	draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
 	draw_set_transform(Vector2.ZERO)
+	if not wall and optical_intensity>0:
+		draw_arc(p,25,PI*1.05,PI*1.48,18,Color(0.88,0.98,1,0.5*optical_intensity),1.3,true)
 	var look=pose.get("look",Vector2.ZERO)
 	if sim.phase=="shop":
 		var nearest={}

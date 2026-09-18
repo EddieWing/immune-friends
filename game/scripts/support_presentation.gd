@@ -72,6 +72,7 @@ func draw(canvas):
     canvas.draw_line(origin,e.p,Color(color,0.18*(1-t)),1,true)
     canvas.draw_circle(origin.lerp(e.p,minf(1,t*2)),3,Color(0.99,0.83,0.43,1-t) if e.kind=="generator_fed" else color)
    if e.kind=="heal":
+    canvas.draw_circle(e.p,22,Color(0.8,1,0.85,(1-t)*0.2))
     var p=e.p+Vector2(0,-23-t*8)
     canvas.draw_line(p+Vector2(-3,0),p+Vector2(3,0),color,2,true)
     canvas.draw_line(p+Vector2(0,-3),p+Vector2(0,3),color,2,true)
