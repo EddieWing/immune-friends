@@ -51,7 +51,6 @@ var auto_camera=true
 var camera_director=preload("res://scripts/camera_director.gd").new()
 var camera_phase=""
 var camera_requested=0.88
-var camera_buttons=[]
 var camera_warning_sources=[]
 var catalogue_key=""
 var catalogue_text: RichTextLabel
@@ -104,7 +103,6 @@ var flash_intensity=1.0
 var visor_radius=0.54
 var background_material: ShaderMaterial
 var zoom_gauge: Control
-var auto_button: Button
 const OfferButton=preload("res://scripts/ui/offer.gd")
 const FieldDrop=preload("res://scripts/ui/field_drop.gd")
 const CurrencyPips=preload("res://scripts/ui/currency.gd")
@@ -279,11 +277,6 @@ func build_ui():
 	zoom_gauge.position=Vector2(1376,320)
 	zoom_gauge.size=Vector2(40,260)
 	ui.add_child(zoom_gauge)
-	for preset in [["400x",0.45],["800x",0.88],["1000x",1.5]]:
-		var z=absolute_button(preset[0],Vector2(855+camera_buttons.size()*70,12),Vector2(66,36),func(): set_zoom(preset[1]))
-		camera_buttons.append(z)
-	auto_button=absolute_button("Auto",Vector2(1068,12),Vector2(66,36),func(): auto_camera=true; camera_phase=""; update_zoom())
-	auto_button.tooltip_text="Resume automatic framing; zoom remains independent"
 	for value in [1,2,5,0]:
 		var b=preload("res://scripts/ui/transport.gd").new()
 		b.mode=value
@@ -1378,8 +1371,6 @@ func advance_visor(delta):
 
 func update_zoom():
 	if zoom_gauge: zoom_gauge.queue_redraw()
-	for i in range(camera_buttons.size()): camera_buttons[i].modulate=Color.WHITE if absf(camera_requested-[0.45,0.88,1.5][i])<0.02 else Color("#95a5ab")
-	if auto_button: auto_button.modulate=Color.WHITE if auto_camera else Color("#95a5ab")
 
 func set_playback_speed(value):
 	if value not in [1,2,5]: return

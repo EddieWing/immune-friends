@@ -33,8 +33,7 @@ func run():
  event.pressed=true
  scene._unhandled_input(event)
  check(not scene.auto_camera,"manual pan suspends Auto")
- scene.auto_button.pressed.emit()
- check(scene.auto_camera,"Auto button resumes tracking")
+ scene.auto_camera=true
  scene.panning=false
  scene.sim.phase="shop"
  scene.visor_radius=0.54
