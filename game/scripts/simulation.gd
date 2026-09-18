@@ -74,6 +74,7 @@ func reset(seed_number = 42, rounds = 12):
 	battle_income=0
 	pending_cells.clear()
 	spawn_queue.clear()
+	ensure_infection_sources_clear()
 	round_losses={"viruses":0,"core":0,"cells":0}
 	rng.seed = seed_number
 	seed_value = seed_number
@@ -355,6 +356,7 @@ func make_wave():
 func begin_battle():
 	if phase!="shop" or not reward_choices.is_empty():
 		return
+	ensure_infection_sources_clear()
 	round_losses={"viruses":0,"core":0,"cells":0}
 	phase="battle"
 	elapsed=0
@@ -418,6 +420,47 @@ func make_infection_sources():
 		var jitter=deg_to_rad(clampf(config.angle_jitter_degrees,0,45))
 		var direction=Vector2.from_angle(angle+source_rng.randf_range(-jitter,jitter))
 		infection_sources.append(source_center+direction*source_rng.randf_range(minimum,maximum))
+	ensure_infection_sources_clear()
+
+# 70 units reserve the fully opened ink source plus a small membrane gap.
+func source_position_clear(p):
+	for b in blood:
+		if b.alive and p.distance_to(b.p)<88.0: return false
+	for c in cells:
+		if not c.alive: continue
+		if catalog[c.key].behavior=="wall":
+			var local=(p-c.p).rotated(-c.angle)
+			var nearest=local.clamp(Vector2(-43,-13),Vector2(43,13))
+			if local.distance_to(nearest)<70.0: return false
+		elif p.distance_to(c.p)<88.0: return false
+	return true
+
+func ensure_infection_sources_clear():
+	for lane in range(infection_sources.size()):
+		var original=infection_sources[lane]
+		if source_position_clear(original): continue
+		var direction=source_center.direction_to(original)
+		if direction==Vector2.ZERO: direction=Vector2.RIGHT.rotated(lane*TAU/3)
+		var found=false
+		# Bounded deterministic search; never consume combat/shop RNG.
+		for step in range(25):
+			var offset=0.0 if step==0 else ceilf(step/2.0)*deg_to_rad(5)*(-1 if step%2 else 1)
+			for ring in range(4):
+				var radius=lerpf(float(rules.infection_sources.distance_min),float(rules.infection_sources.distance_max),ring/3.0)
+				var candidate=source_center+direction.rotated(offset)*radius
+				if source_position_clear(candidate):
+					infection_sources[lane]=candidate
+					found=true
+					break
+			if found: break
+		if found: continue
+		# A crowded ring may require a more distant source, outside every body.
+		var radius=float(rules.infection_sources.distance_max)
+		for c in cells:
+			if c.alive: radius=maxf(radius,source_center.distance_to(c.p)+120.0)
+		for b in blood:
+			if b.alive: radius=maxf(radius,source_center.distance_to(b.p)+120.0)
+		infection_sources[lane]=source_center+direction*radius
 
 func spawn_virus(entry):
 	if not available_virus_keys().has(entry.type): return

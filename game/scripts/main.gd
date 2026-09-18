@@ -1041,6 +1041,7 @@ func start_battle():
 	refresh()
 
 func changed():
+	if sim.phase=="shop": sim.ensure_infection_sources_clear()
 	sim.rebuild_links()
 	refresh()
 	save_run()
@@ -1244,6 +1245,7 @@ func load_run():
 	if data.has("infection_sources") and data.has("source_center"):
 		sim.infection_sources=data.infection_sources.map(func(p): return Vector2(p[0],p[1]))
 		sim.source_center=Vector2(data.source_center[0],data.source_center[1])
+	sim.ensure_infection_sources_clear()
 	sim.rebuild_links()
 	selected={}
 	modal.hide()
@@ -1538,6 +1540,11 @@ func show_recap():
 	next_sim.reset(sim.seed_value,sim.target_rounds)
 	next_sim.round_no=sim.round_no+1
 	next_sim.blood=sim.blood.duplicate(true)
+	next_sim.cells=sim.cells.filter(func(c): return not c.get("temporary",false)).duplicate(true)
+	for c in next_sim.cells:
+		c.p=c.start
+		c.angle=c.start_angle
+		c.alive=true
 	next_sim.make_wave()
 	preview_wave=next_sim.wave.duplicate(true)
 	preview_sources=next_sim.infection_sources.duplicate()
