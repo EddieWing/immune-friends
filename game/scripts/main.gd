@@ -1333,9 +1333,8 @@ func advance_camera(delta):
 	var phase="warning" if view.staging=="warning" else sim.phase
 	if phase!=camera_phase:
 		camera_phase=phase
-		if follow and phase=="shop": camera_requested=0.88
-		elif follow and phase=="warning": camera_requested=0.88
-	if follow and phase in ["shop","battle","warning"]:
+		if follow and phase=="warning": camera_requested=0.88
+	if follow and phase in ["battle","warning"]:
 		var framing=camera_director.frame(sim,phase,camera_safe_rect(),camera_requested,camera_warning_sources)
 		zoom_target=framing.zoom
 		var target=camera_safe_rect().get_center()-framing.focus*view.scale.x
