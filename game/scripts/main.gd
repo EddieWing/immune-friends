@@ -48,6 +48,8 @@ var ambient: AudioStreamPlayer
 var bottom_panel: PanelContainer
 var shop_toggle: Button
 var auto_camera=true
+var core_feedback=preload("res://scripts/core_feedback.gd").new()
+var core_shake_offset=Vector2.ZERO
 var camera_director=preload("res://scripts/camera_director.gd").new()
 var camera_phase=""
 var camera_requested=0.88
@@ -1329,6 +1331,8 @@ func camera_safe_rect():
 	return safe
 
 func advance_camera(delta):
+	view.position-=core_shake_offset
+	core_shake_offset=Vector2.ZERO
 	var follow=auto_camera and not panning and not gym_mode and not browsing_from_main_menu() and not entering_game
 	var phase="warning" if view.staging=="warning" else sim.phase
 	if phase!=camera_phase:
@@ -1353,6 +1357,13 @@ func advance_camera(delta):
 	ui.get_node("MicroscopeVignette").material.set_shader_parameter("optical_intensity",optical_intensity)
 	background_material.set_shader_parameter("camera_zoom",value)
 	background_material.set_shader_parameter("flow_time",water_time)
+	var feedback_paused=(paused and sim.phase=="battle") or (modal.visible and is_instance_valid(modal_panel) and modal_panel.get_meta("pause_for_settings",false))
+	core_feedback.update(sim,0.0 if feedback_paused else delta)
+	var feedback_visible=not browsing_from_main_menu() and not entering_game and sim.phase!="shop"
+	if feedback_visible:
+		core_shake_offset=core_feedback.offset()*flash_intensity
+		view.position+=core_shake_offset
+	ui.get_node("MicroscopeVignette").material.set_shader_parameter("bleeding",core_feedback.bleeding*flash_intensity if feedback_visible else 0.0)
 	update_zoom()
 
 func advance_visor(delta):

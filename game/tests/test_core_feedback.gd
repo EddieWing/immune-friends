@@ -1,0 +1,17 @@
+extends SceneTree
+func _initialize():
+ var sim=preload("res://scripts/simulation.gd").new()
+ sim.reset(42,12)
+ var feedback=preload("res://scripts/core_feedback.gd").new()
+ feedback.update(sim,0.01)
+ sim.record("core_protected",{"p":Vector2.ZERO})
+ feedback.update(sim,0.01)
+ assert(feedback.shake>0 and feedback.bleeding==0,"protected contact shakes without bleeding")
+ for i in range(20): sim.record("blood_lost",{"p":Vector2.ZERO,"id":i})
+ feedback.update(sim,0.01)
+ assert(feedback.shake<=1 and feedback.bleeding<=1,"multiple impacts stay bounded")
+ assert(feedback.offset().length()<5,"shake remains subtle")
+ feedback.update(sim,2.0)
+ assert(feedback.shake==0 and feedback.bleeding==0 and feedback.offset()==Vector2.ZERO,"feedback settles fully")
+ print("PASS: Core feedback protection, bounds and decay")
+ quit()
