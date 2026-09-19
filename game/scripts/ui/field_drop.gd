@@ -7,3 +7,8 @@ func _drop_data(at_position,data):
 	var world=game.view.get_global_transform().affine_inverse()*screen
 	game.buy_offer_at(data.index,data.reward,world)
 
+
+func _gui_input(event):
+	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
+		game.begin_camera_pan(global_position+event.position)
+		if game.panning: accept_event()

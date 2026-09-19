@@ -1058,6 +1058,7 @@ func _process(delta):
 		hud_opacity=1.0
 		apply_menu_visibility()
 	position_scanner()
+	advance_manual_camera(delta)
 	advance_camera(delta)
 	if not entering_game: advance_simulation(delta)
 	if sim.phase!=last_phase:
@@ -1070,15 +1071,43 @@ func _process(delta):
 			view.staging="aftermath"
 			modal.hide()
 	advance_results(delta)
-	if not modal.visible:
-		var movement=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
-		if movement.length_squared()>0:
-			auto_camera=false
-			view.position+=movement*delta*280
 	if sim.phase=="battle":
 		stats.text="%d/%d " % [sim.cells.size(),sim.capacity()]
 
+func can_pan_camera():
+	return sim.phase in ["shop","battle"] and not modal.visible and not browsing_from_main_menu() and not entering_game and launch_remaining<=0
+
+func begin_camera_pan(screen):
+	if not can_pan_camera() or not board_rect.has_point(screen) or dragging or rotating or dragging_blood>=0: return
+	panning=true
+	auto_camera=false
+	pan_previous=screen
+
+func advance_manual_camera(delta,direction=Vector2.INF):
+	if not can_pan_camera():
+		panning=false
+		return
+	var focus=get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit: return
+	if direction==Vector2.INF:
+		direction=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
+	if direction.length_squared()>0:
+		auto_camera=false
+		view.position+=direction.limit_length(1.0)*delta*280
+
+func _notification(what):
+	if what==NOTIFICATION_APPLICATION_FOCUS_OUT: panning=false
+
 func _input(event):
+	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_RIGHT and not event.pressed:
+		panning=false
+	if event is InputEventMouseMotion and panning:
+		if can_pan_camera():
+			view.position+=event.position-pan_previous
+			pan_previous=event.position
+			get_viewport().set_input_as_handled()
+		else: panning=false
+		return
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
 		sim.release_blood()
 	if event is InputEventKey and event.pressed:
@@ -1118,9 +1147,8 @@ func _unhandled_input(event):
 	if event is InputEventMouseButton:
 		var screen=event.position
 		if event.button_index==MOUSE_BUTTON_RIGHT:
-			panning=event.pressed and board_rect.has_point(screen)
-			if panning: auto_camera=false
-			pan_previous=screen
+			if event.pressed: begin_camera_pan(screen)
+			else: panning=false
 		if not board_rect.has_point(screen) and event.pressed: return
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
 			var factor=1.1 if event.button_index==MOUSE_BUTTON_WHEEL_UP else 1.0/1.1
@@ -1176,9 +1204,6 @@ func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		var world=view.get_global_transform().affine_inverse()*event.position
 		if not pending_offer.is_empty() or not gym_tool.is_empty(): view.drag_preview=world
-		if panning:
-			view.position+=event.position-pan_previous
-			pan_previous=event.position
 		if rotating and not selected.is_empty():
 			selected.angle=(world-selected.p).angle()
 		elif dragging and not selected.is_empty():

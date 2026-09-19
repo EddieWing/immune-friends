@@ -33,6 +33,41 @@ func run():
  event.pressed=true
  scene._unhandled_input(event)
  check(not scene.auto_camera,"manual pan suspends Auto")
+ scene.set_process(false)
+ var camera_before=scene.view.position
+ var core_before=scene.sim.blood.duplicate(true)
+ var motion=InputEventMouseMotion.new()
+ motion.position=Vector2(770,440)
+ scene._input(motion)
+ check(scene.view.position==camera_before+Vector2(70,40) and scene.sim.blood==core_before,"Right drag moves the camera without moving the formation")
+ event.pressed=false
+ event.position=Vector2(50,30)
+ scene.modal.show()
+ scene._input(event)
+ check(not scene.panning,"Right release over UI always ends camera dragging")
+ scene.modal.hide()
+ camera_before=scene.view.position
+ scene.advance_manual_camera(1,Vector2(-1,0))
+ check(scene.view.position==camera_before+Vector2(-280,0),"WASD direction pans in preparation")
+ camera_before=scene.view.position
+ scene.advance_manual_camera(1,Vector2(-1,-1))
+ check(is_equal_approx(scene.view.position.distance_to(camera_before),280),"Diagonal camera speed matches axial movement")
+ scene.main_menu.show()
+ camera_before=scene.view.position
+ scene.advance_manual_camera(1,Vector2.LEFT)
+ scene.begin_camera_pan(Vector2(700,400))
+ check(scene.view.position==camera_before and not scene.panning,"Main menu blocks camera navigation")
+ scene.main_menu.hide()
+ var input=LineEdit.new()
+ scene.ui.add_child(input)
+ input.grab_focus()
+ scene.advance_manual_camera(1,Vector2.LEFT)
+ check(scene.view.position==camera_before,"Typing into an input does not move the camera")
+ input.release_focus()
+ input.queue_free()
+ scene.begin_camera_pan(Vector2(700,400))
+ scene._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+ check(not scene.panning,"Losing window focus cancels right drag")
  scene.auto_camera=true
  scene.panning=false
  scene.sim.phase="shop"
