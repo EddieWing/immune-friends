@@ -37,7 +37,29 @@ func update(sim,delta):
      for i in range(0,track.points.size(),2): reduced.append(track.points[i])
      reduced.append(track.points.back())
      track.points=reduced
+func range_markers(sim):
+ var markers=[]
+ for cell in sim.cells:
+  if not cell.alive: continue
+  var reach=sim.range_of(cell)
+  if reach>0:
+   markers.append({"p":cell.p,"r":reach,"kind":"ability"})
+   if sim.catalog[cell.key].category=="T": markers.append({"p":cell.p,"r":reach*2,"kind":"tag"})
+ for core in sim.blood:
+  if core.alive:
+   markers.append({"p":core.p,"r":float(sim.rules.blood_faces.attention_radius),"kind":"detect"})
+   markers.append({"p":core.p,"r":float(sim.rules.blood_faces.danger_radius),"kind":"danger"})
+ for virus in sim.viruses:
+  if not virus.alive: continue
+  var reach={"seeker":125.0,"avoider":80.0,"swarmer":100.0,"hungry":20.0}.get(virus.type,0.0)
+  if reach>0: markers.append({"p":virus.p,"r":reach,"kind":"detect"})
+ return markers
 func draw(view):
+ if view.debug_ranges:
+  for marker in range_markers(view.sim):
+   var color={"ability":Color("#ff9200"),"detect":Color("#00cedf"),"danger":Color("#ff328d"),"tag":Color("#a263ff")}[marker.kind]
+   view.draw_range_ring(marker.p,marker.r,color,marker.kind!="ability")
+
  if view.debug_paths:
   for track in tracks.values():
    var color=Color("#ff39da") if track.kind=="virus" else Color("#78ff28")

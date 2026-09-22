@@ -23,6 +23,7 @@ var staging=""
 var debug_geometry=false
 var debug_paths=false
 var debug_vectors=false
+var debug_ranges=false
 var diagnostics=preload("res://scripts/debug_overlay.gd").new()
 var warning_wave=[]
 var warning_sources=[]

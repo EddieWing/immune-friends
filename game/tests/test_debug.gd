@@ -58,6 +58,15 @@ func run():
  check(scene.sim.spawn_queue.size()==5,"Gym runs deliberately added sources")
  scene.gym_reset_setup()
  check(scene.sim.wave.size()==1 and scene.sim.wave[0].count==5,"Gym reset restores source setup")
+ var toggle=scene.lab_tools.debug_panel.find_child("debug_ranges",true,false)
+ toggle.button_pressed=true
+ check(scene.view.debug_ranges,"F3 radius toggle controls overlay in Gym")
+ var ranged=scene.sim.make_cell("seeker",Vector2(210,30))
+ scene.sim.cells.append(ranged)
+ var markers=diagnostics.range_markers(scene.sim)
+ check(markers.any(func(m): return m.p==ranged.p and m.kind=="ability" and m.r==scene.sim.range_of(ranged)),"Debug radius matches effective simulation range")
+ ranged.alive=false
+ check(not diagnostics.range_markers(scene.sim).any(func(m): return m.p==ranged.p),"Dead cells have no radius overlays")
  scene.view.debug_geometry=true
  scene.view.debug_paths=true
  scene.view.debug_vectors=true

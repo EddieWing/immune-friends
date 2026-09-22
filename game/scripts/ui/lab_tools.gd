@@ -85,9 +85,11 @@ func _ready():
  readout.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
  readout.add_theme_font_size_override("font_size",14)
  debug.add_child(readout)
- for entry in [["Colliders", "debug_geometry"], ["Travel paths", "debug_paths"], ["Movement vectors", "debug_vectors"]]:
+ for entry in [["Attack / detection radii", "debug_ranges"], ["Colliders", "debug_geometry"], ["Travel paths", "debug_paths"], ["Movement vectors", "debug_vectors"]]:
   var toggle=CheckButton.new()
   toggle.text=entry[0]
+  toggle.name=entry[1]
+  if entry[1]=="debug_ranges": toggle.tooltip_text="Orange: ability range. Cyan dashed: detection (Core / viruses). Pink: Core danger. Rings show distance, not line of sight. Works during preparation and infection."
   toggle.button_pressed=game.view.get(entry[1])
   toggle.toggled.connect(func(value): game.view.set(entry[1],value))
   debug.add_child(toggle)
