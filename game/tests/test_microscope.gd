@@ -71,6 +71,31 @@ func run():
  scene.auto_camera=true
  scene.panning=false
  scene.sim.phase="shop"
+ scene.view.staging=""
+ for core in scene.sim.blood: core.p+=Vector2(250,-170)
+ scene.center_preparation_camera()
+ var center=Vector2.ZERO
+ var count=0
+ for core in scene.sim.blood:
+  if core.alive:
+   center+=core.p
+   count+=1
+ center/=float(count)
+ check(scene.view.to_global(center).is_equal_approx(scene.board_rect.get_center()),"Preparation centers living Core once")
+ scene.advance_manual_camera(1,Vector2.LEFT)
+ camera_before=scene.view.position
+ scene.advance_camera(0.25)
+ scene.changed()
+ check(scene.view.position.is_equal_approx(camera_before),"Preparation releases camera after centering")
+ scene.visor_radius=0.54
+ scene.advance_visor(1)
+ var fixed_radius=scene.visor_radius
+ scene.view.position+=Vector2(1400,900)
+ scene.view.scale=Vector2.ONE*1.5
+ scene.view.drag_preview=Vector2(3000,3000)
+ scene.advance_visor(1)
+ check(is_equal_approx(scene.visor_radius,fixed_radius),"Panning, zoom and placement do not change visor geometry")
+ scene.view.drag_preview=Vector2.INF
  scene.visor_radius=0.54
  scene.advance_visor(1.0)
  var small=scene.visor_radius

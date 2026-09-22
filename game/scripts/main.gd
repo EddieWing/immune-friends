@@ -127,6 +127,7 @@ func _ready():
 	flash_intensity=float(settings.get_value("comfort","flashes",1.0))
 	make_ambient()
 	sim.reset(Time.get_ticks_usec()%100000,12)
+	center_preparation_camera()
 	refresh()
 	show_menu()
 	var lab_layer=CanvasLayer.new()
@@ -537,6 +538,7 @@ func new_run(rounds):
 	lab_tools.refresh_available()
 	view.position=Vector2(720,425)
 	view.scale=Vector2.ONE*0.88
+	center_preparation_camera()
 	update_zoom()
 	selected={}
 	menu_open=false
@@ -655,6 +657,7 @@ func enter_gym():
 	view.position=Vector2(760,425)
 	view.scale=Vector2.ONE*0.88
 	zoom_target=0.88
+	center_preparation_camera()
 	auto_camera=false
 	paused=false
 	set_playback_speed(1)
@@ -1272,6 +1275,7 @@ func load_run():
 		sim.source_center=Vector2(data.source_center[0],data.source_center[1])
 	sim.ensure_infection_sources_clear()
 	sim.rebuild_links()
+	center_preparation_camera()
 	selected={}
 	modal.hide()
 	menu_open=false
@@ -1358,6 +1362,22 @@ func camera_safe_rect():
 	if view.staging=="warning": safe=Rect2(550,110,750,630)
 	return safe
 
+func center_preparation_camera():
+	# One-shot framing: preparation never follows cells after control is released.
+	var center=Vector2.ZERO
+	var count=0
+	for core in sim.blood:
+		if core.alive:
+			center+=core.p
+			count+=1
+	if count>0: center/=float(count)
+	core_shake_offset=Vector2.ZERO
+	panning=false
+	auto_camera=false
+	zoom_target=view.scale.x
+	camera_requested=zoom_target
+	view.position=board_rect.get_center()-center*view.scale.x
+
 func advance_camera(delta):
 	view.position-=core_shake_offset
 	core_shake_offset=Vector2.ZERO
@@ -1400,10 +1420,6 @@ func advance_visor(delta):
 	lens.set_shader_parameter("visibility",hud_opacity if entering_game else (0.0 if menu else 1.0))
 	if menu or entering_game: return
 	var target=0.86 if sim.phase!="shop" or view.staging=="warning" else 0.54
-	if sim.phase=="shop":
-		for c in sim.cells+sim.blood:
-			if c.alive: target=maxf(target,(view.to_global(c.p)-Vector2(720,450)).length()/900.0+0.06)
-		if view.drag_preview!=Vector2.INF: target=maxf(target,(view.to_global(view.drag_preview)-Vector2(720,450)).length()/900.0+0.06)
 	visor_radius=lerpf(visor_radius,minf(target,1.2),1.0-exp(-delta*3.5))
 	lens.set_shader_parameter("radius",visor_radius)
 	visor_preparation=lerpf(visor_preparation,1.0 if sim.phase=="shop" and view.staging!="warning" else 0.0,1.0-exp(-delta*5.0))
@@ -1633,6 +1649,7 @@ func advance_recap():
 	view.staging=""
 	preview_sources=[]
 	preview_wave=[]
+	center_preparation_camera()
 	showing_recap=false
 	shop_page=0
 	modal.hide()
