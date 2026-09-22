@@ -143,6 +143,19 @@ func submit(persist):
    game.settings.set_value("cell_tuning","types",previous)
    status.text="Save failed (%s). Changes have not been applied." % error
    return
+ # Keep Reset setup consistent with edits made during a Gym test battle.
+ if game.gym_mode and not game.gym_setup.is_empty():
+  if game.sim.catalog.has(current_key):
+   var delta_hp=float(data.get("hp",game.sim.catalog[current_key].hp))-float(game.sim.catalog[current_key].hp)
+   for cell in game.gym_setup.cells:
+    if cell.key==current_key:
+     cell.hp=maxf(0.1,cell.hp+delta_hp*cell.rank)
+     cell.max_hp=maxf(1,cell.max_hp+delta_hp*cell.rank)
+  elif current_key.begins_with("virus:"):
+   var kind=current_key.trim_prefix("virus:")
+   var old_hp=float(game.sim.tuning.get(current_key,{}).get("hp",2 if kind=="seeker" else 1))
+   for virus in game.gym_setup.viruses:
+    if virus.type==kind: virus.hp=maxf(0.1,virus.hp+float(data.get("hp",old_hp))-old_hp)
  session[current_key]=data.duplicate(true)
  game.sim.apply_tuning(current_key,data)
  if not game.gym_return.is_empty(): game.gym_return.sim.apply_tuning(current_key,data)

@@ -1118,7 +1118,7 @@ func _input(event):
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
 		sim.release_blood()
 	if event is InputEventKey and event.pressed:
-		if event.keycode==KEY_T and event.shift_pressed and not event.echo:
+		if (event.physical_keycode==KEY_T or (event.physical_keycode==0 and event.keycode==KEY_T)) and event.shift_pressed and not event.echo:
 			cell_tuner.toggle()
 			get_viewport().set_input_as_handled()
 			return

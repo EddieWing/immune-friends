@@ -18,11 +18,12 @@ func run():
  var cell=scene.sim.make_cell("seeker",Vector2(200,0))
  scene.sim.cells.append(cell)
  var key=InputEventKey.new()
- key.keycode=KEY_T
+ key.keycode=0x415 # Cyrillic capital E on the physical T key.
+ key.physical_keycode=KEY_T
  key.shift_pressed=true
  key.pressed=true
  scene._input(key)
- check(tuner.enabled,"Shift+T enables cell editor")
+ check(tuner.enabled,"Physical Shift+T enables editor with Russian layout")
  check(tuner.inspect_at(cell.p) and scene.modal.visible,"Single click target opens editor and description")
  tuner.fields.hp.value=7
  tuner.fields.range.value=65
@@ -73,6 +74,34 @@ func run():
  check(scene.sim.viruses.back().hp==8 and scene.sim.tuning["virus:seeker"].speed_multiplier==2,"Future viruses use edited type settings")
  scene._input(key)
  check(not tuner.enabled and not scene.modal.visible,"Shift+T disables mode and closes editor")
+ scene.modal.hide()
+ scene.enter_gym()
+ scene.main_menu.hide()
+ scene.lab_tools.arm("cell","seeker")
+ scene.gym_place(Vector2(180,0))
+ scene._input(key)
+ check(tuner.enabled and scene.gym_tool.is_empty(),"Gym inspection cancels placement")
+ var click=InputEventMouseButton.new()
+ click.button_index=MOUSE_BUTTON_LEFT
+ click.pressed=true
+ click.position=scene.view.to_global(Vector2(180,0))
+ scene._unhandled_input(click)
+ check(scene.modal.visible and tuner.current_key=="seeker","Gym field click opens cell editor")
+ tuner.fields.hp.value=11
+ tuner.submit(false)
+ check(scene.sim.cells[0].hp==11,"Gym Test updates placed cell")
+ scene.modal.hide()
+ scene.gym_run()
+ tuner.open("seeker")
+ tuner.fields.hp.value=13
+ tuner.submit(true)
+ scene.modal.hide()
+ scene.gym_reset_setup()
+ check(scene.sim.cells[0].hp==13,"Gym reset preserves edited HP")
+ scene.lab_tools.arm("cell","wall")
+ check(not tuner.enabled and scene.gym_tool.key=="wall","Gym placement exits inspection mode")
+ scene.lab_tools.inspect_button.pressed.emit()
+ check(tuner.enabled and scene.gym_tool.is_empty(),"Gym inspection button toggles mode without keyboard")
  owner.queue_free()
  scene.queue_free()
  await process_frame

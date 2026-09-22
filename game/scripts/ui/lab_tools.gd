@@ -6,6 +6,7 @@ var readout: Label
 var hint: Label
 var cells: OptionButton
 var viruses: OptionButton
+var inspect_button: Button
 var rank: OptionButton
 var cell_keys=[]
 var virus_keys=["basic","wave","jumper","hungry","swarmer","seeker","avoider"]
@@ -51,6 +52,8 @@ func _ready():
  hint.text="Choose an object, then click the field. Esc cancels. F3: debug tools."
  col.add_child(hint)
  game.button(col,"Back to main menu",game.leave_gym,Vector2(246,34))
+ inspect_button=game.button(col,"Inspect cells · Shift+T",game.cell_tuner.toggle,Vector2(246,34))
+ inspect_button.toggle_mode=true
  gym_panel.hide()
  debug_panel=game.panel(self,Rect2(12,12,370,0),Color.BLACK)
  var debug_theme=Theme.new()
@@ -133,10 +136,13 @@ func arm(kind,key):
  if game.sim.phase=="battle" and not game.paused:
   hint.text="Pause the test before placing or removing objects."
   return
+ if game.cell_tuner.enabled: game.cell_tuner.toggle()
  game.gym_tool={"kind":kind,"key":key,"rank":rank.selected+1}
  hint.text="Click the field to "+("remove an object" if kind=="remove" else "place "+key.replace("_"," "))+". Esc cancels."
 func _process(delta):
- gym_panel.visible=game.gym_mode and not game.browsing_from_main_menu()
+ gym_panel.visible=game.gym_mode and not game.browsing_from_main_menu() and not (game.modal.visible and is_instance_valid(game.modal_panel) and game.modal_panel.get_meta("cell_tuner",false))
+ inspect_button.set_pressed_no_signal(game.cell_tuner.enabled)
+ inspect_button.text="Inspect cells · ON" if game.cell_tuner.enabled else "Inspect cells · Shift+T"
  gym_panel.position.x=1150 if debug_panel.visible else 20
  clock+=delta
  if clock<0.2 or not debug_panel.visible: return
