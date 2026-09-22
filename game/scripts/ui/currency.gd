@@ -16,4 +16,4 @@ func _draw():
 		for j in range(5): points.append(p+Vector2.from_angle(j*TAU/5+i)* (5.0 if j%2==0 else 7.0))
 		draw_colored_polygon(points,Color("#edbd67"))
 		draw_line(p-Vector2(3,2),p+Vector2(1,-4),Color("#fff0b2"),2,true)
-	draw_string(ThemeDB.fallback_font,Vector2(32,139),str(count)+" protein",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("#e9ffff"))
+	draw_string(ThemeDB.fallback_font,Vector2(32,139),str(count)+" Carbons",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("#e9ffff"))

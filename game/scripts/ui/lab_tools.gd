@@ -117,7 +117,7 @@ func _ready():
    game.update_transport())
  game.button(debug,"Step · 1/60 s",func():
   if game.paused and game.sim.phase=="battle" and game.launch_remaining==0: game.sim.update(1.0/60.0))
- game.button(debug,"+10 protein (current session)",func(): game.sim.money+=10; game.refresh())
+ game.button(debug,"+10 Carbons (current session)",func(): game.sim.money+=10; game.refresh())
  game.button(debug,"Close · F3",debug_panel.hide)
  debug_panel.hide()
 func debug_arm(kind,key):

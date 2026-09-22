@@ -550,7 +550,7 @@ func new_run(rounds):
 func show_help():
 	var col=clear_modal("Take your time","Protect the red blood cells. Your team fights automatically.")
 	var t=Label.new()
-	t.text="1. Drag a cell from the shop onto the field for 2 protein.\n2. Or select an offer, then click on the field to place it.\n3. Hold and drag the round arrow to rotate a cell.\n4. Merge matching cells: the third creates an elite.\n5. Bonds automatically hold hands with nearby cells.\n6. Unspent protein disappear between waves.\n\nBomb hurts friendly cells too. Keep your team safe!"
+	t.text="1. Drag a cell from the shop onto the field for 2 Carbons.\n2. Or select an offer, then click on the field to place it.\n3. Hold and drag the round arrow to rotate a cell.\n4. Merge matching cells: the third creates an elite.\n5. Bonds automatically hold hands with nearby cells.\n6. Unspent Carbons disappear between waves.\n\nBomb hurts friendly cells too. Keep your team safe!"
 	t.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	t.add_theme_font_size_override("font_size",16)
 	col.add_child(t)
@@ -929,9 +929,9 @@ func refresh():
 	dock_play.disabled=not is_shop or not sim.reward_choices.is_empty()
 	start_button.disabled=launch_remaining>0 or sim.phase not in ["shop","battle"] or not sim.reward_choices.is_empty()
 	xp_button.disabled=sim.money<3 or sim.tier>=5 or not is_shop
-	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 protein" % [sim.tier,sim.xp]
+	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 Carbons" % [sim.tier,sim.xp]
 	refresh_button.disabled=sim.money<1 or not is_shop
-	refresh_button.tooltip_text="Refresh offers · 1 protein"
+	refresh_button.tooltip_text="Refresh offers · 1 Carbon"
 	freeze_button.disabled=not is_shop
 	freeze_button.set("glyph","❄" if not sim.frozen else "❄▣")
 	freeze_button.queue_redraw()
@@ -1558,7 +1558,7 @@ func show_infection_results():
 	var text="Viral cells destroyed: %d" % losses.viruses
 	if losses.core>0: text+="\nCore cells lost: %d" % losses.core
 	text+="\nImmune cells lost: %d" % losses.cells
-	if sim.phase=="recap": text+="\n\nNext preparation budget: %d protein\nAvailable when preparation begins." % mini(sim.round_no+4,10)
+	if sim.phase=="recap": text+="\n\nNext preparation budget: %d Carbons\nAvailable when preparation begins." % mini(sim.round_no+4,10)
 	if not sim.rewards.is_empty(): text+="\nFree cells available: %d" % sim.rewards.size()
 	var col=clear_modal("Infection phase complete",text)
 	modal_panel.set_meta("field_report",true)
@@ -1626,7 +1626,7 @@ func show_recap():
 		if entry.type not in kinds: kinds.append(entry.type)
 	for kind in kinds:
 		changes+="\n"+kind.capitalize()+": "+wave_trait(kind)+"\n"
-	changes+="\nPreparation protein: %d" % mini(sim.round_no+4,10)
+	changes+="\nPreparation Carbons: %d" % mini(sim.round_no+4,10)
 	var col=clear_modal("Infection · %d" % (sim.round_no+1),changes)
 	modal_panel.set_meta("field_report",true)
 	modal_panel.size.x=440

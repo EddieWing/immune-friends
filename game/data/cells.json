@@ -345,7 +345,7 @@
     "interval": 0,
     "behavior": "mint",
     "color": "#e3ce74",
-    "description": "Consumes Virus Protein to earn Carbs for the next shop. Conversion rate is provisional."
+    "description": "Consumes Virus Protein to earn Carbons for the next shop. Conversion rate is provisional."
   },
   "tag_splitter": {
     "name": "Tag Seeker Splitter",
