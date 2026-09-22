@@ -1,11 +1,13 @@
 extends RefCounted
 # Rules marked provisional are centralized in data/assumptions.json.
+var tuning={}
 var experimental=false
 var experiments=preload("res://scripts/experimental_system.gd").new()
 var proteins=preload("res://scripts/protein_system.gd").new()
 var pending_cells=[]
 var battle_income=0
 var catalog: Dictionary
+var base_catalog: Dictionary
 var rules: Dictionary
 var rng = RandomNumberGenerator.new()
 var cells: Array = []
@@ -45,7 +47,31 @@ var seed_value = 0
 
 func _init():
 	catalog = JSON.parse_string(FileAccess.get_file_as_string("res://data/cells.json").trim_prefix("\ufeff"))
+	base_catalog=catalog.duplicate(true)
 	rules = JSON.parse_string(FileAccess.get_file_as_string("res://data/assumptions.json").trim_prefix("\ufeff"))
+
+func apply_tuning(key, values):
+	if key=="__core":
+		for path in values:
+			var parts=path.split("/")
+			if parts.size()==2 and parts[0] in ["blood_drift","blood_elasticity","blood_faces"] and rules[parts[0]].has(parts[1]): rules[parts[0]][parts[1]]=values[path]
+	elif key.begins_with("virus:"):
+		var kind=key.trim_prefix("virus:")
+		var previous=tuning.get(key,{}).get("hp",2.0 if kind=="seeker" else 1.0)
+		for virus in viruses:
+			if virus.alive and virus.type==kind:
+				virus.hp=maxf(0.1,virus.hp+float(values.get("hp",previous))-previous)
+				virus.peak_hp=maxf(virus.hp,virus.get("peak_hp",virus.hp))
+	elif catalog.has(key):
+		var previous=float(catalog[key].hp)
+		for field in ["hp","range","speed","interval"]:
+			if values.has(field): catalog[key][field]=values[field]
+		for cell in cells+pending_cells:
+			if cell.alive and cell.key==key:
+				var change=(float(catalog[key].hp)-previous)*cell.rank
+				cell.max_hp=maxf(1,cell.max_hp+change)
+				cell.hp=maxf(0.1,cell.hp+change)
+	tuning[key]=values.duplicate(true)
 
 func record(kind: String, detail = {}):
 	if kind=="blood_lost":
@@ -314,7 +340,7 @@ func network(id):
 
 func range_of(c):
 	var r=float(catalog[c.key].range)*float(rules.scale)
-	if c.rank==3:
+	if c.rank==3 and not tuning.get(c.key,{}).has("range"):
 		if c.key=="seeker": r=40*float(rules.scale)
 		if c.key in ["bomb","survivor_bomb","hungry_bomb"]: r=20*float(rules.scale)
 	if c.key=="survivor_bomb": r+=float(c.get("radius_growth",0))*float(rules.scale)
@@ -323,6 +349,7 @@ func range_of(c):
 	return r+float(c.get("range_bonus",0))
 
 func speed_of(c):
+	if tuning.get(c.key,{}).has("speed"): return float(tuning[c.key].speed)
 	return 25.0 if c.key=="orbiter" and c.rank==3 else float(catalog[c.key].speed)
 
 func apply_radar(c):
@@ -331,6 +358,7 @@ func apply_radar(c):
 	c.range_buff=1.0+c.range_bonus/maxf(1,float(catalog[c.key].range)*float(rules.scale))
 
 func interval_of(c):
+	if tuning.get(c.key,{}).has("interval"): return float(tuning[c.key].interval)
 	if c.key=="gatling": return maxf(0.05,2.0-0.25*float(c.get("kills",0)))
 	if c.key=="tag_dropper" and c.rank==3:
 		return 0.25
@@ -468,7 +496,7 @@ func spawn_virus(entry):
 	var p=infection_sources[entry.lane]
 	var inward=p.direction_to(source_center)
 	var exit=p+inward*maxf(1,config.exit_distance)+inward.orthogonal()*rng.randf_range(-config.exit_spread,config.exit_spread)
-	var hp=2.0 if entry.type=="seeker" else 1.0
+	var hp=float(tuning.get("virus:"+entry.type,{}).get("hp",2.0 if entry.type=="seeker" else 1.0))
 	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"peak_hp":hp,"alive":true,
 		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"jump":false,"phase":rng.randf()*TAU,
 		"emerging":true,"exit":exit,"spawn_position":p,"source_lane":entry.lane})
@@ -787,6 +815,7 @@ func update(delta):
 		var speed=float(rules.virus_speed)
 		if v.type=="wave": dir=dir.rotated(sin(v.age*3+v.phase)*0.8)
 		if v.type=="jumper": speed=130 if v.jump else 20
+		speed*=float(tuning.get("virus:"+v.type,{}).get("speed_multiplier",1.0))
 		v.visual_avoiding=false
 		if v.type=="avoider":
 			for c in cells:

@@ -2,6 +2,7 @@ extends Node2D
 const Simulation = preload("res://scripts/simulation.gd")
 const ArenaView = preload("res://scripts/arena_view.gd")
 var sim=Simulation.new()
+var cell_tuner=preload("res://scripts/ui/cell_tuner.gd").new()
 var gym_mode=false
 var gym_return={}
 var gym_tool={}
@@ -125,6 +126,7 @@ func _ready():
 	background_motion=float(settings.get_value("comfort","motion",1.0))
 	optical_intensity=float(settings.get_value("comfort","optics",1.0))
 	flash_intensity=float(settings.get_value("comfort","flashes",1.0))
+	cell_tuner.initialize(self)
 	make_ambient()
 	sim.reset(Time.get_ticks_usec()%100000,12)
 	center_preparation_camera()
@@ -641,6 +643,7 @@ func enter_gym():
 	gym_return={"sim":sim,"speed":playback_speed,"zoom":zoom_target,"position":view.position,"paused":paused,"auto":auto_camera}
 	gym_mode=true
 	sim=Simulation.new()
+	cell_tuner.apply_to(sim)
 	sim.experimental=bool(settings.get_value("gameplay","experimental",false))
 	sim.reset(4242,12)
 	lab_tools.refresh_available()
@@ -829,6 +832,7 @@ func gym_restore_core():
 	paused=sim.phase=="battle"
 	update_transport()
 	var fresh=Simulation.new()
+	cell_tuner.apply_to(fresh)
 	fresh.reset(4242,12)
 	sim.blood=fresh.blood.duplicate(true)
 	sim.blood_links=fresh.blood_links.duplicate(true)
@@ -1114,6 +1118,14 @@ func _input(event):
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
 		sim.release_blood()
 	if event is InputEventKey and event.pressed:
+		if event.keycode==KEY_T and event.shift_pressed and not event.echo:
+			cell_tuner.toggle()
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode==KEY_ESCAPE and modal.visible and is_instance_valid(modal_panel) and modal_panel.get_meta("cell_tuner",false):
+			modal.hide()
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode==KEY_F3:
 			lab_tools.debug_panel.visible=not lab_tools.debug_panel.visible
 			get_viewport().set_input_as_handled()
@@ -1159,6 +1171,9 @@ func _unhandled_input(event):
 		if event.button_index==MOUSE_BUTTON_LEFT:
 			var world=view.get_global_transform().affine_inverse()*screen
 			if event.pressed:
+				if cell_tuner.enabled and not browsing_from_main_menu() and not entering_game:
+					cell_tuner.inspect_at(world)
+					return
 				if not gym_tool.is_empty():
 					gym_place(world)
 					return
@@ -1226,7 +1241,9 @@ func save_run():
 		cell_data.append(item)
 	var blood_data=[]
 	for b in sim.blood: blood_data.append({"p":[b.p.x,b.p.y],"alive":b.alive,"id":b.id})
-	var data={"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
+	var hp_bases={}
+	for key in sim.catalog: hp_bases[key]=sim.catalog[key].hp
+	var data={"tuning_hp_bases":hp_bases,"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
 		"experimental":sim.experimental,"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
 		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
 		"choices":sim.reward_choices,"rng_state":str(sim.rng.state),
@@ -1258,6 +1275,10 @@ func load_run():
 	for c in sim.cells:
 		c.p=Vector2(c.p[0],c.p[1])
 		c.start=c.p
+		var previous=float(data.get("tuning_hp_bases",{}).get(c.key,sim.base_catalog[c.key].hp))
+		var change=(float(sim.catalog[c.key].hp)-previous)*c.rank
+		c.max_hp=maxf(1,c.max_hp+change)
+		c.hp=maxf(0.1,c.hp+change)
 	sim.blood=data.blood
 	for b in sim.blood: b.p=Vector2(b.p[0],b.p[1])
 	if data.has("blood_links"): sim.blood_links=data.blood_links
@@ -1577,6 +1598,7 @@ func show_run_result():
 func show_recap():
 	results_stage="forecast"
 	var next_sim=Simulation.new()
+	cell_tuner.apply_to(next_sim)
 	next_sim.experimental=sim.experimental
 	next_sim.reset(sim.seed_value,sim.target_rounds)
 	next_sim.round_no=sim.round_no+1
