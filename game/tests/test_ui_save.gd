@@ -37,11 +37,12 @@ func run():
 	scene.show_catalog()
 	await process_frame
 	check(scene.modal.visible,"catalogue opens")
+	var normal_description=scene.catalogue_text.text
 	var key=InputEventKey.new()
 	key.keycode=KEY_SPACE
 	key.pressed=true
 	scene._input(key)
-	check("Elite Wall" in scene.catalogue_text.text,"catalogue elite keyboard shortcut")
+	check(scene.catalogue_text.text==normal_description and not "Space" in normal_description,"Space does not switch elite preview and its hint is removed")
 	scene.modal.hide()
 	scene.show_settings()
 	await process_frame

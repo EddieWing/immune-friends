@@ -891,7 +891,7 @@ func description(key, elite=false):
 	if r>0: txt+="Range  [b]"+str(r)+"[/b]\n"
 	if d.speed>0: txt+="Speed  [b]"+str(25 if elite and key=="orbiter" else d.speed)+"[/b]\n"
 	if interval>0: txt+="Interval  [b]"+str(interval)+" s[/b]\n"
-	txt+="\n"+d.description+"\n\n[color=#847467]Space — view elite stats[/color]"
+	txt+="\n"+d.description
 	if key=="accelerator": txt+="\n[color=#975535]Provisional ability: the original effect is not yet known.[/color]"
 	return txt
 
@@ -1151,11 +1151,6 @@ func _input(event):
 			if sim.phase in ["recap","win","lose"] or not sim.reward_choices.is_empty(): return
 			if modal.visible: modal.hide(); menu_open=false
 			else: show_menu()
-		if event.keycode==KEY_SPACE:
-			get_viewport().set_input_as_handled()
-			if modal.visible and catalogue_key!="" and is_instance_valid(catalogue_text):
-				catalogue_text.text=description(catalogue_key,true)
-			elif detail_key!="" and detail_panel.visible: detail.text=description(detail_key,true)
 
 func _unhandled_input(event):
 	if modal.visible or launch_remaining>0: return
