@@ -2,6 +2,11 @@ extends Node2D
 const Simulation = preload("res://scripts/simulation.gd")
 const ArenaView = preload("res://scripts/arena_view.gd")
 var sim=Simulation.new()
+var ui_new=true
+var field_new=true
+var visor_new=true
+var hud_a: Control
+var settings_button: Button
 var cell_tuner=preload("res://scripts/ui/cell_tuner.gd").new()
 var gym_mode=false
 var gym_return={}
@@ -126,6 +131,15 @@ func _ready():
 	background_motion=float(settings.get_value("comfort","motion",1.0))
 	optical_intensity=float(settings.get_value("comfort","optics",1.0))
 	flash_intensity=float(settings.get_value("comfort","flashes",1.0))
+	ui_new=bool(settings.get_value("appearance","hud",ui_new))
+	field_new=bool(settings.get_value("appearance","field",field_new))
+	visor_new=bool(settings.get_value("appearance","visor",visor_new))
+	hud_a=preload("res://scripts/ui/hud_a.gd").new()
+	hud_a.game=self
+	hud_a.process_priority=10
+	ui.add_child(hud_a)
+	ui.move_child(modal,ui.get_child_count()-1)
+	apply_appearance()
 	cell_tuner.initialize(self)
 	make_ambient()
 	sim.reset(Time.get_ticks_usec()%100000,12)
@@ -273,6 +287,7 @@ func build_ui():
 	vignette.material=lens_material
 	ui.add_child(vignette)
 	var gear=absolute_button("⚙",Vector2(24,12),Vector2(42,42),show_settings)
+	settings_button=gear
 	gear.add_theme_font_size_override("font_size",30)
 	var gear_background=StyleBoxFlat.new()
 	gear_background.bg_color=Color("#f5f1e5")
@@ -582,6 +597,50 @@ func show_visual_comfort():
 		col.add_child(slider)
 	button(col,"Back",show_settings)
 
+func apply_appearance():
+	background_material.set_shader_parameter("new_style",field_new)
+	ui.get_node("MicroscopeVignette").material.set_shader_parameter("new_style",visor_new)
+	view.new_field=field_new
+	view.new_hud=ui_new and not gym_mode
+	zoom_gauge.modern=ui_new
+	settings_button.size=Vector2(44,44) if ui_new else Vector2(42,62)
+	var gear_skin=style(Color("#252b2d") if ui_new else Color("#f5f1e5"),22 if ui_new else 8,Color("#655b43") if ui_new else Color.TRANSPARENT)
+	settings_button.add_theme_font_size_override("font_size",18 if ui_new else 30)
+	if ui_new:
+		for side in ["left","right","top","bottom"]:gear_skin.set("content_margin_"+side,4)
+	settings_button.add_theme_stylebox_override("normal",gear_skin)
+	settings_button.add_theme_color_override("font_color",Color("#d1c398") if ui_new else Color("#38454a"))
+	settings_button.set_deferred("size",Vector2(44,44) if ui_new else Vector2(42,62))
+	for b in speed_buttons: b.visible=not ui_new or gym_mode
+	if hud_a: hud_a.signature=""
+	if not ui_new:
+		dock.visible=sim.phase=="shop" and not gym_mode
+		scanner.show()
+	refresh()
+
+func show_appearance():
+	var col=clear_modal("Appearance","Choose each layer independently. Changes are saved on this device.")
+	modal_panel.set_meta("pause_for_settings",true)
+	for entry in [["HUD","hud","ui_new"],["Field","field","field_new"],["Microscope visor","visor","visor_new"]]:
+		var row=HBoxContainer.new()
+		col.add_child(row)
+		var title=Label.new()
+		title.text=entry[0]
+		title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		row.add_child(title)
+		var choice=OptionButton.new()
+		choice.name="Appearance_"+entry[1]
+		choice.add_item("New")
+		choice.add_item("Classic")
+		choice.select(0 if get(entry[2]) else 1)
+		choice.item_selected.connect(func(index):
+			set(entry[2],index==0)
+			settings.set_value("appearance",entry[1],index==0)
+			settings.save(settings_path)
+			apply_appearance())
+		row.add_child(choice)
+	button(col,"Back",show_settings)
+
 func show_settings():
 	var col=clear_modal("Settings","Version "+str(ProjectSettings.get_setting("application/config/version","dev")))
 	modal_panel.set_meta("pause_for_settings",true)
@@ -602,6 +661,7 @@ func show_settings():
 		var index=i
 		slider.value_changed.connect(func(v): volumes[index]=v; settings.set_value("audio",str(index),v); settings.save(settings_path); ambient.volume_db=linear_to_db(maxf(0.0001,volumes[0]*volumes[1])))
 		col.add_child(slider)
+	button(col,"Appearance · New / Classic",show_appearance,Vector2(272,36))
 	button(col,"Visual comfort",show_visual_comfort,Vector2(272,36))
 	var experimental_toggle=CheckBox.new()
 	experimental_toggle.name="ExperimentalToggle"
@@ -899,6 +959,7 @@ func cell_icon(key):
 	return visuals.icon(key,sim.catalog[key])
 
 func refresh():
+	if hud_a and hud_a.is_node_ready(): hud_a.refresh_data()
 	stats.text="%d/%d " % [sim.cells.size(),sim.capacity()]
 	stats.tooltip_text="Immune cells / capacity"
 	phase_panel.visible=not gym_mode and sim.phase!="battle"
@@ -1054,6 +1115,7 @@ func changed():
 	save_run()
 
 func _process(delta):
+	view.new_hud=ui_new and not gym_mode
 	menu_time+=delta
 	if is_instance_valid(main_menu) and main_menu.visible:
 		menu_tagline.position=Vector2(825+sin(menu_time*0.37)*35,550+sin(menu_time*0.65)*18)
@@ -1153,7 +1215,7 @@ func _input(event):
 			else: show_menu()
 
 func _unhandled_input(event):
-	if modal.visible or launch_remaining>0: return
+	if (modal.visible and not (ui_new and results_stage=="forecast")) or launch_remaining>0: return
 	if event is InputEventMouseButton:
 		var screen=event.position
 		if event.button_index==MOUSE_BUTTON_RIGHT:
@@ -1175,6 +1237,7 @@ func _unhandled_input(event):
 				if not pending_offer.is_empty() and sim.phase=="shop":
 					buy_offer_at(pending_offer.index,pending_offer.reward,world)
 					return
+				if ui_new and not gym_mode and event.double_click and hud_a.source_click(world): return
 				if sim.phase=="shop" and not selected.is_empty():
 					var handle=selected.p+Vector2.RIGHT.rotated(selected.angle)*62
 					if world.distance_to(handle)<14:
@@ -1185,11 +1248,12 @@ func _unhandled_input(event):
 				detail_panel.hide()
 				term_panel.hide()
 				selected={}
+				if ui_new and not gym_mode: hud_a.cell_key=""
 				for c in sim.cells:
 					if c.alive and sim.contains_cell(c,world,6):
 						selected=c
 				if not selected.is_empty():
-					if event.double_click: inspected_cell=selected.id
+					if event.double_click or (ui_new and not gym_mode): inspected_cell=selected.id
 					dragging=sim.phase=="shop"
 					if dragging: sim.proteins.pickup(sim,selected)
 					mouse_offset=selected.p-world
@@ -1404,6 +1468,14 @@ func advance_camera(delta):
 		if follow and phase=="warning": camera_requested=0.88
 	if follow and phase in ["battle","warning"]:
 		var framing=camera_director.frame(sim,phase,camera_safe_rect(),camera_requested,camera_warning_sources)
+		if ui_new and phase=="warning" and not preview_sources.is_empty():
+			var bounds=Rect2(preview_sources[0],Vector2.ZERO)
+			for p in preview_sources:bounds=bounds.expand(p)
+			for core in sim.blood:
+				if core.alive:bounds=bounds.expand(core.p)
+			bounds=bounds.grow(90)
+			framing.focus=bounds.get_center()
+			framing.zoom=clampf(minf(0.88,minf(750/bounds.size.x,630/bounds.size.y)),0.45,1.5)
 		zoom_target=framing.zoom
 		var target=camera_safe_rect().get_center()-framing.focus*view.scale.x
 		if view.position.distance_to(target)>8: view.position=view.position.lerp(target,1.0-exp(-delta*3.0))
@@ -1432,6 +1504,7 @@ func advance_camera(delta):
 
 func advance_visor(delta):
 	var lens=ui.get_node("MicroscopeVignette").material
+	lens.set_shader_parameter("forecast",view.staging=="warning")
 	var menu=browsing_from_main_menu()
 	lens.set_shader_parameter("visibility",hud_opacity if entering_game else (0.0 if menu else 1.0))
 	if menu or entering_game: return
@@ -1502,6 +1575,7 @@ func advance_simulation(delta):
 		sim.update(delta)
 
 func show_cell_card(key,c={}):
+	if ui_new and not gym_mode and hud_a: hud_a.select_cell(key,c)
 	detail_icon.show()
 	detail_virus.hide()
 	if sim.phase!="shop": return
@@ -1650,6 +1724,7 @@ func show_recap():
 	showing_recap=true
 	shade.color=Color(0,0,0,0)
 	button(col,"OK",advance_recap)
+	if hud_a: hud_a.build_forecast()
 	refresh()
 
 func advance_recap():

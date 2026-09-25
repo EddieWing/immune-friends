@@ -1,4 +1,6 @@
 extends Node2D
+var new_field=false
+var new_hud=false
 var sim
 var optical_intensity=1.0
 var flash_intensity=1.0
@@ -82,8 +84,11 @@ func _draw():
 	microscope_effects.draw_under(self)
 	for lane in sources.states:
 		var source=sources.states[lane]
-		sources.draw(self,lane)
-		if staging=="warning" and source.active: draw_warning(source.p,lane)
+		if new_field:
+			draw_circle(source.p,60+source.opening*6+sin(sources.clock*0.8+lane)*1.5,Color(0.38,0.34,0.45,0.35+source.opening*0.08))
+			if not new_hud and (sim.phase=="shop" or staging=="warning"): draw_range_ring(source.p,66,Color("#be4a68"),true)
+		else: sources.draw(self,lane)
+		if staging=="warning" and source.active and not new_hud: draw_warning(source.p,lane)
 	# Range underneath bodies and hands.
 	var selected=sim.cell_by_id(selected_id)
 	if not selected.is_empty() and selected.alive:
@@ -139,7 +144,7 @@ func _draw():
 	reactions.draw(self)
 	virus_behavior.draw_effects(self)
 	support.draw(self)
-	attention.draw(self)
+	if not new_hud: attention.draw(self)
 	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
@@ -178,17 +183,31 @@ func draw_cell(c):
 	var p=c.p-pose.get("direction",Vector2.ZERO)*(windup*1.5+kick*3)+reaction.offset
 	attacks.draw_intent(self,c)
 	var wall=d.behavior=="wall"
-	var texture=visuals.body(c.key,d)
-	var extent=Vector2(106,80) if wall else Vector2(58,58)
-	draw_set_transform(p+Vector2(2,4),c.angle,Vector2(pulse,1/pulse))
-	draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
-	if optical_intensity>0:
-		draw_set_transform(p,c.angle)
-		draw_texture_rect(texture,Rect2(-extent*0.54,extent*1.08),false,Color(0.78,0.94,1,0.14*optical_intensity))
-	draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
-	draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
-	draw_set_transform(Vector2.ZERO)
-	if not wall and optical_intensity>0:
+	if new_field:
+		draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
+		if wall:
+			var skin=StyleBoxFlat.new()
+			skin.bg_color=color
+			skin.border_color=color.darkened(0.4)
+			skin.set_border_width_all(2)
+			skin.set_corner_radius_all(13)
+			draw_style_box(skin,Rect2(-43,-13,86,26))
+		else:
+			draw_circle(Vector2.ZERO,23,color)
+			draw_arc(Vector2.ZERO,23,0,TAU,48,color.darkened(0.45),2,true)
+		draw_set_transform(Vector2.ZERO)
+	else:
+		var texture=visuals.body(c.key,d)
+		var extent=Vector2(106,80) if wall else Vector2(58,58)
+		draw_set_transform(p+Vector2(2,4),c.angle,Vector2(pulse,1/pulse))
+		draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
+		if optical_intensity>0:
+			draw_set_transform(p,c.angle)
+			draw_texture_rect(texture,Rect2(-extent*0.54,extent*1.08),false,Color(0.78,0.94,1,0.14*optical_intensity))
+		draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
+		draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
+		draw_set_transform(Vector2.ZERO)
+	if not new_field and not wall and optical_intensity>0:
 		draw_arc(p,25,PI*1.05,PI*1.48,18,Color(0.88,0.98,1,0.5*optical_intensity),1.3,true)
 	var look=pose.get("look",Vector2.ZERO)
 	if sim.phase=="shop":
@@ -241,7 +260,13 @@ func draw_virus(v):
 	rendered.hurt=reaction.hurt
 	rendered.look=virus_behavior.looks.get(v.id,Vector2.ZERO)
 	rendered.feeding=virus_behavior.feeding.has(v.id)
-	preload("res://scripts/virus_visuals.gd").draw(self,rendered)
+	if new_field:
+		draw_circle(Vector2.ZERO,11,Color("#dc647d"))
+		draw_arc(Vector2.ZERO,11,0,TAU,32,Color("#922b46"),1.6,true)
+		for x in [-3,3]:
+			draw_circle(Vector2(x,-1)+rendered.look,1.4,Color("#701c35"))
+			draw_line(Vector2(x-2,-5),Vector2(x+2,-3),Color("#701c35"),1.1,true)
+	else: preload("res://scripts/virus_visuals.gd").draw(self,rendered)
 	draw_set_transform(Vector2.ZERO)
 	if v.get("visual_avoiding",false) and v.get("freeze",0)<=0:
 		var heading=v.get("visual_heading",Vector2.ZERO).angle()
@@ -301,6 +326,9 @@ func draw_blood_cluster():
 		draw_circle(b.p,10.8,Color("#df8998"))
 		draw_circle(b.p+Vector2(-1,-1),9,Color("#eca2ac"))
 		draw_arc(b.p,7,0,TAU,24,Color("#c97688"),1.5,true)
+		if new_field:
+			draw_circle(b.p,10.8,Color("#d34762"))
+			draw_arc(b.p,10.8,0,TAU,32,Color("#8c2442"),1.3,true)
 		for slot in range(6):
 			if occupied.has(str(b.id)+":"+str(slot)): continue
 			var center=b.p+Vector2.from_angle(slot*TAU/6)*10.8

@@ -1,4 +1,5 @@
 extends Control
+var modern=false
 var game
 var dragging=false
 func _ready():
@@ -41,6 +42,9 @@ func _input(event):
   dragging=false
   get_viewport().set_input_as_handled()
 func _draw():
+ if modern:
+  draw_modern()
+  return
  var ratio=clampf((game.view.scale.x-0.45)/1.05,0,1)
  var ink=Color("#fff5df")
  draw_style_box(track_style(Color(0.07,0.14,0.19,0.92)),Rect2(-8,-7,58,272))
@@ -58,3 +62,17 @@ func track_style(color):
  box.bg_color=color
  box.set_corner_radius_all(5)
  return box
+
+func draw_modern():
+ var ratio=clampf((game.view.scale.x-0.45)/1.05,0,1)
+ draw_style_box(track_style(Color("#292e30")),Rect2(-4,-2,46,262))
+ var font=game.symbol_font
+ draw_string(font,Vector2(-2,-13),"⌕ ZOOM",HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#9c916f"))
+ for tick in range(21):
+  var y=30+tick*10
+  draw_line(Vector2(9 if tick%5==0 else 19,y),Vector2(32,y),Color("#6d6b5c"),1)
+ var marker=StyleBoxFlat.new()
+ marker.bg_color=Color("#d3aa56")
+ marker.set_corner_radius_all(2)
+ draw_style_box(marker,Rect2(1,220-ratio*200,36,20))
+ draw_string(font,Vector2(4,282),"×%.1f" % game.view.scale.x,HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("#fff2cf"))

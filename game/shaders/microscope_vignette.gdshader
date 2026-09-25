@@ -1,5 +1,7 @@
 shader_type canvas_item;
 render_mode unshaded;
+uniform bool new_style = false;
+uniform bool forecast = false;
 uniform float aperture = 1.0;
 uniform float radius = 0.54;
 uniform float visibility = 1.0;
@@ -20,5 +22,19 @@ void fragment() {
  float lens_alpha=edge*mix(0.16,0.97,preparation);
  float alpha=blood_alpha+lens_alpha*(1.0-blood_alpha);
  vec3 composite=(vec3(0.72,0.12,0.24)*blood_alpha+color*lens_alpha*(1.0-blood_alpha))/max(alpha,0.0001);
+ if(new_style) {
+  float outside=smoothstep(r-0.002,r+0.002,d);
+  float boundary=1.0-smoothstep(0.0008,0.0025,abs(d-r));
+  float angle=atan(lens.y,lens.x);
+  float ticks=(1.0-smoothstep(0.05,0.14,abs(sin(angle*60.0))))*step(r-0.020,d)*step(d,r-0.004)*preparation;
+  float opacity=forecast ? 0.0 : mix(0.16,0.97,preparation);
+  float hatch=0.008*sin(UV.x*2400.0+UV.y*100.0);
+  vec3 exterior=vec3(0.035,0.048,0.050)+vec3(hatch);
+  composite=mix(exterior,vec3(0.72,0.55,0.25),boundary);
+  alpha=max(outside*opacity,boundary*0.9);
+  composite=mix(composite,vec3(0.25,0.37,0.41),ticks);
+  alpha=max(alpha,ticks*0.5);
+  composite=mix(composite,vec3(0.65,0.05,0.12),blood_alpha*2.0);
+ }
  COLOR = vec4(composite,alpha*visibility);
 }

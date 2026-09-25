@@ -1,4 +1,5 @@
 extends Button
+var modern=false
 var game
 var key=""
 var index=0
@@ -16,6 +17,9 @@ func _ready():
 	add_theme_stylebox_override("focus",StyleBoxEmpty.new())
 
 func _draw():
+	if modern:
+		draw_modern()
+		return
 	var center=size*0.5
 	var radius=minf(size.x,size.y)*0.43
 	var color=Color("#c9dae4")
@@ -59,3 +63,17 @@ func _get_drag_data(_at_position):
 	set_drag_preview(preview)
 	return {"kind":"cell_offer","key":key,"index":index,"reward":reward}
 
+
+func draw_modern():
+	var ink=Color("#f4ecd3") if not disabled else Color("#8d9697")
+	var box=StyleBoxFlat.new()
+	box.bg_color=Color("#35434b") if not is_hovered() else Color("#52656a")
+	box.border_color=Color("#a99a70") if has_focus() else Color("#7f9aa7")
+	box.set_border_width_all(1)
+	draw_style_box(box,Rect2(Vector2.ZERO,size))
+	draw_rect(Rect2(8,8,size.x-16,54),Color("#c6e0ef"))
+	if icon_texture:draw_texture_rect(icon_texture,Rect2((size.x-52)/2,9,52,52),false,Color(1,1,1,0.45 if disabled else 1))
+	var font=game.symbol_font
+	draw_string(font,Vector2(7,80),category+" "+game.sim.catalog[key].name,HORIZONTAL_ALIGNMENT_LEFT,size.x-12,11,ink)
+	draw_string(font,Vector2(8,104),"REWARD" if reward else "TIER "+str(int(game.sim.catalog[key].tier)),HORIZONTAL_ALIGNMENT_LEFT,-1,10,ink)
+	draw_string(font,Vector2(size.x-28,104),"●"+("0" if reward else "2"),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("#e4b24b") if not reward else Color("#92d3a6"))

@@ -7,6 +7,8 @@ func _initialize():
 	call_deferred("run")
 func run():
 	var scene=load("res://main.tscn").instantiate()
+	scene.ui_new=false
+	scene.settings_path="user://classic_layout_test.cfg"
 	scene.save_path="user://ui_layout_test.json"
 	root.add_child(scene)
 	await process_frame
