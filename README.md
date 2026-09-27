@@ -34,3 +34,7 @@ The workflow `.github/workflows/deploy.yml` checks the game, exports it from sou
 Generated web output, export templates, editor caches and test captures are excluded from Git. No hosting credentials belong in source control. The workflow uses GitHub's scoped automatic token.
 
 The browser build is single-threaded and uses relative asset paths, allowing deployment under a repository subpath. Gameplay currently targets mouse and keyboard. Browser interaction QA remains incomplete. Drag offers onto the field to buy cells; drag cells to reposition them, use the rotation handle to turn them, and click the large shop arrow to start a battle.
+
+## Development tooling
+
+The repository includes [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) — agents, skills, hooks and rules under `.claude/`, configured by `CLAUDE.md` and `project.yaml`. Run `/start` in Claude Code for onboarding, or `/help` to see the next step.
