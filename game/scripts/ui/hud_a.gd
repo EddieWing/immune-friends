@@ -327,7 +327,9 @@ func _process(delta):
  freeze.modulate=Color("#96d6ff") if game.sim.frozen else Color.WHITE
  var t=mini(game.sim.tier,5)
  var target=int(game.sim.rules.xp_thresholds[mini(t-1,3)])
- upgrade.text="▲ %d" % maxi(0,target-game.sim.xp)
+ upgrade.text="▲ %d" % t
+ upgrade.tooltip_text="Shop level %d · %d XP to next level
+Buy 1 XP · 3 Carbons" % [t,maxi(0,target-game.sim.xp)]
  note.visible=prep
  forecast.visible=preview
  for b in transport:
