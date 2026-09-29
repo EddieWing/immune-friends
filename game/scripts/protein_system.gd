@@ -8,13 +8,14 @@ func tick(s,c,_delta):
 		p.life=0
 		c.food+=1
 		s.record("protein_eaten",{"id":c.id,"p":c.p,"from":p.p,"kind":wanted})
-	var cost=4 if c.key=="mortar" else (3 if c.key=="tag_splitter" else int(s.rules.mint_recipe))
+	var cost=4 if c.key=="mortar" else (3 if c.key=="tag_splitter" else int(s.constant_of(c,"proteinAmount",5)))
 	while c.food>=cost:
 		c.food-=cost
 		if c.key=="mint":
-			s.battle_income+=1
-			s.money+=1
-			s.effect(c.p,Color("#f3d272"),"+1 Carb",24)
+			var income=int(s.constant_of(c,"incomeIncrement",1))
+			s.battle_income+=income
+			s.money+=income
+			s.effect(c.p,Color("#f3d272"),"+%d Carb" % income,24)
 		elif c.key=="mortar":
 			var bomb=s.make_cell("bomb",c.p+Vector2.RIGHT.rotated(c.angle)*45)
 			bomb["temporary"]=true
@@ -31,7 +32,7 @@ func tick(s,c,_delta):
 func pickup(s,c):
 	if c.key!="tag_drag" or s.phase!="shop": return
 	if int(c.get("tag_round",0))!=s.round_no:
-		c["tags"]=15
+		c["tags"]=int(s.constant_of(c,"tagAmount",15))
 		c["tag_distance"]=0.0
 		c["tag_round"]=s.round_no
 
@@ -39,7 +40,7 @@ func drag(s,c,destination):
 	var old=c.p
 	if c.key=="tag_drag":
 		pickup(s,c)
-		var spacing=15.0*float(s.rules.scale)
+		var spacing=s.constant_of(c,"dropDistance",15)*float(s.rules.scale)
 		var distance=old.distance_to(destination)
 		var cursor=spacing-float(c.get("tag_distance",0.0))
 		while cursor<=distance and int(c.get("tags",0))>0:

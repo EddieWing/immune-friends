@@ -281,7 +281,7 @@ func build_forecast():
   line(rows,game.wave_trait(kind),INK,13)
  var button=Button.new()
  button.add_theme_font_override("font",game.symbol_font)
- button.text="%d Carbons   TO PREPARATION →" % (mini(game.sim.round_no+4,10)+game.sim.battle_income)
+ button.text="%d Carbons   TO PREPARATION →" % game.sim.next_budget()
  button.custom_minimum_size=Vector2(324,48)
  button.add_theme_stylebox_override("normal",game.style(GOLD,2,Color("#906b23")))
  button.add_theme_font_size_override("font_size",16)

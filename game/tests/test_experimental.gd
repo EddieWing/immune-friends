@@ -45,7 +45,7 @@ func run():
 	check(kinetic.charge==1,"Twelve microns generate one charge")
 	var magnet=add(s,"electromagnet",kinetic.p+Vector2(30,0))
 	s.experiments.tick(s,magnet,0.1)
-	check(magnet.charge==1 and kinetic.charge==0 and s.range_of(magnet)>60,"Electromagnet transfers charge and grows field")
+	check(magnet.charge==1 and kinetic.charge==0 and s.range_of(magnet)==15,"Electromagnet transfers charge and grows field")
 	var wall=add(s,"electric_wall",Vector2(0,-200))
 	add(s,"wall",Vector2(20,-200))
 	s.experiments.tick(s,wall,0.1)
@@ -78,7 +78,7 @@ func run():
 	var passenger=add(s,"wall",Vector2(-400,-220))
 	s.rebuild_links()
 	s.experiments.tick(s,passenger,0.1)
-	passenger.p.x+=36
+	passenger.p.x+=60
 	s.experiments.tick(s,passenger,0.1)
 	check(passenger.hp>passenger.max_hp,"Kinetic Bond grants movement health")
 	# UI/settings/save round trip must retain a run flag independently of preferences.

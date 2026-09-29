@@ -66,7 +66,7 @@ func _initialize():
 	check(s.particles.size()==2,"Preparation tags enter battle")
 	for c in [mortar,mint,splitter]:
 		var kind="bullet" if c==mortar else ("food" if c==mint else "tag")
-		var count=4 if c==mortar else (1 if c==mint else 3)
+		var count=4 if c==mortar else (5 if c==mint else 3)
 		for i in range(count): s.particles.append({"kind":kind,"p":c.p,"v":Vector2.ZERO,"life":10.0,"r":5.0,"owner":-1})
 	s.update(0.016)
 	check(s.cells.any(func(c):return c.key=="bomb" and c.get("temporary",false)),"Mortar consumes bullets and creates Bomb")
@@ -95,7 +95,7 @@ func _initialize():
 	s.reset()
 	check(s.cells.is_empty() and s.money==4 and s.tier==1,"New run resets progression")
 	s.money=100
-	for i in range(10): s.buy_xp()
+	for i in range(16): s.buy_xp()
 	check(s.tier==5 and s.capacity()==16 and not s.buy_xp(),"Tier 5 reaches 16 slots and is capped")
 	s.reset()
 	s.gym_mode=true

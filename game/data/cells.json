@@ -9,7 +9,11 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#efbca1",
-    "description": "Its wide body blocks viruses."
+    "description": "Its wide body blocks viruses.",
+    "reference_id": 13,
+    "elite": {},
+    "constants": {},
+    "elite_constants": {}
   },
   "tackle": {
     "name": "Tackle",
@@ -21,7 +25,11 @@
     "interval": 0,
     "behavior": "forward",
     "color": "#ed9c98",
-    "description": "Moves forward in the direction of its arrow."
+    "description": "Moves forward in the direction of its arrow.",
+    "reference_id": 0,
+    "elite": {},
+    "constants": {},
+    "elite_constants": {}
   },
   "seeker": {
     "name": "Seeker",
@@ -33,7 +41,13 @@
     "interval": 0,
     "behavior": "seek",
     "color": "#92d4bd",
-    "description": "Seeks viruses within a range of 30."
+    "description": "Seeks viruses within a range of 30.",
+    "reference_id": 3,
+    "elite": {
+      "range": 40
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "orbiter": {
     "name": "Orbiter",
@@ -45,7 +59,13 @@
     "interval": 0,
     "behavior": "orbit",
     "color": "#b8a1dc",
-    "description": "Orbits blood cells counterclockwise."
+    "description": "Orbits blood cells counterclockwise.",
+    "reference_id": 1,
+    "elite": {
+      "speed": 25
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "magnet": {
     "name": "Magnet",
@@ -57,7 +77,13 @@
     "interval": 0,
     "behavior": "magnet",
     "color": "#e9a4c1",
-    "description": "Strongly attracts viruses within its field."
+    "description": "Strongly attracts viruses within its field.",
+    "reference_id": 14,
+    "elite": {
+      "range": 40
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "bandage": {
     "name": "Bandage",
@@ -69,19 +95,37 @@
     "interval": 0,
     "behavior": "bandage",
     "color": "#f4dcb4",
-    "description": "On death, gives nearby immune cells +1 health."
+    "description": "On death, gives nearby immune cells +1 health.",
+    "reference_id": 44,
+    "elite": {
+      "range": 25
+    },
+    "constants": {
+      "healAmount": 1
+    },
+    "elite_constants": {
+      "healAmount": 2
+    }
   },
   "regen": {
     "name": "Regen",
     "hp": 4,
-    "tier": 3,
+    "tier": 4,
     "category": "B",
     "range": 15,
     "speed": 0,
     "interval": 5,
     "behavior": "heal",
     "color": "#ebd587",
-    "description": "Gives nearby cells +1 health every 5 seconds."
+    "description": "Gives nearby cells +1 health every 5 seconds.",
+    "reference_id": 5,
+    "elite": {
+      "interval": 2.5
+    },
+    "constants": {
+      "healAmount": 1
+    },
+    "elite_constants": {}
   },
   "bank": {
     "name": "Bank",
@@ -93,7 +137,15 @@
     "interval": 0,
     "behavior": "bank",
     "color": "#e8be70",
-    "description": "Each survived battle increases its sale value."
+    "description": "Each survived battle increases its sale value.",
+    "reference_id": 15,
+    "elite": {},
+    "constants": {
+      "incomeIncrement": 1
+    },
+    "elite_constants": {
+      "incomeIncrement": 2
+    }
   },
   "resonant_wall": {
     "name": "Resonant Wall",
@@ -105,7 +157,15 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#e2b78c",
-    "description": "Gains +1 health when you buy a B-cell."
+    "description": "Gains +1 health when you buy a B-cell.",
+    "reference_id": 16,
+    "elite": {},
+    "constants": {
+      "healthIncrement": 1
+    },
+    "elite_constants": {
+      "healthIncrement": 2
+    }
   },
   "resonant_buffer": {
     "name": "Resonant Buffer",
@@ -117,31 +177,51 @@
     "interval": 0,
     "behavior": "buffer",
     "color": "#bcd99a",
-    "description": "Each B-cell you buy gains +1 health."
+    "description": "Each B-cell you buy gains +1 health.",
+    "reference_id": 17,
+    "elite": {},
+    "constants": {
+      "healthIncrement": 1
+    },
+    "elite_constants": {
+      "healthIncrement": 2
+    }
   },
   "turret": {
     "name": "Turret",
     "hp": 1,
-    "tier": 2,
+    "tier": 3,
     "category": "T",
     "range": 40,
     "speed": 0,
     "interval": 1.5,
     "behavior": "shoot",
     "color": "#8bc6df",
-    "description": "Fires Bullet Protein at the nearest virus."
+    "description": "Fires Bullet Protein at the nearest virus.",
+    "reference_id": 11,
+    "elite": {
+      "interval": 1
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "sniper": {
     "name": "Sniper",
     "hp": 2,
-    "tier": 3,
+    "tier": 2,
     "category": "T",
     "range": 80,
     "speed": 0,
     "interval": 1.5,
     "behavior": "sniper",
     "color": "#9bbbe4",
-    "description": "Fires straight ahead. Drag its arrow to aim."
+    "description": "Fires straight ahead. Drag its arrow to aim.",
+    "reference_id": 10,
+    "elite": {
+      "interval": 1
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "cannon": {
     "name": "Resonant Cannon",
@@ -153,7 +233,13 @@
     "interval": 1.5,
     "behavior": "shoot",
     "color": "#79c5c5",
-    "description": "Bullet size increases with the number of B-cells."
+    "description": "Bullet size increases with the number of B-cells.",
+    "reference_id": 43,
+    "elite": {
+      "interval": 1.25
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "bullet_wall": {
     "name": "Bullet Wall",
@@ -165,7 +251,13 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#a2cee1",
-    "description": "Absorbs one Bullet Protein and fires two bullets."
+    "description": "Absorbs one Bullet Protein and fires two bullets.",
+    "reference_id": 37,
+    "elite": {},
+    "constants": {
+      "consumeAmount": 1
+    },
+    "elite_constants": {}
   },
   "impact_wall": {
     "name": "Impact Wall",
@@ -177,31 +269,49 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#efb8a2",
-    "description": "When damaged, fires two bullets from its ends."
+    "description": "When damaged, fires two bullets from its ends.",
+    "reference_id": 36,
+    "elite": {},
+    "constants": {},
+    "elite_constants": {}
   },
   "tag_dropper": {
     "name": "Tag Dropper",
     "hp": 6,
-    "tier": 3,
+    "tier": 2,
     "category": "T",
     "range": 0,
     "speed": 15,
     "interval": 0.5,
     "behavior": "drop",
     "color": "#c5a0dc",
-    "description": "Moves forward and drops Tag Protein."
+    "description": "Moves forward and drops Tag Protein.",
+    "reference_id": 6,
+    "elite": {
+      "interval": 0.25
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "tag_sprayer": {
     "name": "Tag Sprayer",
     "hp": 6,
-    "tier": 4,
+    "tier": 3,
     "category": "T",
     "range": 60,
     "speed": 0,
     "interval": 0.05,
     "behavior": "spray",
     "color": "#c59bd9",
-    "description": "Sprays tags across a 180\u00b0 arc."
+    "description": "Sprays tags across a 180° arc.",
+    "reference_id": 34,
+    "elite": {},
+    "constants": {
+      "tagAmount": 30
+    },
+    "elite_constants": {
+      "tagAmount": 60
+    }
   },
   "zapper": {
     "name": "Virus Zapper",
@@ -213,7 +323,15 @@
     "interval": 0,
     "behavior": "electric",
     "color": "#e7dc86",
-    "description": "Holds 2 Electric Charges; conducts through objects."
+    "description": "Holds 2 Electric Charges; conducts through objects.",
+    "reference_id": 47,
+    "elite": {},
+    "constants": {
+      "charge": 2
+    },
+    "elite_constants": {
+      "charge": 6
+    }
   },
   "generator": {
     "name": "Electric Generator",
@@ -225,7 +343,16 @@
     "interval": 0,
     "behavior": "generator",
     "color": "#e7c77f",
-    "description": "Absorbs 8 Virus Proteins to gain 8 Electric Charges."
+    "description": "Absorbs 8 Virus Proteins to gain 8 Electric Charges.",
+    "reference_id": 51,
+    "elite": {},
+    "constants": {
+      "proteinAmount": 8,
+      "increment": 8
+    },
+    "elite_constants": {
+      "increment": 16
+    }
   },
   "bond": {
     "name": "Bond",
@@ -237,7 +364,13 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#bea7d8",
-    "description": "Physically links the two nearest cells."
+    "description": "Physically links the two nearest cells.",
+    "reference_id": 7,
+    "elite": {},
+    "constants": {
+      "maxBonds": 2
+    },
+    "elite_constants": {}
   },
   "bodyguard": {
     "name": "Bodyguard Bond",
@@ -249,7 +382,13 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#d8a5c6",
-    "description": "Takes damage on behalf of its connected network."
+    "description": "Takes damage on behalf of its connected network.",
+    "reference_id": 28,
+    "elite": {},
+    "constants": {
+      "maxBonds": 2
+    },
+    "elite_constants": {}
   },
   "radar": {
     "name": "Radar Bond",
@@ -261,7 +400,16 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#9aceb7",
-    "description": "Connects two nearby cells. Adds 20 microns of range to connected cells."
+    "description": "Connects two nearby cells. Adds 20 microns of range to connected cells.",
+    "reference_id": 27,
+    "elite": {},
+    "constants": {
+      "rangeIncrement": 20,
+      "maxBonds": 2
+    },
+    "elite_constants": {
+      "rangeIncrement": 30
+    }
   },
   "swapper": {
     "name": "Swapper Bond",
@@ -273,7 +421,13 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#c3b1da",
-    "description": "Swaps health with its partner at the start of the next shop."
+    "description": "Swaps health with its partner at the start of the next shop.",
+    "reference_id": 30,
+    "elite": {},
+    "constants": {
+      "maxBonds": 1
+    },
+    "elite_constants": {}
   },
   "accelerator": {
     "name": "Accelerator Bond",
@@ -285,7 +439,15 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#f0c199",
-    "description": "Original effect unknown. Provisional ability: speeds up the network."
+    "description": "Original effect unknown. Provisional ability: speeds up the network.",
+    "reference_id": 23,
+    "elite": {},
+    "constants": {
+      "consume": 2,
+      "seconds": 2,
+      "maxBonds": 1
+    },
+    "elite_constants": {}
   },
   "wildcard": {
     "name": "Wildcard",
@@ -297,7 +459,11 @@
     "interval": 0,
     "behavior": "wild",
     "color": "#d9bce6",
-    "description": "Merges with any non-elite cell."
+    "description": "Merges with any non-elite cell.",
+    "reference_id": 26,
+    "elite": {},
+    "constants": {},
+    "elite_constants": {}
   },
   "bomb": {
     "name": "Bomb",
@@ -309,7 +475,13 @@
     "interval": 0,
     "behavior": "bomb",
     "color": "#edacbf",
-    "description": "Explodes on death, damaging and pushing back friends and viruses."
+    "description": "Explodes on death, damaging and pushing back friends and viruses.",
+    "reference_id": 8,
+    "elite": {
+      "range": 20
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "pusher": {
     "name": "Pusher",
@@ -321,7 +493,13 @@
     "interval": 1,
     "behavior": "push",
     "color": "#ecc2a0",
-    "description": "Pushes everything nearby once per second."
+    "description": "Pushes everything nearby once per second.",
+    "reference_id": 9,
+    "elite": {
+      "interval": 0.5
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "mortar": {
     "name": "Mortar",
@@ -333,7 +511,13 @@
     "interval": 0,
     "behavior": "mortar",
     "color": "#7eaecb",
-    "description": "Consumes 4 Bullet Proteins to launch a Bomb. Produced cells last for this battle."
+    "description": "Consumes 4 Bullet Proteins to launch a Bomb. Produced cells last for this battle.",
+    "reference_id": 24,
+    "elite": {},
+    "constants": {
+      "consume": 4
+    },
+    "elite_constants": {}
   },
   "mint": {
     "name": "Mint",
@@ -345,7 +529,16 @@
     "interval": 0,
     "behavior": "mint",
     "color": "#e3ce74",
-    "description": "Consumes Virus Protein to earn Carbons for the next shop. Conversion rate is provisional."
+    "description": "Consumes 5 Virus Proteins to earn 1 Carb for the next shop (2 when elite).",
+    "reference_id": 40,
+    "elite": {},
+    "constants": {
+      "proteinAmount": 5,
+      "incomeIncrement": 1
+    },
+    "elite_constants": {
+      "incomeIncrement": 2
+    }
   },
   "tag_splitter": {
     "name": "Tag Seeker Splitter",
@@ -357,7 +550,15 @@
     "interval": 0,
     "behavior": "seek",
     "color": "#b391d5",
-    "description": "Seeks viruses and Tag Protein. Consumes 3 tags to split in two. Extra copies last for this battle."
+    "description": "Seeks viruses and Tag Protein. Consumes 3 tags to split in two. Extra copies last for this battle.",
+    "reference_id": 33,
+    "elite": {
+      "range": 40
+    },
+    "constants": {
+      "tagAmount": 3
+    },
+    "elite_constants": {}
   },
   "tag_drag": {
     "name": "Tag Drag Dropper",
@@ -369,7 +570,17 @@
     "interval": 0,
     "behavior": "tag_drag",
     "color": "#c591c9",
-    "description": "Drag in preparation to place a Tag Protein every 15 microns. Holds 15; picking up next round refills it."
+    "description": "Drag in preparation to place a Tag Protein every 15 microns. Holds 15; picking up next round refills it.",
+    "reference_id": 35,
+    "elite": {},
+    "constants": {
+      "tagAmount": 15,
+      "dropDistance": 15
+    },
+    "elite_constants": {
+      "tagAmount": 30,
+      "dropDistance": 15
+    }
   },
   "greed_wall": {
     "name": "Greed Wall",
@@ -381,7 +592,15 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#d9c081",
-    "description": "At battle start gains 2 HP for each leftover Carb. Bonus lasts for this battle only."
+    "description": "At battle start gains 2 HP for each leftover Carb. Bonus lasts for this battle only.",
+    "reference_id": 38,
+    "elite": {},
+    "constants": {
+      "conversionRate": 2
+    },
+    "elite_constants": {
+      "conversionRate": 4
+    }
   },
   "survivor_bomb": {
     "name": "Survivor Bomb",
@@ -393,7 +612,13 @@
     "interval": 0,
     "behavior": "bomb",
     "color": "#d998ad",
-    "description": "Death damages nearby viruses AND immune cells and pushes them. Each survived round adds 8 to its radius for this run."
+    "description": "Death damages nearby viruses AND immune cells and pushes them. Each survived round adds 8 to its radius for this run.",
+    "reference_id": 19,
+    "elite": {},
+    "constants": {
+      "blastIncrement": 8
+    },
+    "elite_constants": {}
   },
   "electric_wall": {
     "name": "Electric Wall",
@@ -406,20 +631,36 @@
     "behavior": "wall",
     "color": "#efbca1",
     "description": "Gains Electric Charge when immune cells or viruses touch it.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 48,
+    "elite": {},
+    "constants": {
+      "chargeIncrement": 1
+    },
+    "elite_constants": {
+      "chargeIncrement": 2
+    }
   },
   "electromagnet": {
     "name": "Electromagnet",
     "hp": 6,
     "tier": 0,
     "category": "B",
-    "range": 20,
+    "range": 0,
     "speed": 0,
     "interval": 0,
     "behavior": "magnet",
     "color": "#e9a4c1",
     "description": "Draws nearby charge when no virus is in reach. Its magnetic field grows with stored charge.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 50,
+    "elite": {},
+    "constants": {
+      "conversionRate": 5
+    },
+    "elite_constants": {
+      "conversionRate": 10
+    }
   },
   "kinetic_generator": {
     "name": "Kinetic Generator",
@@ -432,7 +673,16 @@
     "behavior": "generator",
     "color": "#e7c77f",
     "description": "Generates 1 Electric Charge per 12 microns moved. Cannot move by itself.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 49,
+    "elite": {},
+    "constants": {
+      "kineticIncrement": 1,
+      "distance": 12
+    },
+    "elite_constants": {
+      "kineticIncrement": 2
+    }
   },
   "tag_proof": {
     "name": "Tag-Proof Seeker",
@@ -445,7 +695,13 @@
     "behavior": "seek",
     "color": "#92d4bd",
     "description": "Seeks viruses. Immune to contact damage from tagged viruses.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 32,
+    "elite": {
+      "range": 40
+    },
+    "constants": {},
+    "elite_constants": {}
   },
   "seeker_factory": {
     "name": "Seeker Factory",
@@ -458,7 +714,14 @@
     "behavior": "mortar",
     "color": "#7eaecb",
     "description": "Consumes 1 Virus Protein and 2 Bullet Proteins to create a Seeker. Friendly shooters try to feed it.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 22,
+    "elite": {},
+    "constants": {
+      "capsid": 1,
+      "bullet": 2
+    },
+    "elite_constants": {}
   },
   "gatling": {
     "name": "Gatling Gun",
@@ -471,7 +734,15 @@
     "behavior": "shoot",
     "color": "#8bc6df",
     "description": "Shoots nearby viruses. Each kill reduces its firing interval by 0.25 seconds for this battle.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 12,
+    "elite": {
+      "interval": 1.25
+    },
+    "constants": {
+      "reduction": 0.25
+    },
+    "elite_constants": {}
   },
   "kinetic_bond": {
     "name": "Kinetic Bond",
@@ -484,7 +755,18 @@
     "behavior": "bond",
     "color": "#bea7d8",
     "description": "Connected cells gain health as they move. Distance per health point is experimental.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 25,
+    "elite": {},
+    "constants": {
+      "healthIncrement": 1,
+      "distance": 20,
+      "maxBonds": 2
+    },
+    "elite_constants": {
+      "healthIncrement": 2,
+      "distance": 20
+    }
   },
   "hungry_bomb": {
     "name": "Hungry Bomb",
@@ -497,6 +779,15 @@
     "behavior": "bomb",
     "color": "#edacbf",
     "description": "Consumes Virus Protein to grow its blast radius during this battle. Damages enemies AND immune cells.",
-    "experimental": true
+    "experimental": true,
+    "reference_id": 20,
+    "elite": {},
+    "constants": {
+      "consumeAmount": 1,
+      "blastIncrement": 1
+    },
+    "elite_constants": {
+      "blastIncrement": 2
+    }
   }
 }

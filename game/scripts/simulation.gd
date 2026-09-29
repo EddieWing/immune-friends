@@ -1,5 +1,8 @@
 extends RefCounted
 # Rules marked provisional are centralized in data/assumptions.json.
+var shop_rules: Dictionary
+var selected_rewards: Array = []
+var max_funds = 3
 var tuning={}
 var experimental=false
 var experiments=preload("res://scripts/experimental_system.gd").new()
@@ -46,6 +49,7 @@ var last_message = ""
 var seed_value = 0
 
 func _init():
+	shop_rules=JSON.parse_string(FileAccess.get_file_as_string("res://data/shop_rules.json"))
 	catalog = JSON.parse_string(FileAccess.get_file_as_string("res://data/cells.json").trim_prefix("\ufeff"))
 	base_catalog=catalog.duplicate(true)
 	rules = JSON.parse_string(FileAccess.get_file_as_string("res://data/assumptions.json").trim_prefix("\ufeff"))
@@ -114,13 +118,15 @@ func reset(seed_number = 42, rounds = 12):
 	effects.clear()
 	links.clear()
 	rewards.clear()
+	selected_rewards.clear()
 	reward_choices.clear()
 	events.clear()
 	next_id = 1
 	round_no = 1
 	tier = 1
-	xp = 0
-	money = 4
+	xp = int(shop_rules.xp_per_round)
+	max_funds = int(shop_rules.starting_funds)+int(shop_rules.income)
+	money = max_funds
 	frozen = false
 	phase = "shop"
 	var sites=[]
@@ -132,8 +138,6 @@ func reset(seed_number = 42, rounds = 12):
 		blood.append({"p":sites[i],"alive":true,"id":i})
 	rebuild_blood_links()
 	roll_shop(false)
-	# Reproducible useful first draw; subsequent draws use the provisional pool.
-	offers = ["wall","tackle","orbiter"]
 	make_wave()
 	record("new_run", {"seed":seed_number,"rounds":rounds})
 
@@ -167,6 +171,7 @@ func merge(a, b):
 		return false
 	if a.key == "wildcard":
 		a.key = b.key
+	a.sale+=int(b.get("sale",1))-1
 	a.max_hp += b.max_hp
 	a.hp = a.max_hp
 	a.rank += b.rank
@@ -191,7 +196,9 @@ func queue_reward():
 func choose_reward(index: int):
 	if reward_choices.is_empty() or index < 0 or index > 1:
 		return
-	rewards.append(reward_choices.pop_front()[index])
+	var chosen=reward_choices.pop_front()[index]
+	rewards.append(chosen)
+	selected_rewards.append(chosen)
 	record("reward_chosen")
 
 func purchase(index: int, p: Vector2, reward = false):
@@ -202,7 +209,7 @@ func purchase(index: int, p: Vector2, reward = false):
 		return false
 	var key = source[index]
 	if not available_cell_keys().has(key): return false
-	if not reward and money < 2:
+	if not reward and money < int(shop_rules.buy_price):
 		last_message = "You need 2 coins"
 		return false
 	var item = make_cell(key,p)
@@ -216,15 +223,15 @@ func purchase(index: int, p: Vector2, reward = false):
 		last_message = "No room. Merge cells or level up."
 		return false
 	if not reward:
-		money-=2
+		money-=int(shop_rules.buy_price)
 		if catalog[key].category=="B":
 			for c in cells:
 				if c.key=="resonant_wall":
-					c.max_hp+=1
-					c.hp+=1
+					c.max_hp+=constant_of(c,"healthIncrement",1)
+					c.hp+=constant_of(c,"healthIncrement",1)
 				if c.key=="resonant_buffer":
-					item.max_hp+=1
-					item.hp+=1
+					item.max_hp+=constant_of(c,"healthIncrement",1)
+					item.hp+=constant_of(c,"healthIncrement",1)
 	source.remove_at(index)
 	cells.append(item)
 	if direct:
@@ -242,29 +249,58 @@ func sell(c):
 	cells.erase(c)
 	rebuild_links()
 
+func draw_offer():
+	var chosen_rewards=selected_rewards.filter(func(key):return available_cell_keys().has(key))
+	if rng.randf()<float(shop_rules.reward_chance) and not chosen_rewards.is_empty():
+		return chosen_rewards[rng.randi_range(0,chosen_rewards.size()-1)]
+	var thresholds=shop_rules.tier_cdf[tier-1]
+	var roll=rng.randf()
+	var chosen_tier=1
+	for i in range(thresholds.size()):
+		chosen_tier=i+1
+		if roll<float(thresholds[i]): break
+	var pool=available_cell_keys().filter(func(key):return int(catalog[key].tier)==chosen_tier)
+	# Current experimental toggle is retained; unsupported/disabled tiers cannot be drawn.
+	if pool.is_empty():
+		pool=available_cell_keys().filter(func(key):return int(catalog[key].tier)>0 and int(catalog[key].tier)<=tier)
+	return pool[rng.randi_range(0,pool.size()-1)]
+
+func fill_shop():
+	while offers.size()<int(shop_rules.market_sizes[tier-1]):
+		offers.append(draw_offer())
+
 func roll_shop(pay = true):
-	if pay and (money < 1 or phase != "shop"):
-		return
-	if pay:
-		money-=1
-	var pool: Array = []
-	for key in available_cell_keys():
-		if int(catalog[key].tier)>0 and int(catalog[key].tier)<=tier:
-			pool.append(key)
+	if pay and (money<int(shop_rules.refresh_price) or phase!="shop"): return
+	if pay: money-=int(shop_rules.refresh_price)
 	offers.clear()
-	for i in range(tier+2):
-		offers.append(pool[rng.randi_range(0,pool.size()-1)])
+	fill_shop()
 	record("shop_roll")
 
-func buy_xp():
-	if phase!="shop" or money<3 or tier>=5:
-		return false
-	money-=3
-	xp+=1
+func gain_xp(amount):
+	if tier>=5: return false
+	xp+=amount
 	if xp>=int(rules.xp_thresholds[tier-1]):
 		tier+=1
+		return true
+	return false
+
+func buy_xp():
+	if phase!="shop" or money<int(shop_rules.xp_price) or tier>=5: return false
+	money-=int(shop_rules.xp_price)
+	if gain_xp(1): fill_shop()
 	record("xp",{"tier":tier,"xp":xp})
 	return true
+
+func stat_of(c, field):
+	if tuning.get(c.key,{}).has(field): return float(tuning[c.key][field])
+	var data=catalog[c.key]
+	if int(c.rank)>=3 and data.get("elite",{}).has(field): return float(data.elite[field])
+	return float(data.get(field,0))
+
+func constant_of(c, field, fallback=0):
+	var data=catalog[c.key]
+	if int(c.rank)>=3 and data.get("elite_constants",{}).has(field): return float(data.elite_constants[field])
+	return float(data.get("constants",{}).get(field,fallback))
 
 func cell_by_id(id):
 	for c in cells:
@@ -309,7 +345,7 @@ func rebuild_links():
 			for b in blood:
 				if b.alive: near.append({"id":core_endpoint(b),"p":b.p})
 		near.sort_custom(func(a,b): return a.p.distance_squared_to(c.p)<b.p.distance_squared_to(c.p))
-		var count = 1 if c.key=="swapper" else 2
+		var count = int(constant_of(c,"maxBonds",2))
 		for other in near:
 			if count<=0:
 				break
@@ -339,30 +375,24 @@ func network(id):
 	return found
 
 func range_of(c):
-	var r=float(catalog[c.key].range)*float(rules.scale)
-	if c.rank==3 and not tuning.get(c.key,{}).has("range"):
-		if c.key=="seeker": r=40*float(rules.scale)
-		if c.key in ["bomb","survivor_bomb","hungry_bomb"]: r=20*float(rules.scale)
+	var r=stat_of(c,"range")*float(rules.scale)
 	if c.key=="survivor_bomb": r+=float(c.get("radius_growth",0))*float(rules.scale)
 	if c.key=="hungry_bomb": r+=float(c.get("radius_growth",0))*float(rules.scale)
-	if c.key=="electromagnet": r+=float(c.charge)*2.0*float(rules.scale)
+	if c.key=="electromagnet": r+=float(c.charge)*constant_of(c,"conversionRate",2)*float(rules.scale)
 	return r+float(c.get("range_bonus",0))
 
 func speed_of(c):
-	if tuning.get(c.key,{}).has("speed"): return float(tuning[c.key].speed)
-	return 25.0 if c.key=="orbiter" and c.rank==3 else float(catalog[c.key].speed)
+	return stat_of(c,"speed")
 
-func apply_radar(c):
-	c["range_bonus"]=float(rules.radar_bonus)*float(rules.scale)
-	# Retain the ratio for existing presentation; gameplay uses additive range.
+func apply_radar(c, provider={}):
+	c["range_bonus"]=(constant_of(provider,"rangeIncrement",20) if not provider.is_empty() else float(rules.radar_bonus))*float(rules.scale)
 	c.range_buff=1.0+c.range_bonus/maxf(1,float(catalog[c.key].range)*float(rules.scale))
 
 func interval_of(c):
 	if tuning.get(c.key,{}).has("interval"): return float(tuning[c.key].interval)
-	if c.key=="gatling": return maxf(0.05,2.0-0.25*float(c.get("kills",0)))
-	if c.key=="tag_dropper" and c.rank==3:
-		return 0.25
-	return float(catalog[c.key].interval)
+	var interval=stat_of(c,"interval")
+	if c.key=="gatling": return maxf(0.05,interval-constant_of(c,"reduction",0.25)*float(c.get("kills",0)))
+	return interval
 
 func make_wave():
 	make_infection_sources()
@@ -415,12 +445,12 @@ func begin_battle():
 		c["travel_x"]=c.p.x
 		c["travel_y"]=c.p.y
 		if c.key=="hungry_bomb": c["radius_growth"]=0.0
-		if c.key=="greed_wall": c.hp+=2*money
-		c.charge=2 if c.key=="zapper" else 0
+		if c.key=="greed_wall": c.hp+=constant_of(c,"conversionRate",2)*money
+		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	for c in cells:
 		for id in network(c.id):
 			var n=cell_by_id(id)
-			if n.get("key","")=="radar": apply_radar(c)
+			if n.get("key","")=="radar": apply_radar(c,n)
 			if n.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
 	for entry in wave:
 		for i in range(entry.count):
@@ -599,7 +629,7 @@ func damage_cell(c, amount, redirected=false, source={}):
 	if c.key=="bandage":
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<range_of(c):
-				heal(other,1,c)
+				heal(other,constant_of(c,"healAmount",1),c)
 	record("cell_rest",{"id":c.id,"p":c.p})
 
 func damage_virus(v, amount, source={}):
@@ -656,7 +686,7 @@ func update(delta):
 		c.speed_buff=1.0
 		for id in network(c.id):
 			var provider=cell_by_id(id)
-			if provider.get("key","")=="radar": apply_radar(c)
+			if provider.get("key","")=="radar": apply_radar(c,provider)
 			if provider.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
 		proteins.tick(self,c,delta)
 		experiments.tick(self,c,delta)
@@ -714,7 +744,7 @@ func update(delta):
 							break
 				"heal":
 					for other in cells:
-						if other.alive and other.p.distance_to(c.p)<reach: heal(other,1,c)
+						if other.alive and other.p.distance_to(c.p)<reach: heal(other,constant_of(c,"healAmount",1),c)
 				"push":
 					record("attack_fired",{"id":c.id,"p":c.p,"direction":Vector2.ZERO,"key":c.key})
 					effect(c.p,Color("#f7dec3"),"",reach)
@@ -736,10 +766,11 @@ func update(delta):
 					p.life=0
 					c.food+=1
 					record("generator_fed",{"id":c.id,"p":c.p,"from":p.p,"food":c.food})
-			if c.food>=8:
-				c.food-=8
-				c.charge+=8
-				record("generator_charged",{"id":c.id,"p":c.p,"amount":8})
+			if c.food>=constant_of(c,"proteinAmount",8):
+				c.food-=int(constant_of(c,"proteinAmount",8))
+				var increment=int(constant_of(c,"increment",8))
+				c.charge+=increment
+				record("generator_charged",{"id":c.id,"p":c.p,"amount":increment})
 		if c.charge>0 and c.key!="electromagnet":
 			conduct(c)
 	for c in pending_cells:
@@ -936,14 +967,17 @@ func conduct(c):
 				points.append(particle.p)
 				paths.append(paths[cursor-1]+[particle.p])
 
+func next_budget():
+	return mini(max_funds+int(shop_rules.income),int(shop_rules.max_income))+battle_income
+
 func next_round():
 	if phase!="recap": return
 	cells=cells.filter(func(c):return not c.get("temporary",false))
 	links=links.filter(func(l):return not endpoint_by_id(l.a).is_empty() and not endpoint_by_id(l.b).is_empty())
 	for c in cells:
-		if c.key=="bank" and c.alive: c.sale+=1
+		if c.key=="bank" and c.alive: c.sale+=int(constant_of(c,"incomeIncrement",1))
 		if c.key=="survivor_bomb" and c.alive:
-			c["radius_growth"]=float(c.get("radius_growth",0))+8.0
+			c["radius_growth"]=float(c.get("radius_growth",0))+constant_of(c,"blastIncrement",8)
 			record("permanent_growth",{"id":c.id,"p":c.p,"amount":8})
 		c.p=c.start
 		c.angle=c.start_angle
@@ -951,7 +985,7 @@ func next_round():
 		c["range_bonus"]=0.0
 		c.hp=c.max_hp
 		c.alive=true
-		c.charge=2 if c.key=="zapper" else 0
+		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	# Capture all exchanges before modifying persistent health.
 	var exchanges=[]
 	for c in cells:
@@ -968,12 +1002,15 @@ func next_round():
 		swap[1].hp=swap[2]
 		record("swap",{"a":swap[0].id,"b":swap[1].id,"p":swap[0].p,"q":swap[1].p,"before_a":swap[2],"after_a":swap[3],"before_b":swap[3],"after_b":swap[2]})
 	round_no+=1
-	money=mini(round_no+3,10)+battle_income
+	max_funds=mini(max_funds+int(shop_rules.income),int(shop_rules.max_income))
+	money=max_funds+battle_income
 	battle_income=0
 	phase="shop"
 	particles.clear()
 	effects.clear()
+	gain_xp(int(shop_rules.xp_per_round))
 	if not frozen: roll_shop(false)
+	frozen=false
 	make_wave()
 	rebuild_links()
 	record("shop_start",{"money":money})

@@ -938,18 +938,16 @@ func show_catalog():
 func description(key, elite=false):
 	var d=sim.catalog[key]
 	var hp=d.hp*3 if elite else d.hp
-	var r=d.range
-	var interval=d.interval
-	if elite:
-		if key=="seeker": r=40
-		if key=="bomb": r=20
-		if key=="tag_dropper": interval=0.25
+	var card={"key":key,"rank":3 if elite else 1}
+	var r=sim.stat_of(card,"range")
+	var speed=sim.stat_of(card,"speed")
+	var interval=sim.stat_of(card,"interval")
 	var title=("Elite " if elite else "")+d.name+(" · Experimental" if d.get("experimental",false) else "")
 	var txt="[font_size=23][color=#34464c]"+title+"[/color][/font_size]\n"
 	txt+="[color=#5b686a]"+d.category+"-cell  ·  "+("Reward" if d.tier==0 else "Level "+str(int(d.tier)))+"[/color]\n\n"
 	txt+="Health  [b]"+str(hp)+"[/b]\n"
 	if r>0: txt+="Range  [b]"+str(r)+"[/b]\n"
-	if d.speed>0: txt+="Speed  [b]"+str(25 if elite and key=="orbiter" else d.speed)+"[/b]\n"
+	if speed>0: txt+="Speed  [b]"+str(speed)+"[/b]\n"
 	if interval>0: txt+="Interval  [b]"+str(interval)+" s[/b]\n"
 	txt+="\n"+d.description
 	if key=="accelerator": txt+="\n[color=#975535]Provisional ability: the original effect is not yet known.[/color]"
@@ -1303,6 +1301,7 @@ func save_run():
 	var hp_bases={}
 	for key in sim.catalog: hp_bases[key]=sim.catalog[key].hp
 	var data={"tuning_hp_bases":hp_bases,"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
+		"economy_version":1,"max_funds":sim.max_funds,"selected_rewards":sim.selected_rewards,
 		"experimental":sim.experimental,"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
 		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
 		"choices":sim.reward_choices,"rng_state":str(sim.rng.state),
@@ -1326,6 +1325,8 @@ func load_run():
 	lab_tools.refresh_available()
 	sim.round_no=int(data.round)
 	sim.money=int(data.money)
+	sim.max_funds=int(data.get("max_funds",mini(sim.round_no+3,10)))
+	sim.selected_rewards=data.get("selected_rewards",data.get("rewards",[])).duplicate()
 	sim.tier=int(data.tier)
 	sim.xp=int(data.xp)
 	sim.frozen=data.frozen
@@ -1648,7 +1649,7 @@ func show_infection_results():
 	var text="Viral cells destroyed: %d" % losses.viruses
 	if losses.core>0: text+="\nCore cells lost: %d" % losses.core
 	text+="\nImmune cells lost: %d" % losses.cells
-	if sim.phase=="recap": text+="\n\nNext preparation budget: %d Carbons\nAvailable when preparation begins." % mini(sim.round_no+4,10)
+	if sim.phase=="recap": text+="\n\nNext preparation budget: %d Carbons\nAvailable when preparation begins." % sim.next_budget()
 	if not sim.rewards.is_empty(): text+="\nFree cells available: %d" % sim.rewards.size()
 	var col=clear_modal("Infection phase complete",text)
 	modal_panel.set_meta("field_report",true)
@@ -1717,7 +1718,7 @@ func show_recap():
 		if entry.type not in kinds: kinds.append(entry.type)
 	for kind in kinds:
 		changes+="\n"+kind.capitalize()+": "+wave_trait(kind)+"\n"
-	changes+="\nPreparation Carbons: %d" % mini(sim.round_no+4,10)
+	changes+="\nPreparation Carbons: %d" % sim.next_budget()
 	var col=clear_modal("Infection · %d" % (sim.round_no+1),changes)
 	modal_panel.set_meta("field_report",true)
 	modal_panel.size.x=440

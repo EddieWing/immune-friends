@@ -3,20 +3,20 @@
   "scale": 3,
   "movement_multiplier": 1.5,
   "blood_drift": {
-    "speed": 6.0,
-    "slow_radius": 80.0
+    "speed": 6,
+    "slow_radius": 80
   },
   "blood_elasticity": {
-    "stiffness": 48.0,
-    "damping": 5.0
+    "stiffness": 48,
+    "damping": 5
   },
   "blood_faces": {
     "attention_radius": 180,
     "danger_radius": 65,
     "look_smoothing": 0.15,
     "fear_seconds": 1.5,
-    "relief_seconds": 1.0,
-    "cry_seconds": 3.0
+    "relief_seconds": 1,
+    "cry_seconds": 3
   },
   "start_blood": 20,
   "bond_distance": 145,
@@ -28,16 +28,17 @@
   "bomb_damage": 2,
   "virus_speed": 31,
   "xp_thresholds": [
-    1,
     3,
     6,
-    10
+    11,
+    17,
+    24
   ],
   "accelerator_multiplier": 1.25,
   "swapper": "swap persistent HP after restoration",
   "ordinary_sell_price": 1,
-  "shop_weights": "uniform within unlocked non-reward types",
-  "unknown_elites": "3 copies: sum HP, only measured role buffs applied",
+  "shop_weights": "Reference tier CDF, then uniform selection among currently enabled implemented cells.",
+  "unknown_elites": "Catalog elite overrides inherit ordinary parameters; HP from merged copies remains additive.",
   "late_waves": "R11/R12 observed fixture recorded; generic generator remains provisional",
   "protein_lifetime": 12,
   "charge_range": 58,
@@ -47,20 +48,20 @@
   "stalemate_resolution": "After 180 seconds, remaining viruses each remove one blood cell; provisional safeguard, original unknown",
   "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured",
   "infection_sources": {
-    "distance_min": 510.0,
-    "distance_max": 660.0,
-    "angle_jitter_degrees": 25.0,
-    "exit_distance": 70.0,
-    "exit_spread": 85.0,
-    "emerge_speed": 95.0
+    "distance_min": 510,
+    "distance_max": 660,
+    "angle_jitter_degrees": 25,
+    "exit_distance": 70,
+    "exit_spread": 85,
+    "emerge_speed": 95
   },
   "recipe_reach": 24,
-  "mint_recipe": 1,
+  "mint_recipe": 5,
   "produced_cell_limit": 256,
-  "protein_production": "Mortar launch speed 150 for 0.6s, radius24, Mint1:1 provisional; produced cells last one battle; tag trail sampled by distance, split health/placement provisional",
+  "protein_production": "Existing consumption/production algorithms retained; catalog numbers used for Mint (5 food, income1/2 elite). Mortar launch speed150 for0.6s, pickup radius24 and produced-cell placement remain provisional.",
   "radar_bonus": 20,
-  "kinetic_hp_distance": 36,
-  "hungry_bomb_growth": 2,
+  "kinetic_hp_distance": 60,
+  "hungry_bomb_growth": 1,
   "pusher_virus_range": 90,
-  "experimental_rules": "Default OFF, snapshotted per run. KineticBond1HP/36units combat-only; Electromagnet20+2microns/charge, direct draw1/0.1s; HungryBomb+2radius/food combat-only; Gatling cooldown floor0.05 reset next battle; Factory shooter priority/launch placement provisional; PusherVirus90reach30push; spawned copies combat-only. Original coefficients unmeasured."
+  "experimental_rules": "Default OFF, snapshotted per run. Catalog numeric constants and elite overrides are used by existing algorithms. Kinetic network targeting, magnet direct charge draw, Gatling cooldown floor0.05, Factory targeting/launch and PusherVirus remain provisional; no electrical graph or physics reconstruction."
 }

@@ -8,17 +8,17 @@ func tick(s,c,delta):
 	c["travel_y"]=c.p.y
 	if c.key=="kinetic_generator":
 		c["distance_charge"]=float(c.get("distance_charge",0))+travelled
-		var count=floori(c.distance_charge/(12.0*s.rules.scale))
-		c.charge+=count
-		c.distance_charge-=count*12.0*s.rules.scale
+		var count=floori(c.distance_charge/(s.constant_of(c,"distance",12)*s.rules.scale))
+		c.charge+=count*int(s.constant_of(c,"kineticIncrement",1))
+		c.distance_charge-=count*s.constant_of(c,"distance",12)*s.rules.scale
 	if travelled>0:
 		for id in s.network(c.id):
 			var provider=s.cell_by_id(id)
 			if provider.get("key","")=="kinetic_bond" and provider.alive:
 				c["distance_health"]=float(c.get("distance_health",0))+travelled
-				var count=floori(c.distance_health/float(s.rules.kinetic_hp_distance))
-				if count>0: s.heal(c,count,provider)
-				c.distance_health-=count*float(s.rules.kinetic_hp_distance)
+				var count=floori(c.distance_health/(s.constant_of(provider,"distance",20)*float(s.rules.scale)))
+				if count>0: s.heal(c,count*s.constant_of(provider,"healthIncrement",1),provider)
+				c.distance_health-=count*s.constant_of(provider,"distance",20)*float(s.rules.scale)
 				break
 	if c.key=="electric_wall":
 		c["electric_cool"]=maxf(0,float(c.get("electric_cool",0))-delta)
@@ -29,8 +29,8 @@ func tick(s,c,delta):
 			for v in s.viruses:
 				if v.alive and s.contains_cell(c,v.p,12): touching=true
 			if touching:
-				c.charge+=1
-				c.electric_cool=0.1
+				c.charge+=int(s.constant_of(c,"chargeIncrement",1))
+				c.electric_cool=s.interval_of(c)
 	if c.key=="electromagnet":
 		c["magnet_cool"]=maxf(0,float(c.get("magnet_cool",0))-delta)
 		if s.nearest_virus(c.p,s.range_of(c)).is_empty() and c.magnet_cool<=0:
@@ -52,7 +52,7 @@ func tick(s,c,delta):
 				p.life=0
 				c["bullet_food"]=int(c.get("bullet_food",0))+1
 		if c.key=="hungry_bomb" and c.food>0:
-			c["radius_growth"]=float(c.get("radius_growth",0))+c.food*float(s.rules.hungry_bomb_growth)
+			c["radius_growth"]=float(c.get("radius_growth",0))+c.food*s.constant_of(c,"blastIncrement",1)
 			c.food=0
 		while c.key=="seeker_factory" and c.food>=1 and c.get("bullet_food",0)>=2:
 			c.food-=1

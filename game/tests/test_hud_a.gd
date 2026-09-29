@@ -24,7 +24,7 @@ func run():
  scene.refresh()
  hud._process(0.1)
  await process_frame
- check(hud.offers.get_child_count()==10 and hud.shelf.size.x==728,"All offers and rewards remain inside fixed scrolling shelf")
+ check(hud.offers.get_child_count()==9 and hud.shelf.size.x==728,"All offers and rewards remain inside fixed scrolling shelf")
  check(not hud.upgrade.visible,"Maximum tier hides upgrade")
  scene.sim.frozen=true
  scene.sim.money=10
