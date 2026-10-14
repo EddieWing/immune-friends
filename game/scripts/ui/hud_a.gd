@@ -243,21 +243,34 @@ func select_cell(key,instance):
 func select_virus(key,lane):
  virus_key=key
  virus_lane=lane
+func forecast_row(parent, title, before, after, color=INK, font_size=14):
+ var row=HBoxContainer.new()
+ row.add_theme_constant_override("separation",8)
+ parent.add_child(row)
+ var name_label=line(row,title,color,font_size)
+ name_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+ for value in [before,after]:
+  var number=line(row,str(value),color,font_size)
+  number.autowrap_mode=TextServer.AUTOWRAP_OFF
+  number.custom_minimum_size.x=64
+  number.size_flags_horizontal=Control.SIZE_FILL
+  number.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
+ return row
+
 func build_forecast():
  clear_rows(forecast_rows)
  line(forecast_rows,"FORECAST · ROUND %02d" % (game.sim.round_no+1),MUTED,11)
- line(forecast_rows,"What arrives",INK,23)
- line(forecast_rows,"in the next wave",INK,23)
- line(forecast_rows,"TOTAL %d    was %d" % [total(game.preview_wave),total(game.sim.wave)],RED,18)
- line(forecast_rows,"                         WAS    WILL BE",MUTED,11)
+ line(forecast_rows,"Next wave",INK,24)
  var scroll=ScrollContainer.new()
- scroll.custom_minimum_size=Vector2(324,285)
+ scroll.custom_minimum_size=Vector2(0,285)
  scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
  forecast_rows.add_child(scroll)
  var rows=VBoxContainer.new()
  rows.size_flags_horizontal=Control.SIZE_EXPAND_FILL
  rows.add_theme_constant_override("separation",8)
  scroll.add_child(rows)
+ forecast_row(rows,"VIRUSES","WAS","NEXT",MUTED,11)
+ forecast_row(rows,"Total",total(game.sim.wave),total(game.preview_wave),RED,18)
  for lane in lanes(game.preview_wave):
   var old_count=0
   var new_count=0
@@ -265,14 +278,15 @@ func build_forecast():
    if e.lane==lane:old_count+=e.count
   for e in game.preview_wave:
    if e.lane==lane:new_count+=e.count
-  line(rows,"● Source %d   %s" % [lane+1,"★ NEW" if old_count==0 else "+ GROWING" if new_count>old_count else ""],RED,15)
+  var source_header=pair(rows,"Source %d" % (lane+1),"NEW" if old_count==0 else "GROWING" if new_count>old_count else "",RED,13)
+  source_header.custom_minimum_size.y=28
   var kinds=[]
   for e in game.preview_wave+game.sim.wave:
    if e.lane==lane and e.type not in kinds:kinds.append(e.type)
   for kind in kinds:
    var before=count_type(game.sim.wave,lane,kind)
    var after=count_type(game.preview_wave,lane,kind)
-   line(rows,"%s  ·····  %s       %d" % [kind.capitalize(),str(before) if before else "—",after],INK,14)
+   forecast_row(rows,kind.capitalize(),str(before) if before else "—",after)
  var types=[]
  for e in game.preview_wave:
   if e.type not in seen_types and e.type not in types:types.append(e.type)
@@ -281,8 +295,8 @@ func build_forecast():
   line(rows,game.wave_trait(kind),INK,13)
  var button=Button.new()
  button.add_theme_font_override("font",game.symbol_font)
- button.text="%d Carbons   TO PREPARATION →" % game.sim.next_budget()
- button.custom_minimum_size=Vector2(324,48)
+ button.text="TO PREPARATION →\n%d Carbons available" % game.sim.next_budget()
+ button.custom_minimum_size=Vector2(0,62)
  button.add_theme_stylebox_override("normal",game.style(GOLD,2,Color("#906b23")))
  button.add_theme_font_size_override("font_size",16)
  button.pressed.connect(game.advance_recap)
