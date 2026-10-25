@@ -23,11 +23,15 @@ func is_box(s,body):
 	return body.has("key") and s.catalog[body.key].behavior=="wall"
 func radius(body):
 	return 18.0 if body.has("key") else (10.0 if body.has("type") else 13.0)
+func tuning_key(body):
+	return str(body.key) if body.has("key") else ("virus:"+str(body.type) if body.has("type") else "__core")
+func parameter(s,body,field):
+	var fallback=s.rules.body_physics.get(field,1.0)
+	if field=="density":
+		fallback=10.0 if tuning_key(body) in ["__core","mortar","seeker_factory","wildcard"] else (0.01 if tuning_key(body)=="kinetic_generator" else 1.0)
+	return float(s.tuning.get(tuning_key(body),{}).get("physics/"+field,fallback))
 func mass(s,body):
-	var density=1.0
-	if not body.has("key") and not body.has("type"): density=10.0
-	elif body.get("key","") in ["mortar","seeker_factory","wildcard"]: density=10.0
-	elif body.get("key","")=="kinetic_generator": density=0.01
+	var density=maxf(0.001,parameter(s,body,"density"))
 	var area=86.0*26.0 if is_box(s,body) else PI*pow(radius(body),2)
 	return density*area/(PI*18.0*18.0)
 func inertia(s,body):
@@ -107,7 +111,7 @@ func solve_contact(s,a,b,hit):
 	var relative=(vb-va).dot(normal)
 	if relative<0:
 		var denom=ima+imb+pow(arm_a.cross(normal),2)/inertia(s,a)+pow(arm_b.cross(normal),2)/inertia(s,b)
-		var bounce=float(settings.restitution) if relative < -2.0 else 0.0
+		var bounce=minf(parameter(s,a,"restitution"),parameter(s,b,"restitution")) if relative < -2.0 else 0.0
 		var value=normal*(-(1.0+bounce)*relative/denom)
 		impulse(s,a,-value,hit.p)
 		impulse(s,b,value,hit.p)
@@ -179,21 +183,21 @@ func step(s,delta):
 				st.w=0.0
 			var target=drives.get(id_of(body),Vector2.ZERO)
 			if target.length_squared()>0:
-				var force=(target-st.v)*float(settings.motor_response)
-				force=force.limit_length(float(settings.motor_force))
+				var force=(target-st.v)*parameter(s,body,"motor_response")
+				force=force.limit_length(parameter(s,body,"motor_force"))
 				st.v+=force/mass(s,body)*dt
-			st.v*=exp(-float(settings.linear_damping)*dt)
-			st.w*=exp(-float(settings.angular_damping)*dt)
-			st.v=st.v.limit_length(float(settings.max_speed))
-			st.w=clampf(st.w,-float(settings.max_angular_speed),float(settings.max_angular_speed))
+			st.v*=exp(-parameter(s,body,"linear_damping")*dt)
+			st.w*=exp(-parameter(s,body,"angular_damping")*dt)
+			st.v=st.v.limit_length(parameter(s,body,"max_speed"))
+			st.w=clampf(st.w,-parameter(s,body,"max_angular_speed"),parameter(s,body,"max_angular_speed"))
 			body.p+=st.v*dt
 			if body.has("key"):body.angle=wrapf(float(body.angle)+st.w*dt,-PI,PI)
 			# Keep the established playfield boundary; reflect velocity, never store out-of-bounds momentum.
 			if body.has("key"):
 				var ex=extent(s,body,Vector2.RIGHT);var ey=extent(s,body,Vector2.DOWN)
 				var clipped=body.p.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
-				if clipped.x!=body.p.x:st.v.x=-st.v.x*float(settings.restitution)
-				if clipped.y!=body.p.y:st.v.y=-st.v.y*float(settings.restitution)
+				if clipped.x!=body.p.x:st.v.x=-st.v.x*parameter(s,body,"restitution")
+				if clipped.y!=body.p.y:st.v.y=-st.v.y*parameter(s,body,"restitution")
 				body.p=clipped
 		var pairs=candidate_pairs(bodies)
 		for pass_no in range(3):

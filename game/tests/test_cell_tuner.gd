@@ -45,6 +45,8 @@ func run():
  scene.advance_simulation(1)
  check(scene.sim.elapsed==elapsed,"Editor pauses battle")
  tuner.open("wall")
+ tuner.fields["physics/density"].value=4
+ tuner.fields["physics/linear_damping"].value=3
  tuner.fields.hp.value=9
  tuner.submit(true)
  var disk=ConfigFile.new()
@@ -62,16 +64,25 @@ func run():
  await process_frame
  owner.set_process(false)
  check(owner.sim.catalog.wall.hp==9 and owner.sim.catalog.seeker.hp==2,"Restart loads only saved types")
+ var wall=owner.sim.make_cell("wall",Vector2.ZERO)
+ check(is_equal_approx(owner.sim.physics.mass(owner.sim,wall),4*86*26/(PI*18*18)),"Saved density controls physical mass after restart")
+ check(owner.sim.physics.parameter(owner.sim,wall,"linear_damping")==3,"Saved damping reloads into solver")
+ for cell_key in scene.sim.catalog:
+  check(tuner.schema(cell_key).has("physics/density"),"Physics available for "+cell_key)
  tuner.open("__core")
+ tuner.fields["physics/density"].value=20
  tuner.fields["blood_drift/speed"].value=12
  tuner.submit(false)
  check(scene.sim.rules.blood_drift.speed==12,"Core rule editor applies shared settings")
+ check(scene.sim.physics.parameter(scene.sim,scene.sim.blood[0],"density")==20,"Core density reaches physical contacts")
  tuner.open("virus:seeker")
+ tuner.fields["physics/density"].value=2
  tuner.fields.hp.value=8
  tuner.fields.speed_multiplier.value=2
  tuner.submit(false)
  scene.sim.spawn_virus({"type":"seeker","lane":0})
  check(scene.sim.viruses.back().hp==8 and scene.sim.tuning["virus:seeker"].speed_multiplier==2,"Future viruses use edited type settings")
+ check(scene.sim.physics.parameter(scene.sim,scene.sim.viruses.back(),"density")==2,"Future virus uses edited physics")
  scene._input(key)
  check(not tuner.enabled and not scene.modal.visible,"Shift+T disables mode and closes editor")
  scene.modal.hide()

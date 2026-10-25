@@ -652,7 +652,7 @@ func damage_virus(v, amount, source={}):
 	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat})
 
 func push_object(object,offset,kind,origin):
-	physics.impulse(self,object,offset*float(rules.body_physics.impulse_scale),origin)
+	physics.impulse(self,object,offset*physics.parameter(self,object,"impulse_scale"),origin)
 	if offset.length_squared()>0:
 		record("pushed",{"id":object.id,"p":object.p,"kind":kind,"from":origin,"direction":offset.normalized()})
 

@@ -8,6 +8,16 @@ var current_key=""
 var status: Label
 const CELL_FIELDS={"hp":[1,10000,1,"Base HP per copy; existing cells retain damage and permanent bonuses."],"range":[0,1000,0.5,"Base ability range in microns; bonuses are added on top."],"speed":[0,1000,0.5,"Base movement speed; movement and network multipliers still apply."],"interval":[0,120,0.01,"Seconds between abilities. Overrides elite and Gatling cooldown rules while active."]}
 const VIRUS_FIELDS={"hp":[1,10000,1,"Starting HP; applies to this virus type, including future spawns."],"speed_multiplier":[0,10,0.05,"Multiplies travel speed after emergence, including Jumper leaps."]}
+const PHYSICS_FIELDS={
+ "density":[0.001,1000,0.001,"Mass per area. Higher values resist pushes and acceleration."],
+ "linear_damping":[0,100,0.05,"How quickly free movement fades."],
+ "angular_damping":[0,100,0.05,"How quickly rotation settles."],
+ "restitution":[0,1,0.05,"Collision bounce: 0 absorbs, 1 is elastic. The lower value of the pair is used."],
+ "impulse_scale":[0,100,0.1,"Strength of ability pushes received by this type."],
+ "motor_response":[0,100,0.1,"How quickly movement tries to reach the desired speed."],
+ "motor_force":[0,10000,1,"Maximum movement force."],
+ "max_speed":[0,2000,1,"Maximum physical movement speed."],
+ "max_angular_speed":[0,100,0.1,"Maximum rotation speed in radians per second."]}
 func initialize(owner):
  game=owner
  session=game.settings.get_value("cell_tuning","types",{}).duplicate(true)
@@ -39,7 +49,7 @@ func inspect_at(world):
    open("virus:"+virus.type)
    return true
  return false
-func schema(key):
+func gameplay_schema(key):
  if key=="__core":
   var result={}
   for group in ["blood_drift","blood_elasticity","blood_faces"]:
@@ -47,10 +57,22 @@ func schema(key):
     result[group+"/"+field]=[0.01 if field in ["slow_radius","look_smoothing"] else 0,1000,0.01,"Shared by all Core cells. "+group.trim_prefix("blood_")+": "+field.replace("_"," ")]
   return result
  return VIRUS_FIELDS if key.begins_with("virus:") else CELL_FIELDS
+func schema(key):
+ var result=gameplay_schema(key).duplicate(true)
+ for field in PHYSICS_FIELDS:
+  if key=="__core" and field not in ["density","restitution","impulse_scale"]: continue
+  result["physics/"+field]=PHYSICS_FIELDS[field]
+ return result
 func values(key):
+ var result=gameplay_values(key).duplicate(true)
+ var body={"key":key} if game.sim.catalog.has(key) else ({"type":key.trim_prefix("virus:")} if key.begins_with("virus:") else {})
+ for field in schema(key):
+  if field.begins_with("physics/"): result[field]=game.sim.physics.parameter(game.sim,body,field.trim_prefix("physics/"))
+ return result
+func gameplay_values(key):
  if key=="__core":
   var result={}
-  for path in schema(key):
+  for path in gameplay_schema(key):
    var parts=path.split("/")
    result[path]=game.sim.rules[parts[0]][parts[1]]
   return result
@@ -89,7 +111,7 @@ func open(key):
  for field in schema(key):
   var spec=schema(key)[field]
   var label=Label.new()
-  label.text=field.replace("blood_","").replace("_"," ").capitalize()
+  label.text=field.replace("physics/","Physics · ").replace("blood_","").replace("_"," ").capitalize()
   label.tooltip_text=spec[3]
   label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
   grid.add_child(label)
