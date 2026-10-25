@@ -31,7 +31,7 @@ func update(sim,delta):
   if e.event in ["damage","virus_hit","pushed"]:
    var kind=d.get("kind","cell" if e.event=="damage" else "virus")
    var key=kind+":"+str(d.id)
-   reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("from",d.p).direction_to(d.p)}
+   reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("direction",d.get("from",d.p).direction_to(d.p))}
   if e.event in ["virus_hit","pushed","tagged","thawed","tag_ended"]:
    bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("from",d.p).direction_to(d.p)})
  cursor=sim.event_sequence
@@ -40,7 +40,7 @@ func pose(kind,id):
  var r=reactions.get(kind+":"+str(id),{})
  if r.is_empty(): return {"squash":1.0,"offset":Vector2.ZERO,"hurt":false}
  var weight=1-smoothstep(0,0.38,r.age)
- return {"squash":1+weight*(0.12 if r.push else -0.16),"offset":r.direction*weight*2,"hurt":not r.push and weight>0.25}
+ return {"squash":1+weight*(0.22 if r.push else -0.30),"offset":r.direction*weight*(10 if r.push else 8),"hurt":not r.push and weight>0.25}
 func draw(canvas):
  for b in bursts.slice(maxi(0,bursts.size()-16)):
   var t=b.age/0.5
@@ -55,6 +55,6 @@ func draw(canvas):
     var d=Vector2.from_angle(i*TAU/5)
     canvas.draw_line(b.p+d*(17+t*12),b.p+d*(20+t*15),color,1.5,true)
   else:
-   for i in range(4):
-    var d=Vector2.from_angle(i*PI/2+PI/4)
-    canvas.draw_line(b.p+d*(13+t*10),b.p+d*(18+t*10),color,2,true)
+   for i in range(6):
+    var d=Vector2.from_angle(i*TAU/6+PI/4)
+    canvas.draw_line(b.p+d*(13+t*18),b.p+d*(25+t*22),color,3,true)

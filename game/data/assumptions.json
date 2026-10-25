@@ -74,7 +74,7 @@
     "motor_force": 900,
     "max_speed": 650,
     "max_angular_speed": 10,
-    "impulse_scale": 4,
+    "impulse_scale": 8,
     "spring_stiffness": 100,
     "spring_damping": 12
   }

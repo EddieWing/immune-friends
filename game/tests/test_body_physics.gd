@@ -22,6 +22,7 @@ func _initialize():
 	check(is_equal_approx(s.physics.velocity(light).x/s.physics.velocity(heavy).x,10),"Equal impulse gives heavy cell ten times less speed")
 	advance(s,0.2)
 	check(light.p.x+200>heavy.p.x-200 and heavy.p.x>200,"Mass difference affects displacement")
+	check(light.p.x+200>28,"Ordinary push travels visibly within the first 200 ms")
 	var velocity=s.physics.velocity(light).length()
 	advance(s,0.2)
 	check(s.physics.velocity(light).length()<velocity and s.physics.velocity(light).length()>0,"Water drag gradually slows a drifting body")
