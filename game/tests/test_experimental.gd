@@ -73,7 +73,7 @@ func run():
 	v.jump=false
 	var before=proof.p
 	s.damage_virus(v,99)
-	check(proof.p.distance_to(before)>0,"Pusher Virus death moves nearby immune cell")
+	check(proof.p==before and s.physics.velocity(proof).length()>0,"Pusher Virus death imparts momentum to nearby immune cell")
 	var bond=add(s,"kinetic_bond",Vector2(-450,-220))
 	var passenger=add(s,"wall",Vector2(-400,-220))
 	s.rebuild_links()

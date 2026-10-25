@@ -3,6 +3,7 @@ extends RefCounted
 var shop_rules: Dictionary
 var selected_rewards: Array = []
 var max_funds = 3
+var physics=preload("res://scripts/body_physics.gd").new()
 var tuning={}
 var experimental=false
 var experiments=preload("res://scripts/experimental_system.gd").new()
@@ -98,6 +99,7 @@ func events_since(sequence):
 	return events.slice(clampi(sequence-first+1,0,events.size()))
 
 func reset(seed_number = 42, rounds = 12):
+	physics.clear()
 	presentation_revision+=1
 	elapsed=0.0
 	spawn_timer=0.0
@@ -416,6 +418,7 @@ func begin_battle():
 		return
 	ensure_infection_sources_clear()
 	round_losses={"viruses":0,"core":0,"cells":0}
+	physics.clear()
 	phase="battle"
 	elapsed=0
 	spawn_timer=0
@@ -649,17 +652,9 @@ func damage_virus(v, amount, source={}):
 	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat})
 
 func push_object(object,offset,kind,origin):
-	move_body(object,offset,origin)
+	physics.impulse(self,object,offset*float(rules.body_physics.impulse_scale),origin)
 	if offset.length_squared()>0:
 		record("pushed",{"id":object.id,"p":object.p,"kind":kind,"from":origin,"direction":offset.normalized()})
-
-func move_body(c, offset, contact=Vector2.INF):
-	c.p+=offset
-	if not c.has("key") or catalog[c.key].behavior!="wall": return
-	# Provisional torque: an off-centre force rotates a free wall.
-	if contact!=Vector2.INF:
-		var lever=contact-c.p
-		c.angle+=clampf(lever.cross(offset)/1800.0,-0.08,0.08)
 
 func contains_cell(c, p, extra=0.0):
 	var local=(p-c.p).rotated(-c.angle)
@@ -725,8 +720,7 @@ func update(delta):
 		if c.get("launch_remaining",0.0)>0:
 			velocity=Vector2.RIGHT.rotated(c.angle)*150.0
 			c.launch_remaining=maxf(0,c.launch_remaining-delta)
-		c.p+=velocity*movement_delta*float(c.speed_buff)
-		c.p=c.p.clamp(Vector2(-620,-365),Vector2(620,350))
+		physics.drive(c,velocity*float(rules.movement_multiplier)*float(c.speed_buff))
 		if c.cool<=0:
 			c.cool=maxf(0.05,interval_of(c))
 			match d.behavior:
@@ -759,7 +753,7 @@ func update(delta):
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":reach/95,"r":5.0,"owner":c.id})
 		if c.key=="magnet":
 			for v in viruses:
-				if v.alive and v.p.distance_to(c.p)<reach: v.p+=v.p.direction_to(c.p)*60*movement_delta
+				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)
 		if c.key=="generator":
 			for p in particles:
 				if p.kind=="food" and p.life>0 and p.p.distance_to(c.p)<45:
@@ -776,38 +770,6 @@ func update(delta):
 	for c in pending_cells:
 		if cells.size()<int(rules.produced_cell_limit): cells.append(c)
 	pending_cells.clear()
-	# Spring-like position constraints allow entire connected components to move.
-	for pass_no in range(3):
-		for l in links:
-			var a=endpoint_by_id(l.a)
-			var b=endpoint_by_id(l.b)
-			if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue
-			var offset=b.p-a.p
-			var length=offset.length()
-			if length>1:
-				var correction=offset/length*(length-l.rest)*float(rules.bond_stiffness)*0.5
-				var arm_a=Vector2.RIGHT.rotated(a.get("angle",0.0))*25
-				var arm_b=Vector2.RIGHT.rotated(b.get("angle",0.0))*25
-				move_body(a,correction,a.p+arm_a)
-				move_body(b,-correction,b.p+arm_b)
-	# Soft body separation; walls use their oriented rectangle, not a circular hitbox.
-	for i in range(cells.size()):
-		var a=cells[i]
-		if not a.alive: continue
-		for j in range(i+1,cells.size()):
-			var b=cells[j]
-			if not b.alive: continue
-			var offset=b.p-a.p
-			var length=offset.length()
-			var direction=offset.normalized() if length>0.01 else Vector2.RIGHT
-			var radius_a=body_radius(a,direction)
-			var radius_b=body_radius(b,-direction)
-			if length<radius_a+radius_b:
-				var correction=direction*(radius_a+radius_b-length)*0.3
-				move_body(a,-correction,b.p)
-				move_body(b,correction,a.p)
-	for c in cells:
-		c.p=c.p.clamp(Vector2(-620,-365),Vector2(620,350))
 	for v in viruses:
 		if not v.alive: continue
 		v.age+=delta
@@ -871,7 +833,7 @@ func update(delta):
 			if old_host!=v.get("host",-1):
 				record("virus_attachment",{"id":v.id,"p":v.p,"old_host":old_host,"host":v.get("host",-1)})
 		v.visual_heading=dir
-		if v.freeze<=0: v.p+=dir*speed*movement_delta
+		physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
 		if v.type=="hungry":
 			for p in particles:
 				if p.kind=="food" and p.life>0 and p.p.distance_to(v.p)<20:
@@ -879,18 +841,17 @@ func update(delta):
 					v.hp+=1
 					v.peak_hp=maxf(v.get("peak_hp",v.hp),v.hp)
 					record("virus_fed",{"id":v.id,"p":v.p,"from":p.p,"hp":v.hp})
+	physics.step(self,delta)
+	for v in viruses:
+		if not v.alive or v.get("emerging",false):continue
 		for c in cells:
-			if not c.alive or v.jump: continue
-			if contains_cell(c,v.p,10):
-				var away=(v.p-c.p).normalized()
-				if away==Vector2.ZERO: away=Vector2.RIGHT
-				v.p+=away*speed*movement_delta
-				move_body(c,-away*speed*movement_delta*0.15,v.p)
-				if v.cool<=0:
-					v.cool=float(rules.contact_interval)
-					damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
-					damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
-		if v.alive and v.p.distance_to(destination.p)<19:
+			if not c.alive or v.jump:continue
+			if physics.touching(c,v) and v.cool<=0:
+				v.cool=float(rules.contact_interval)
+				damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
+				damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
+		var destination=nearest_blood(v.p)
+		if v.alive and not destination.is_empty() and v.p.distance_to(destination.p)<19:
 			hit_core(destination,v)
 	for p in particles:
 		if p.life<=0: continue
@@ -972,6 +933,7 @@ func next_budget():
 
 func next_round():
 	if phase!="recap": return
+	physics.clear()
 	cells=cells.filter(func(c):return not c.get("temporary",false))
 	links=links.filter(func(l):return not endpoint_by_id(l.a).is_empty() and not endpoint_by_id(l.b).is_empty())
 	for c in cells:
@@ -1060,10 +1022,8 @@ func solve_blood():
 			if distance>26.05:
 				adjusted=true
 				var correction=offset/distance*(distance-26.0)*0.35
-				var arm_a=Vector2.RIGHT.rotated(a.get("angle",0.0))*25
-				var arm_b=Vector2.RIGHT.rotated(b.get("angle",0.0))*25
-				move_body(a,correction,a.p+arm_a)
-				move_body(b,-correction,b.p+arm_b)
+				a.p+=correction
+				b.p-=correction
 		for i in range(blood.size()):
 			var a=blood[i]
 			if not a.alive: continue

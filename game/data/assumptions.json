@@ -63,5 +63,19 @@
   "kinetic_hp_distance": 60,
   "hungry_bomb_growth": 1,
   "pusher_virus_range": 90,
-  "experimental_rules": "Default OFF, snapshotted per run. Catalog numeric constants and elite overrides are used by existing algorithms. Kinetic network targeting, magnet direct charge draw, Gatling cooldown floor0.05, Factory targeting/launch and PusherVirus remain provisional; no electrical graph or physics reconstruction."
+  "experimental_rules": "Default OFF, snapshotted per run. Catalog numeric constants and elite overrides are used by existing algorithms. Kinetic network targeting, magnet direct charge draw, Gatling cooldown floor0.05, Factory targeting/launch and PusherVirus remain provisional; no electrical graph or physics reconstruction.",
+  "body_physics": {
+    "status": "F2 custom impulse solver; current game shapes and calibrated motor/spring/impulse conversion, not exact Box2D. Density classes and damping follow reference.",
+    "linear_damping": 0.5,
+    "angular_damping": 5,
+    "restitution": 1,
+    "max_step": 0.008333333333333333,
+    "motor_response": 8,
+    "motor_force": 900,
+    "max_speed": 650,
+    "max_angular_speed": 10,
+    "impulse_scale": 4,
+    "spring_stiffness": 100,
+    "spring_damping": 12
+  }
 }

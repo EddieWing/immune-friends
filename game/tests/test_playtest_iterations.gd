@@ -41,7 +41,7 @@ func _initialize():
 	for i in range(30): s.update(0.016)
 	check(wall.p.distance_to(wall.start)>1 and bond.p.distance_to(bond.start)>1,"Seeker tows two passive bodies")
 	s.push_object(wall,Vector2(0,20),"cell",wall.p+Vector2(30,0))
-	check(absf(wall.angle)>0.001,"Off-centre wall force produces rotation")
+	check(absf(s.physics.angular_velocity(wall))>0.001,"Off-centre wall force produces angular momentum")
 	s.phase="recap"
 	s.next_round()
 	check(wall.p==wall.start and wall.angle==wall.start_angle,"Next shop restores position and rotation")

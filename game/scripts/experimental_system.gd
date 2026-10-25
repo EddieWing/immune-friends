@@ -41,7 +41,7 @@ func tick(s,c,delta):
 					c.magnet_cool=0.1
 					break
 		for v in s.viruses:
-			if v.alive and v.p.distance_to(c.p)<s.range_of(c): v.p+=v.p.direction_to(c.p)*60*delta*float(s.rules.movement_multiplier)
+			if v.alive and v.p.distance_to(c.p)<s.range_of(c): s.physics.accelerate(s,v,v.p.direction_to(c.p)*60*float(s.rules.movement_multiplier),delta)
 	if c.key in ["seeker_factory","hungry_bomb"]:
 		for p in s.particles:
 			if p.life<=0 or p.p.distance_to(c.p)>float(s.rules.recipe_reach): continue

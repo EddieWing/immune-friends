@@ -23,7 +23,7 @@ func _initialize():
  sim.push_object(v,Vector2(10,0),"virus",Vector2(200,0))
  layer.update(sim,0)
  check(not layer.pose("virus",v.id).hurt and layer.pose("virus",v.id).squash>1,"Push has a distinct pose")
- check(v.p==pos+Vector2(10,0),"Push distance is unchanged")
+ check(v.p==pos and sim.physics.velocity(v).x>0,"Push adds momentum without teleporting the body")
  var pose=layer.pose("virus",v.id)
  layer.update(sim,1)
  check(layer.pose("virus",v.id)==pose,"Pause retains reaction")
