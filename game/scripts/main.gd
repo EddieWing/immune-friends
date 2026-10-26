@@ -45,7 +45,12 @@ var menu_transition: Tween
 var entering_game=false
 var hud_opacity=1.0
 var menu_time=0.0
+const SIMULATION_STEP=1.0/60.0
+const MAX_SIMULATION_STEPS_PER_FRAME=60
 var clock_accum=0.0
+var clock_sim=null
+var clock_phase=""
+var clock_revision=-1
 var visuals=preload("res://scripts/cell_visuals.gd").new()
 var settings_path="user://settings.cfg"
 var symbol_font: Font
@@ -1557,23 +1562,35 @@ func position_scanner():
 	scanner.queue_redraw()
 
 func advance_simulation(delta):
+	# Never carry a partial tick or catch-up debt into another run, Gym setup or phase.
+	if clock_sim!=sim or clock_phase!=sim.phase or clock_revision!=sim.presentation_revision:
+		clock_accum=0.0
+		clock_sim=sim
+		clock_phase=sim.phase
+		clock_revision=sim.presentation_revision
 	if modal.visible and is_instance_valid(modal_panel) and modal_panel.get_meta("pause_for_settings",false): return
+	if paused and sim.phase=="battle": return
+	delta=maxf(0.0,delta)
 	if launch_remaining>0:
-		launch_remaining=maxf(0,launch_remaining-delta)
+		var consumed=minf(delta,launch_remaining)
+		launch_remaining=maxf(0,launch_remaining-consumed)
+		delta-=consumed
 		if launch_remaining==0:
 			view.staging=""
 			update_transport()
-		return
-	if paused and sim.phase=="battle": return
-	if sim.phase=="battle":
-		clock_accum+=minf(delta,0.1)*playback_speed
-		while clock_accum+0.0000001>=1.0/60.0 and sim.phase=="battle":
-			sim.update(1.0/60.0)
-			clock_accum=maxf(0,clock_accum-1.0/60.0)
-		if sim.phase!="battle": clock_accum=0.0
-	else:
-		clock_accum=0.0
-		sim.update(delta)
+		else: return
+	# Speed changes how many identical ticks run, never the duration of a tick.
+	# Keep debt after a slow frame; a bounded catch-up budget avoids locking the UI.
+	clock_accum+=delta*(playback_speed if sim.phase=="battle" else 1)
+	var steps=0
+	while clock_accum+0.000000001>=SIMULATION_STEP and steps<MAX_SIMULATION_STEPS_PER_FRAME:
+		sim.update(SIMULATION_STEP)
+		clock_accum=maxf(0,clock_accum-SIMULATION_STEP)
+		steps+=1
+		if sim.phase!=clock_phase:
+			clock_accum=0.0
+			clock_phase=sim.phase
+			break
 
 func show_cell_card(key,c={}):
 	if ui_new and not gym_mode and hud_a: hud_a.select_cell(key,c)
