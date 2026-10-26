@@ -1,4 +1,6 @@
 extends Node2D
+const SIMPLE_VIRUS_BODY=preload("res://assets/ui/virus-field-body.svg")
+const SIMPLE_CORE_BODIES=preload("res://assets/ui/core-field-bodies.svg")
 var new_field=false
 var new_hud=false
 var sim
@@ -261,11 +263,9 @@ func draw_virus(v):
 	rendered.look=virus_behavior.looks.get(v.id,Vector2.ZERO)
 	rendered.feeding=virus_behavior.feeding.has(v.id)
 	if new_field:
-		draw_circle(Vector2.ZERO,11,Color("#dc647d"))
-		draw_arc(Vector2.ZERO,11,0,TAU,32,Color("#922b46"),1.6,true)
+		draw_texture_rect(SIMPLE_VIRUS_BODY,Rect2(-16,-16,32,32),false)
 		for x in [-3,3]:
 			draw_circle(Vector2(x,-1)+rendered.look,1.4,Color("#701c35"))
-			draw_line(Vector2(x-2,-5),Vector2(x+2,-3),Color("#701c35"),1.1,true)
 	else: preload("res://scripts/virus_visuals.gd").draw(self,rendered)
 	draw_set_transform(Vector2.ZERO)
 	if v.get("visual_avoiding",false) and v.get("freeze",0)<=0:
@@ -318,22 +318,29 @@ func draw_blood_cluster():
 		if not b.alive: continue
 		draw_circle(b.p+Vector2(1,2),12,Color(0.05,0.13,0.17,0.22))
 		# The hair tips lie on the actual radius-13 collision boundary.
+		var hairs=PackedVector2Array()
 		for i in range(30):
 			var angle=i*TAU/30.0
 			var normal=Vector2.from_angle(angle)
 			var tangent=normal.orthogonal()*sin(time*1.8+b.id+i)*0.22
-			draw_line(b.p+normal*10.7+tangent,b.p+normal*13.0,Color("#b96b82"),0.75,true)
-		draw_circle(b.p,10.8,Color("#df8998"))
-		draw_circle(b.p+Vector2(-1,-1),9,Color("#eca2ac"))
-		draw_arc(b.p,7,0,TAU,24,Color("#c97688"),1.5,true)
+			hairs.append(b.p+normal*10.7+tangent)
+			hairs.append(b.p+normal*13.0)
+		draw_multiline(hairs,Color("#b96b82"),0.75,true)
 		if new_field:
-			draw_circle(b.p,10.8,Color("#d34762"))
-			draw_arc(b.p,10.8,0,TAU,32,Color("#8c2442"),1.3,true)
-		for slot in range(6):
-			if occupied.has(str(b.id)+":"+str(slot)): continue
-			var center=b.p+Vector2.from_angle(slot*TAU/6)*10.8
-			draw_circle(center,2.2,Color("#b96b82"))
-			draw_circle(center,1.5,Color("#f3b0b8"))
+			var mask=0
+			for slot in range(6):
+				if occupied.has(str(b.id)+":"+str(slot)): mask|=1<<slot
+			draw_texture_rect_region(SIMPLE_CORE_BODIES,Rect2(b.p-Vector2(16,16),Vector2(32,32)),Rect2(Vector2(mask%8,mask/8)*128,Vector2(128,128)))
+		else:
+			draw_circle(b.p,10.8,Color("#df8998"))
+			draw_circle(b.p+Vector2(-1,-1),9,Color("#eca2ac"))
+			draw_arc(b.p,7,0,TAU,24,Color("#c97688"),1.5,true)
+			for slot in range(6):
+				if occupied.has(str(b.id)+":"+str(slot)): continue
+				var center=b.p+Vector2.from_angle(slot*TAU/6)*10.8
+				draw_circle(center,2.2,Color("#b96b82"))
+				draw_circle(center,1.5,Color("#f3b0b8"))
+
 	presentation.draw_bonds(self,"core")
 	for b in sim.blood:
 		if b.alive: blood_faces.draw(self,b,time)

@@ -855,7 +855,7 @@ func update(delta):
 		if not v.alive or v.get("emerging",false):continue
 		for c in cells:
 			if not c.alive or v.jump:continue
-			if physics.touching(c,v) and v.cool<=0:
+			if v.cool<=0 and physics.touching(c,v):
 				v.cool=float(rules.contact_interval)
 				damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
 				damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
@@ -1097,19 +1097,25 @@ func step_blood(delta):
 				velocity=(next-blood[i].p)/maxf(dt,0.00001)
 			blood[i].p=(blood[i].p+velocity*dt).clamp(Vector2(-550,-300),Vector2(550,280))
 			blood_velocity[i]=velocity
+		# Snapshot positions once; keep the same pair order and all eight solver passes.
+		# Array[Vector2] avoids repeated Dictionary lookup inside the hot pair loop.
+		var positions: Array[Vector2]=[]
+		var alive: Array[bool]=[]
+		for b in blood:
+			positions.append(b.p)
+			alive.append(b.alive)
 		for iteration in range(8):
-			for i in range(blood.size()):
-				if not blood[i].alive: continue
-				for j in range(i+1,blood.size()):
-					if not blood[j].alive: continue
-					var offset=blood[j].p-blood[i].p
+			for i in range(positions.size()):
+				if not alive[i]: continue
+				for j in range(i+1,positions.size()):
+					if not alive[j]: continue
+					var offset=positions[j]-positions[i]
 					var distance=offset.length()
 					if distance>=26: continue
 					var normal=offset/distance if distance>0.001 else Vector2.RIGHT.rotated(i*2.4)
 					var wa=0.0 if i==blood_drag else 1.0
 					var wb=0.0 if j==blood_drag else 1.0
 					var correction=normal*(26-distance)/(wa+wb)
-					blood[i].p-=correction*wa
-					blood[j].p+=correction*wb
-
-
+					positions[i]-=correction*wa
+					positions[j]+=correction*wb
+		for i in range(blood.size()): blood[i].p=positions[i]

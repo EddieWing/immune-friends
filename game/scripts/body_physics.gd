@@ -5,13 +5,15 @@ var states={}
 var contacts={}
 var drives={}
 var settings={}
+var material_cache={}
 func clear():
 	states.clear()
 	contacts.clear()
 	drives.clear()
-func id_of(body):
+	material_cache.clear()
+func id_of(body: Dictionary) -> int:
 	return int(body.id) if body.has("key") or body.has("type") else -2-int(body.id)
-func state(body):
+func state(body: Dictionary) -> Dictionary:
 	var id=id_of(body)
 	if not states.has(id): states[id]={"v":Vector2.ZERO,"w":0.0}
 	return states[id]
@@ -19,22 +21,28 @@ func velocity(body):
 	return state(body).v
 func angular_velocity(body):
 	return float(state(body).w)
-func is_box(s,body):
+func is_box(s,body: Dictionary) -> bool:
 	return body.has("key") and s.catalog[body.key].behavior=="wall"
-func radius(body):
+func radius(body: Dictionary) -> float:
 	return 18.0 if body.has("key") else (10.0 if body.has("type") else 13.0)
-func tuning_key(body):
+func tuning_key(body: Dictionary) -> String:
 	return str(body.key) if body.has("key") else ("virus:"+str(body.type) if body.has("type") else "__core")
-func parameter(s,body,field):
+func parameter(s,body: Dictionary,field: String) -> float:
+	var key=tuning_key(body)
+	if material_cache.has(key): return material_cache[key][field]
 	var fallback=s.rules.body_physics.get(field,1.0)
 	if field=="density":
 		fallback=10.0 if tuning_key(body) in ["__core","mortar","seeker_factory","wildcard"] else (0.01 if tuning_key(body)=="kinetic_generator" else 1.0)
 	return float(s.tuning.get(tuning_key(body),{}).get("physics/"+field,fallback))
-func mass(s,body):
+func mass(s,body: Dictionary) -> float:
+	var key=tuning_key(body)
+	if material_cache.has(key): return material_cache[key].mass
 	var density=maxf(0.001,parameter(s,body,"density"))
 	var area=86.0*26.0 if is_box(s,body) else PI*pow(radius(body),2)
 	return density*area/(PI*18.0*18.0)
-func inertia(s,body):
+func inertia(s,body: Dictionary) -> float:
+	var key=tuning_key(body)
+	if material_cache.has(key): return material_cache[key].inertia
 	return mass(s,body)*((86.0*86.0+26.0*26.0)/12.0 if is_box(s,body) else radius(body)*radius(body)*0.5)
 func impulse(s,body,value,point=Vector2.INF):
 	var st=state(body)
@@ -59,8 +67,8 @@ func support(s,body,axis):
 	var basis=axes(body)
 	# Face centre for parallel directions, rather than an arbitrary corner.
 	return body.p+basis[0]*43.0*signf(axis.dot(basis[0]))+basis[1]*13.0*signf(axis.dot(basis[1]))
-func collision(s,a,b):
-	var delta=b.p-a.p
+func collision(s,a: Dictionary,b: Dictionary) -> Dictionary:
+	var delta: Vector2=b.p-a.p
 	var a_box=is_box(s,a);var b_box=is_box(s,b)
 	var ra=45.0 if a_box else radius(a)
 	var rb=45.0 if b_box else radius(b)
@@ -84,7 +92,7 @@ func collision(s,a,b):
 	var box=a if a_box else b
 	var ball=b if a_box else a
 	var angle=float(box.get("angle",0))
-	var local=(ball.p-box.p).rotated(-angle)
+	var local: Vector2=(ball.p-box.p).rotated(-angle)
 	var closest=local.clamp(Vector2(-43,-13),Vector2(43,13))
 	var difference=local-closest
 	var distance=difference.length()
@@ -101,19 +109,21 @@ func collision(s,a,b):
 		depth=radius(ball)+minf(dx,dy)
 	normal=normal.rotated(angle)
 	return {"n":normal if a_box else -normal,"depth":maxf(0,depth),"p":box.p+closest.rotated(angle)}
-func solve_contact(s,a,b,hit):
-	var normal=hit.n
+func solve_contact(s,a: Dictionary,b: Dictionary,hit: Dictionary):
+	var normal: Vector2=hit.n
 	var sa=state(a);var sb=state(b)
-	var arm_a=hit.p-a.p;var arm_b=hit.p-b.p
-	var va=sa.v+Vector2(-arm_a.y,arm_a.x)*sa.w
-	var vb=sb.v+Vector2(-arm_b.y,arm_b.x)*sb.w
+	var arm_a: Vector2=hit.p-a.p;var arm_b: Vector2=hit.p-b.p
+	var va: Vector2=sa.v+Vector2(-arm_a.y,arm_a.x)*sa.w
+	var vb: Vector2=sb.v+Vector2(-arm_b.y,arm_b.x)*sb.w
 	var relative=(vb-va).dot(normal)
 	if relative>=0 and hit.depth<=0.02:return
-	var ima=1.0/mass(s,a);var imb=1.0/mass(s,b)
+	var ma=material_cache.get(tuning_key(a),{})
+	var mb=material_cache.get(tuning_key(b),{})
+	var ima=1.0/(ma.mass if not ma.is_empty() else mass(s,a));var imb=1.0/(mb.mass if not mb.is_empty() else mass(s,b))
 	if relative<0:
-		var iia=1.0/inertia(s,a);var iib=1.0/inertia(s,b)
+		var iia=1.0/(ma.inertia if not ma.is_empty() else inertia(s,a));var iib=1.0/(mb.inertia if not mb.is_empty() else inertia(s,b))
 		var denom=ima+imb+pow(arm_a.cross(normal),2)*iia+pow(arm_b.cross(normal),2)*iib
-		var bounce=minf(parameter(s,a,"restitution"),parameter(s,b,"restitution")) if relative < -2.0 else 0.0
+		var bounce=minf(ma.restitution if not ma.is_empty() else parameter(s,a,"restitution"),mb.restitution if not mb.is_empty() else parameter(s,b,"restitution")) if relative < -2.0 else 0.0
 		var value=normal*(-(1.0+bounce)*relative/denom)
 		# Deliberate game-feel boost for approaching virus/cell impacts only.
 		# Equal/opposite impulses retain momentum and the actual contact lever arm.
@@ -127,7 +137,7 @@ func solve_contact(s,a,b,hit):
 	var correction=normal*maxf(0,hit.depth-0.02)*0.65/(ima+imb)
 	a.p-=correction*ima
 	b.p+=correction*imb
-func candidate_pairs(bodies):
+func candidate_pairs(bodies: Array) -> Array:
 	var grid={}
 	var cell_grid={}
 	for i in range(bodies.size()):
@@ -161,6 +171,20 @@ func step(s,delta):
 	var bodies=[]
 	for body in s.cells+s.viruses+s.blood:
 		if body.alive: bodies.append(body)
+	# Material values are constant during one physics step, including all solver passes.
+	# Rebuild at each step so session tuning is picked up immediately.
+	material_cache.clear()
+	for body in bodies:
+		var key=tuning_key(body)
+		if material_cache.has(key): continue
+		var material={}
+		for field in ["density","restitution","motor_response","motor_force","linear_damping","angular_damping","max_speed","max_angular_speed"]:
+			material[field]=parameter(s,body,field)
+		material.mass=mass(s,body)
+		material.inertia=inertia(s,body)
+		material_cache[key]=material
+	var broad_radii: Array[float]=[]
+	for body in bodies: broad_radii.append(45.0 if is_box(s,body) else radius(body))
 	var live={}
 	for body in bodies: live[id_of(body)]=true
 	for id in states.keys():
@@ -191,32 +215,36 @@ func step(s,delta):
 			if not body.has("key") and not body.has("type"):continue # Blood retains its soft-body integrator until F5.
 			if body.get("emerging",false):continue # Scripted birth animation remains outside F2.
 			var st=state(body)
+			var material: Dictionary=material_cache[tuning_key(body)]
 			# Preserve existing status / attachment rules; F2 does not redefine tags or Swarmer.
 			if body.has("type") and (float(body.get("freeze",0))>0 or int(body.get("host",-1))>=0):
 				st.v=Vector2.ZERO
 				st.w=0.0
 			var target=drives.get(id_of(body),Vector2.ZERO)
 			if target.length_squared()>0:
-				var force=(target-st.v)*parameter(s,body,"motor_response")
-				force=force.limit_length(parameter(s,body,"motor_force"))
-				st.v+=force/mass(s,body)*dt
-			st.v*=exp(-parameter(s,body,"linear_damping")*dt)
-			st.w*=exp(-parameter(s,body,"angular_damping")*dt)
-			st.v=st.v.limit_length(parameter(s,body,"max_speed"))
-			st.w=clampf(st.w,-parameter(s,body,"max_angular_speed"),parameter(s,body,"max_angular_speed"))
+				var force=(target-st.v)*float(material.motor_response)
+				force=force.limit_length(float(material.motor_force))
+				st.v+=force/float(material.mass)*dt
+			st.v*=exp(-float(material.linear_damping)*dt)
+			st.w*=exp(-float(material.angular_damping)*dt)
+			st.v=st.v.limit_length(float(material.max_speed))
+			st.w=clampf(st.w,-float(material.max_angular_speed),float(material.max_angular_speed))
 			body.p+=st.v*dt
 			if body.has("key"):body.angle=wrapf(float(body.angle)+st.w*dt,-PI,PI)
 			# Keep the established playfield boundary; reflect velocity, never store out-of-bounds momentum.
 			if body.has("key"):
 				var ex=extent(s,body,Vector2.RIGHT);var ey=extent(s,body,Vector2.DOWN)
 				var clipped=body.p.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
-				if clipped.x!=body.p.x:st.v.x=-st.v.x*parameter(s,body,"restitution")
-				if clipped.y!=body.p.y:st.v.y=-st.v.y*parameter(s,body,"restitution")
+				if clipped.x!=body.p.x:st.v.x=-st.v.x*float(material.restitution)
+				if clipped.y!=body.p.y:st.v.y=-st.v.y*float(material.restitution)
 				body.p=clipped
 		var pairs=candidate_pairs(bodies)
 		for pass_no in range(3):
 			for pair in pairs:
 				var a=bodies[pair.x];var b=bodies[pair.y]
+				var separation: Vector2=b.p-a.p
+				var reach: float=broad_radii[pair.x]+broad_radii[pair.y]+0.02
+				if separation.length_squared()>reach*reach: continue
 				var hit=collision(s,a,b)
 				if hit.is_empty():continue
 				var ia=id_of(a);var ib=id_of(b)
@@ -225,3 +253,4 @@ func step(s,delta):
 	for i in range(s.blood.size()):
 		if s.blood[i].alive:s.blood_velocity[i]=state(s.blood[i]).v
 	drives.clear()
+	material_cache.clear()

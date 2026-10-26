@@ -333,13 +333,13 @@ func _process(delta):
  shelf.visible=prep or dock_offset<190
  shelf.position.y=752+dock_offset
  release.disabled=not game.sim.reward_choices.is_empty()
- release.add_theme_font_size_override("font_size",23)
+ if release.get_theme_font_size("font_size")!=23: release.add_theme_font_size_override("font_size",23)
  upgrade.visible=prep and game.sim.tier<5
  upgrade.disabled=game.sim.money<3
  refresh_button.tooltip_text="Refresh · 1 Carbon"
  refresh_button.disabled=game.sim.money<1
  freeze.modulate=Color("#96d6ff") if game.sim.frozen else Color.WHITE
- upgrade.add_theme_font_size_override("font_size",15)
+ if upgrade.get_theme_font_size("font_size")!=15: upgrade.add_theme_font_size_override("font_size",15)
  upgrade.text="+1 XP\n%d C" % int(game.sim.shop_rules.xp_price)
  upgrade.tooltip_text=game.xp_purchase_tooltip()
  note.visible=prep
@@ -347,8 +347,11 @@ func _process(delta):
  for b in transport:
   b.visible=combat
   var is_active=(b.get_meta("speed")==0 if game.paused else b.get_meta("speed")==game.playback_speed)
-  b.add_theme_color_override("font_color",GOLD if is_active else MUTED)
-  b.get_theme_stylebox("normal").border_color=GOLD if is_active else Color("#565649")
+  var font_color=GOLD if is_active else MUTED
+  if b.get_theme_color("font_color")!=font_color: b.add_theme_color_override("font_color",font_color)
+  var border_color=GOLD if is_active else Color("#565649")
+  var skin=b.get_theme_stylebox("normal")
+  if skin.border_color!=border_color: skin.border_color=border_color
  if not cell.is_empty() and (not cell.get("alive",false) or not game.sim.cells.has(cell)):cell_key=""
  if prep and not game.selected.is_empty() and not shelf.get_global_rect().has_point(get_global_mouse_position()) and game.pending_offer.is_empty():
   if cell!=game.selected:select_cell(game.selected.key,game.selected)

@@ -115,5 +115,13 @@ func _initialize():
 	s.rules.body_physics.contact_impulse_scale=1.0
 	s.physics.solve_contact(s,wall,virus,hit)
 	check(is_equal_approx(boosted,s.physics.velocity(wall).length()*1.5),"Virus contact boost increases actual impulse by 50 percent")
+	s=setup();a=add(s,"seeker",Vector2.ZERO)
+	s.physics.drive(a,Vector2(20,0));s.physics.step(s,0.001)
+	var initial_speed=s.physics.velocity(a).x
+	check(s.physics.material_cache.is_empty(),"Step material cache cannot leak into later impulses or tuning")
+	s.physics.state(a).v=Vector2.ZERO
+	s.apply_tuning("seeker",{"physics/density":2.0})
+	s.physics.drive(a,Vector2(20,0));s.physics.step(s,0.001)
+	check(is_equal_approx(s.physics.velocity(a).x,initial_speed/2.0),"Next step immediately uses edited density, not cached material")
 	print("RESULT: %d checks, %d failures" % [checks,errors])
 	quit(errors)

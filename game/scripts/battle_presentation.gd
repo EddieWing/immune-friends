@@ -1,4 +1,5 @@
 extends RefCounted
+const CORE_CLASP=preload("res://assets/ui/bond-clasp.svg")
 var revision_seen=-1
 var observed_sim
 var round_seen=-1
@@ -80,14 +81,18 @@ func draw_bonds(canvas,kind):
   var left=start.lerp(middle,progress)
   var right=end.lerp(middle,progress)
   var width=2.6 if core else 6.0
-  canvas.draw_line(start,left,Color("#594352"),width+1.5,true)
-  canvas.draw_line(end,right,Color("#594352"),width+1.5,true)
-  canvas.draw_line(start,left,bond.ca,width,true)
-  canvas.draw_line(end,right,bond.cb,width,true)
+  var arms=PackedVector2Array([start,left,end,right])
+  canvas.draw_multiline(arms,Color("#594352"),width+1.5,true)
+  if bond.ca==bond.cb: canvas.draw_multiline(arms,bond.ca,width,true)
+  else:
+   canvas.draw_line(start,left,bond.ca,width,true)
+   canvas.draw_line(end,right,bond.cb,width,true)
   var radius=2.3 if core else 5.0
   if bond.connected and bond.progress>=1:
-   canvas.draw_circle(middle,radius,Color("#f5dfcb"))
-   canvas.draw_arc(middle,radius*0.75,-PI/2,PI/2,12,Color("#998a87"),1,true)
+   if core: canvas.draw_texture_rect(CORE_CLASP,Rect2(middle-Vector2(4,4),Vector2(8,8)),false)
+   else:
+    canvas.draw_circle(middle,radius,Color("#f5dfcb"))
+    canvas.draw_arc(middle,radius*0.75,-PI/2,PI/2,12,Color("#998a87"),1,true)
   else:
    for hand in [left,right]:
     canvas.draw_circle(hand,radius*0.75,Color("#f5dfcb"))
