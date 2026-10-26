@@ -3,6 +3,7 @@ var game
 var gym_panel: PanelContainer
 var debug_panel: PanelContainer
 var readout: Label
+var fps_readout: Label
 var hint: Label
 var cells: OptionButton
 var viruses: OptionButton
@@ -72,12 +73,21 @@ func _ready():
  var frame=game.style(Color.BLACK,2,Color("#547764"))
  frame.set_border_width_all(1)
  debug_panel.add_theme_stylebox_override("panel",frame)
+ var debug_root=VBoxContainer.new()
+ debug_panel.add_child(debug_root)
+ fps_readout=Label.new()
+ fps_readout.name="FPS"
+ fps_readout.add_theme_font_size_override("font_size",24)
+ fps_readout.tooltip_text="Rendered frames per real second. This is not simulation speed; the counter keeps updating while the battle is paused."
+ debug_root.add_child(fps_readout)
+ debug_panel.visibility_changed.connect(func():
+  if debug_panel.visible: update_fps())
  var debug=VBoxContainer.new()
  debug.add_theme_constant_override("separation",8)
  var scroll=ScrollContainer.new()
- scroll.custom_minimum_size=Vector2(370,760)
+ scroll.custom_minimum_size=Vector2(370,720)
  scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
- debug_panel.add_child(scroll)
+ debug_root.add_child(scroll)
  debug.size_flags_horizontal=Control.SIZE_EXPAND_FILL
  scroll.add_child(debug)
  readout=Label.new()
@@ -149,14 +159,18 @@ func _process(delta):
  clock+=delta
  if clock<0.2 or not debug_panel.visible: return
  clock=0
+ update_fps()
  var sim=game.sim
- var text="DEBUG · F3\n%s · %s · %.2f s · ×%d\nFPS: %d\nCells: %d  Core: %d  Viruses: %d\nBonds: %d  Particles: %d\nQueued viruses: %d" % ["GYM" if game.gym_mode else "RUN",sim.phase+ (" / paused" if game.paused else ""),sim.elapsed,game.playback_speed,Engine.get_frames_per_second(),sim.cells.filter(func(c): return c.alive).size(),sim.blood.filter(func(b): return b.alive).size(),sim.viruses.size(),sim.links.size(),sim.particles.size(),sim.spawn_queue.size()]
+ var text="DEBUG · F3\n%s · %s · %.2f s · ×%d\nCells: %d  Core: %d  Viruses: %d\nBonds: %d  Particles: %d\nQueued viruses: %d" % ["GYM" if game.gym_mode else "RUN",sim.phase+ (" / paused" if game.paused else ""),sim.elapsed,game.playback_speed,sim.cells.filter(func(c): return c.alive).size(),sim.blood.filter(func(b): return b.alive).size(),sim.viruses.size(),sim.links.size(),sim.particles.size(),sim.spawn_queue.size()]
  if not game.selected.is_empty():
   var c=game.selected
   text+="\nSelected: %s\nHP %.1f / %.1f · rank %d\nAbility timer: %.2f" % [c.key,c.hp,c.max_hp,c.rank,c.cool]
  text+="\nRecent events:"
  for i in range(maxi(0,sim.events.size()-3),sim.events.size()): text+="\n"+sim.events[i].event
  readout.text=text
+
+func update_fps():
+ fps_readout.text="FPS  %d" % Engine.get_frames_per_second()
 
 func refresh_available():
  cell_keys=["__core"]+game.sim.available_cell_keys()
