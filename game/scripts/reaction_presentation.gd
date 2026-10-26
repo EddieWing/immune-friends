@@ -41,7 +41,7 @@ func pose(kind,id):
  if r.is_empty(): return {"squash":1.0,"offset":Vector2.ZERO,"hurt":false}
  var weight=1-smoothstep(0,0.38,r.age)
  # Keep the silhouette close to its collider: real momentum carries the impact.
- return {"squash":1+weight*(0.04 if r.push else -0.06),"offset":r.direction*weight*2,"hurt":not r.push and weight>0.25}
+ return {"squash":1+weight*(0.03 if r.push else -0.05),"offset":r.direction*weight*2,"hurt":not r.push and weight>0.25}
 func draw(canvas):
  for b in bursts.slice(maxi(0,bursts.size()-16)):
   var t=b.age/0.5
