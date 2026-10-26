@@ -339,11 +339,9 @@ func _process(delta):
  refresh_button.tooltip_text="Refresh · 1 Carbon"
  refresh_button.disabled=game.sim.money<1
  freeze.modulate=Color("#96d6ff") if game.sim.frozen else Color.WHITE
- var t=mini(game.sim.tier,5)
- var target=int(game.sim.rules.xp_thresholds[mini(t-1,3)])
- upgrade.text="▲ %d" % t
- upgrade.tooltip_text="Shop level %d · %d XP to next level
-Buy 1 XP · 3 Carbons" % [t,maxi(0,target-game.sim.xp)]
+ upgrade.add_theme_font_size_override("font_size",15)
+ upgrade.text="+1 XP\n%d C" % int(game.sim.shop_rules.xp_price)
+ upgrade.tooltip_text=game.xp_purchase_tooltip()
  note.visible=prep
  forecast.visible=preview
  for b in transport:
@@ -403,6 +401,7 @@ func _draw():
   text(Vector2(151,850),str(sim.money),34,GOLD)
   text(Vector2(136,870),"CARBONS",10,MUTED)
   if sim.tier<5:
+   text(Vector2(209,769),"LV %d · XP %d/%d" % [sim.tier,sim.xp,int(sim.rules.xp_thresholds[sim.tier-1])],11,GOLD)
    var prev=0 if sim.tier==1 else int(sim.rules.xp_thresholds[sim.tier-2])
    var goal=int(sim.rules.xp_thresholds[sim.tier-1])
    var steps=maxi(1,goal-prev)

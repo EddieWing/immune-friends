@@ -2,12 +2,16 @@ extends Button
 var glyph=""
 var glyph_font: Font
 var glyph_size=30
+var price_text="3 C"
 func _draw():
  var ink=get_theme_color("font_disabled_color" if disabled else "font_color")
  var c=size*0.5
  var r=12.0
  var width=2.2
- if glyph=="⇈":
+ if glyph=="XP":
+  draw_string(glyph_font,c+Vector2(-23,-2),"+1 XP",HORIZONTAL_ALIGNMENT_LEFT,-1,16,ink)
+  draw_string(glyph_font,c+Vector2(-20,16),price_text,HORIZONTAL_ALIGNMENT_LEFT,-1,14,ink)
+ elif glyph=="⇈":
   for x in [-5.5,5.5]:
    draw_line(c+Vector2(x,11),c+Vector2(x,-10),ink,width,true)
    draw_polyline(PackedVector2Array([c+Vector2(x-4,-5),c+Vector2(x,-10),c+Vector2(x+4,-5)]),ink,width,true)

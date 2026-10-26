@@ -289,7 +289,11 @@ func gain_xp(amount):
 func buy_xp():
 	if phase!="shop" or money<int(shop_rules.xp_price) or tier>=5: return false
 	money-=int(shop_rules.xp_price)
-	if gain_xp(1): fill_shop()
+	if gain_xp(1):
+		fill_shop()
+		last_message="Level %d · Capacity increased to %d cells" % [tier,capacity()]
+	else:
+		last_message="+1 XP · %d / %d to level %d" % [xp,int(rules.xp_thresholds[tier-1]),tier+1]
 	record("xp",{"tier":tier,"xp":xp})
 	return true
 

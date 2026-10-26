@@ -30,7 +30,7 @@ func run():
 	s.buy_xp()
 	check(s.xp==2 and s.offers==["wall"],"XP purchase without level does not refill")
 	s.buy_xp()
-	check(s.xp==3 and s.tier==2 and s.offers.size()==4 and s.offers[0]=="wall","Level purchase fills vacancies preserving existing cards")
+	check(s.xp==3 and s.tier==2 and s.capacity()==7 and s.offers.size()==4 and s.offers[0]=="wall","Final XP immediately raises level, capacity and fills vacancies preserving cards")
 	for i in range(14): s.buy_xp()
 	check(s.tier==5 and s.xp==17 and s.capacity()==16 and not s.buy_xp(),"Cumulative XP reaches max at17")
 	s.roll_shop(false)

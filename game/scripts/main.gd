@@ -412,7 +412,7 @@ func build_ui():
 	stats.add_theme_font_size_override("font_size",14)
 	stats.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
 	capacity_panel.add_child(stats)
-	xp_button=fixed_icon_button(dock,"⇈",func(): sim.buy_xp(); changed(),Vector2(88,88),27)
+	xp_button=fixed_icon_button(dock,"XP",func(): sim.buy_xp(); changed(),Vector2(88,88),27)
 	xp_button.position=Vector2(350,740)
 	round_button(xp_button,44)
 	var ring=XPRing.new()
@@ -998,7 +998,9 @@ func refresh():
 	dock_play.disabled=not is_shop or not sim.reward_choices.is_empty()
 	start_button.disabled=launch_remaining>0 or sim.phase not in ["shop","battle"] or not sim.reward_choices.is_empty()
 	xp_button.disabled=sim.money<3 or sim.tier>=5 or not is_shop
-	xp_button.tooltip_text="Level %d · XP %d\nBuy XP · 3 Carbons" % [sim.tier,sim.xp]
+	xp_button.tooltip_text=xp_purchase_tooltip()
+	xp_button.price_text="%d C" % int(sim.shop_rules.xp_price)
+	xp_button.queue_redraw()
 	refresh_button.disabled=sim.money<1 or not is_shop
 	refresh_button.tooltip_text="Refresh offers · 1 Carbon"
 	freeze_button.disabled=not is_shop
@@ -1111,6 +1113,11 @@ func start_battle():
 	dragging=false
 	rotating=false
 	refresh()
+
+func xp_purchase_tooltip():
+	if sim.tier>=5:return "Maximum shop level · Capacity %d" % sim.capacity()
+	var goal=int(sim.rules.xp_thresholds[sim.tier-1])
+	return "Buy 1 XP · %d Carbons\nLevel %d · XP %d / %d\nAt %d XP: level %d, capacity %d → %d immediately" % [int(sim.shop_rules.xp_price),sim.tier,sim.xp,goal,goal,sim.tier+1,sim.capacity(),sim.capacity()+3]
 
 func changed():
 	if sim.phase=="shop": sim.ensure_infection_sources_clear()
