@@ -54,6 +54,20 @@ func run():
  g.advance_simulation(0)
  check(is_equal_approx(g.sim.elapsed,2.0) and g.clock_accum<0.000001,"Catch-up processes retained time without dropping ticks")
  setup(g)
+ g.set_playback_speed(5)
+ g.advance_simulation(0.2)
+ var expected=snapshot(g.sim)
+ setup(g)
+ g.set_playback_speed(5)
+ g.advance_simulation(0.2,1)
+ check(is_equal_approx(g.sim.elapsed,1.0/60) and g.clock_accum>0.98,"Tiny frame budget yields after a whole tick and retains debt")
+ var frames=0
+ while g.clock_accum>0.000000001 and frames<100:
+  g.advance_simulation(0,1)
+  frames+=1
+ check(snapshot(g.sim)==expected,"Budgeted catch-up preserves exact battle state without dropping ticks")
+ g.set_playback_speed(1)
+ setup(g)
  g.launch_remaining=0.9
  g.paused=true
  g.advance_simulation(1)

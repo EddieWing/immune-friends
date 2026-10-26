@@ -674,12 +674,17 @@ func update(delta):
 	if spawn_timer<=0 and not spawn_queue.is_empty():
 		spawn_virus(spawn_queue.pop_front())
 		spawn_timer=0.38
+	var has_network_buffs=false
+	for provider in cells:
+		if provider.alive and provider.key in ["radar","accelerator"]:
+			has_network_buffs=true
+			break
 	for c in cells:
 		if not c.alive: continue
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
 		c.speed_buff=1.0
-		for id in network(c.id):
+		for id in (network(c.id) if has_network_buffs else []):
 			var provider=cell_by_id(id)
 			if provider.get("key","")=="radar": apply_radar(c,provider)
 			if provider.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)

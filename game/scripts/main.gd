@@ -47,6 +47,7 @@ var hud_opacity=1.0
 var menu_time=0.0
 const SIMULATION_STEP=1.0/60.0
 const MAX_SIMULATION_STEPS_PER_FRAME=60
+const SIMULATION_FRAME_BUDGET_US=8000
 var clock_accum=0.0
 var clock_sim=null
 var clock_phase=""
@@ -1132,7 +1133,7 @@ func _process(delta):
 	position_scanner()
 	advance_manual_camera(delta)
 	advance_camera(delta)
-	if not entering_game: advance_simulation(delta)
+	if not entering_game: advance_simulation(delta,SIMULATION_FRAME_BUDGET_US)
 	if sim.phase!=last_phase:
 		last_phase=sim.phase
 		refresh()
@@ -1561,7 +1562,7 @@ func position_scanner():
 	scanner.anchor=anchor
 	scanner.queue_redraw()
 
-func advance_simulation(delta):
+func advance_simulation(delta,budget_us=0):
 	# Never carry a partial tick or catch-up debt into another run, Gym setup or phase.
 	if clock_sim!=sim or clock_phase!=sim.phase or clock_revision!=sim.presentation_revision:
 		clock_accum=0.0
@@ -1583,6 +1584,7 @@ func advance_simulation(delta):
 	# Keep debt after a slow frame; a bounded catch-up budget avoids locking the UI.
 	clock_accum+=delta*(playback_speed if sim.phase=="battle" else 1)
 	var steps=0
+	var started=Time.get_ticks_usec()
 	while clock_accum+0.000000001>=SIMULATION_STEP and steps<MAX_SIMULATION_STEPS_PER_FRAME:
 		sim.update(SIMULATION_STEP)
 		clock_accum=maxf(0,clock_accum-SIMULATION_STEP)
@@ -1591,6 +1593,9 @@ func advance_simulation(delta):
 			clock_accum=0.0
 			clock_phase=sim.phase
 			break
+		# Finish a whole deterministic tick, then yield to rendering/input.
+		# Debt is retained; slower devices must not freeze trying to catch up.
+		if budget_us>0 and Time.get_ticks_usec()-started>=budget_us: break
 
 func show_cell_card(key,c={}):
 	if ui_new and not gym_mode and hud_a: hud_a.select_cell(key,c)

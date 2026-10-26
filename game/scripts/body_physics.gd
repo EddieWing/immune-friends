@@ -61,10 +61,10 @@ func support(s,body,axis):
 	return body.p+basis[0]*43.0*signf(axis.dot(basis[0]))+basis[1]*13.0*signf(axis.dot(basis[1]))
 func collision(s,a,b):
 	var delta=b.p-a.p
-	var ra=45.0 if is_box(s,a) else radius(a)
-	var rb=45.0 if is_box(s,b) else radius(b)
-	if delta.length_squared()>(ra+rb+0.02)*(ra+rb+0.02): return {}
 	var a_box=is_box(s,a);var b_box=is_box(s,b)
+	var ra=45.0 if a_box else radius(a)
+	var rb=45.0 if b_box else radius(b)
+	if delta.length_squared()>(ra+rb+0.02)*(ra+rb+0.02): return {}
 	if not a_box and not b_box:
 		var distance=delta.length()
 		var depth=radius(a)+radius(b)-distance
@@ -104,39 +104,49 @@ func collision(s,a,b):
 func solve_contact(s,a,b,hit):
 	var normal=hit.n
 	var sa=state(a);var sb=state(b)
-	var ima=1.0/mass(s,a);var imb=1.0/mass(s,b)
 	var arm_a=hit.p-a.p;var arm_b=hit.p-b.p
 	var va=sa.v+Vector2(-arm_a.y,arm_a.x)*sa.w
 	var vb=sb.v+Vector2(-arm_b.y,arm_b.x)*sb.w
 	var relative=(vb-va).dot(normal)
+	if relative>=0 and hit.depth<=0.02:return
+	var ima=1.0/mass(s,a);var imb=1.0/mass(s,b)
 	if relative<0:
-		var denom=ima+imb+pow(arm_a.cross(normal),2)/inertia(s,a)+pow(arm_b.cross(normal),2)/inertia(s,b)
+		var iia=1.0/inertia(s,a);var iib=1.0/inertia(s,b)
+		var denom=ima+imb+pow(arm_a.cross(normal),2)*iia+pow(arm_b.cross(normal),2)*iib
 		var bounce=minf(parameter(s,a,"restitution"),parameter(s,b,"restitution")) if relative < -2.0 else 0.0
 		var value=normal*(-(1.0+bounce)*relative/denom)
 		# Deliberate game-feel boost for approaching virus/cell impacts only.
 		# Equal/opposite impulses retain momentum and the actual contact lever arm.
 		if (a.has("type") and b.has("key")) or (b.has("type") and a.has("key")):
 			value*=float(s.rules.body_physics.get("contact_impulse_scale",1.0))
-		impulse(s,a,-value,hit.p)
-		impulse(s,b,value,hit.p)
+		sa.v-=value*ima
+		sa.w-=arm_a.cross(value)*iia
+		sb.v+=value*imb
+		sb.w+=arm_b.cross(value)*iib
 	# Small mass-weighted overlap correction; momentum comes from the impulses above.
 	var correction=normal*maxf(0,hit.depth-0.02)*0.65/(ima+imb)
 	a.p-=correction*ima
 	b.p+=correction*imb
 func candidate_pairs(bodies):
 	var grid={}
+	var cell_grid={}
 	for i in range(bodies.size()):
 		var tile=Vector2i(floori(bodies[i].p.x/96.0),floori(bodies[i].p.y/96.0))
 		if not grid.has(tile):grid[tile]=[]
 		grid[tile].append(i)
+		if bodies[i].has("key"):
+			if not cell_grid.has(tile):cell_grid[tile]=[]
+			cell_grid[tile].append(i)
 	var pairs=[]
 	for i in range(bodies.size()):
 		var a=bodies[i]
 		if a.get("jump",false) or a.get("emerging",false):continue
 		var tile=Vector2i(floori(a.p.x/96.0),floori(a.p.y/96.0))
+		# Virus/virus and core/virus pairs never participate in this solver.
+		var candidates=grid if a.has("key") else cell_grid
 		for y in range(-1,2):
 			for x in range(-1,2):
-				for j in grid.get(tile+Vector2i(x,y),[]):
+				for j in candidates.get(tile+Vector2i(x,y),[]):
 					if j<=i:continue
 					var b=bodies[j]
 					if b.get("jump",false) or b.get("emerging",false):continue
