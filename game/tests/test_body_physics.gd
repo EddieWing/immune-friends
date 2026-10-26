@@ -13,6 +13,26 @@ func add(s,key,pos):
 	var c=s.make_cell(key,pos);s.cells.append(c);return c
 func advance(s,seconds):
 	for i in range(roundi(seconds*120)):s.physics.step(s,1.0/120.0)
+func reference_candidates(bodies):
+	var grid={}
+	for i in range(bodies.size()):
+		var tile=Vector2i(floori(bodies[i].p.x/96.0),floori(bodies[i].p.y/96.0))
+		if not grid.has(tile):grid[tile]=[]
+		grid[tile].append(i)
+	var pairs=[]
+	for i in range(bodies.size()):
+		var a=bodies[i]
+		if a.get("jump",false) or a.get("emerging",false):continue
+		var tile=Vector2i(floori(a.p.x/96.0),floori(a.p.y/96.0))
+		for y in range(-1,2):
+			for x in range(-1,2):
+				for j in grid.get(tile+Vector2i(x,y),[]):
+					if j<=i:continue
+					var b=bodies[j]
+					if b.get("jump",false) or b.get("emerging",false):continue
+					if not a.has("key") and not b.has("key"):continue
+					pairs.append(Vector2i(i,j))
+	return pairs
 func _initialize():
 	var s=setup()
 	var light=add(s,"seeker",Vector2(-200,0));var heavy=add(s,"wildcard",Vector2(200,0))
@@ -123,5 +143,16 @@ func _initialize():
 	s.apply_tuning("seeker",{"physics/density":2.0})
 	s.physics.drive(a,Vector2(20,0));s.physics.step(s,0.001)
 	check(is_equal_approx(s.physics.velocity(a).x,initial_speed/2.0),"Next step immediately uses edited density, not cached material")
+	var rng=RandomNumberGenerator.new();rng.seed=909
+	var same_pairs=true
+	for sample in range(50):
+		var bodies=[]
+		for i in range(80):
+			var body={"p":Vector2(rng.randf_range(-400,400),rng.randf_range(-300,300)),"jump":i%11==0,"emerging":i%13==0}
+			if i%3==0:body.key="wall"
+			elif i%3==1:body.type="basic"
+			bodies.append(body)
+		if s.physics.candidate_pairs(bodies)!=reference_candidates(bodies):same_pairs=false
+	check(same_pairs,"Spatial candidates retain exact pair order across mixed bodies, jumps and emergence")
 	print("RESULT: %d checks, %d failures" % [checks,errors])
 	quit(errors)

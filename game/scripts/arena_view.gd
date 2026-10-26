@@ -1,6 +1,7 @@
 extends Node2D
 const SIMPLE_VIRUS_BODY=preload("res://assets/ui/virus-field-body.svg")
 const SIMPLE_CORE_BODIES=preload("res://assets/ui/core-field-bodies.svg")
+var wall_skins={}
 var new_field=false
 var new_hud=false
 var sim
@@ -188,12 +189,14 @@ func draw_cell(c):
 	if new_field:
 		draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
 		if wall:
-			var skin=StyleBoxFlat.new()
-			skin.bg_color=color
-			skin.border_color=color.darkened(0.4)
-			skin.set_border_width_all(2)
-			skin.set_corner_radius_all(13)
-			draw_style_box(skin,Rect2(-43,-13,86,26))
+			if not wall_skins.has(color):
+				var skin=StyleBoxFlat.new()
+				skin.bg_color=color
+				skin.border_color=color.darkened(0.4)
+				skin.set_border_width_all(2)
+				skin.set_corner_radius_all(13)
+				wall_skins[color]=skin
+			draw_style_box(wall_skins[color],Rect2(-43,-13,86,26))
 		else:
 			draw_circle(Vector2.ZERO,23,color)
 			draw_arc(Vector2.ZERO,23,0,TAU,48,color.darkened(0.45),2,true)

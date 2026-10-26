@@ -140,28 +140,34 @@ func solve_contact(s,a: Dictionary,b: Dictionary,hit: Dictionary):
 func candidate_pairs(bodies: Array) -> Array:
 	var grid={}
 	var cell_grid={}
+	var tiles: Array[Vector2i]=[]
+	var eligible: Array[bool]=[]
+	var cells: Array[bool]=[]
 	for i in range(bodies.size()):
-		var tile=Vector2i(floori(bodies[i].p.x/96.0),floori(bodies[i].p.y/96.0))
+		var body: Dictionary=bodies[i]
+		var position: Vector2=body.p
+		var tile=Vector2i(floori(position.x/96.0),floori(position.y/96.0))
+		tiles.append(tile)
+		var include=not body.get("jump",false) and not body.get("emerging",false)
+		eligible.append(include)
+		cells.append(body.has("key"))
+		if not include: continue
 		if not grid.has(tile):grid[tile]=[]
 		grid[tile].append(i)
-		if bodies[i].has("key"):
+		if cells[i]:
 			if not cell_grid.has(tile):cell_grid[tile]=[]
 			cell_grid[tile].append(i)
 	var pairs=[]
 	for i in range(bodies.size()):
-		var a=bodies[i]
-		if a.get("jump",false) or a.get("emerging",false):continue
-		var tile=Vector2i(floori(a.p.x/96.0),floori(a.p.y/96.0))
-		# Virus/virus and core/virus pairs never participate in this solver.
-		var candidates=grid if a.has("key") else cell_grid
+		if not eligible[i]:continue
+		var tile: Vector2i=tiles[i]
+		var candidates: Dictionary=grid if cells[i] else cell_grid
 		for y in range(-1,2):
 			for x in range(-1,2):
-				for j in candidates.get(tile+Vector2i(x,y),[]):
-					if j<=i:continue
-					var b=bodies[j]
-					if b.get("jump",false) or b.get("emerging",false):continue
-					if not a.has("key") and not b.has("key"):continue
-					pairs.append(Vector2i(i,j))
+				var neighbour=tile+Vector2i(x,y)
+				if not candidates.has(neighbour):continue
+				for j in candidates[neighbour]:
+					if j>i:pairs.append(Vector2i(i,j))
 	return pairs
 
 func step(s,delta):
@@ -239,17 +245,21 @@ func step(s,delta):
 				if clipped.y!=body.p.y:st.v.y=-st.v.y*float(material.restitution)
 				body.p=clipped
 		var pairs=candidate_pairs(bodies)
+		var positions: Array[Vector2]=[]
+		for body in bodies: positions.append(body.p)
 		for pass_no in range(3):
-			for pair in pairs:
-				var a=bodies[pair.x];var b=bodies[pair.y]
-				var separation: Vector2=b.p-a.p
+			for pair: Vector2i in pairs:
+				var separation: Vector2=positions[pair.y]-positions[pair.x]
 				var reach: float=broad_radii[pair.x]+broad_radii[pair.y]+0.02
 				if separation.length_squared()>reach*reach: continue
+				var a=bodies[pair.x];var b=bodies[pair.y]
 				var hit=collision(s,a,b)
 				if hit.is_empty():continue
 				var ia=id_of(a);var ib=id_of(b)
 				contacts[Vector2i(mini(ia,ib),maxi(ia,ib))]=true
 				solve_contact(s,a,b,hit)
+				positions[pair.x]=a.p
+				positions[pair.y]=b.p
 	for i in range(s.blood.size()):
 		if s.blood[i].alive:s.blood_velocity[i]=state(s.blood[i]).v
 	drives.clear()
