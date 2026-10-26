@@ -91,5 +91,29 @@ func _initialize():
 	s.apply_tuning("seeker",{"physics/restitution":0})
 	s.physics.impulse(s,a,Vector2(50,0));s.physics.step(s,1.0/120)
 	check(absf(s.physics.velocity(a).x-s.physics.velocity(b).x)<1,"Edited restitution absorbs bounce in real contact")
+	# MC-039: actual virus contact, not a manually supplied off-centre force.
+	var edge_angles=[]
+	for hit_x in [-32.0,0.0,32.0]:
+		s=setup();wall=add(s,"wall",Vector2.ZERO)
+		virus={"id":900,"type":"basic","p":Vector2(hit_x,22),"alive":true,"freeze":0.0}
+		s.viruses=[virus]
+		s.physics.state(virus).v=Vector2(0,-100)
+		advance(s,0.2)
+		edge_angles.append(wall.angle)
+		check(wall.p.y < -1,"Virus contact visibly displaces wall at x=%s" % hit_x)
+	check(edge_angles[0]>0.05 and edge_angles[2]<-0.05,"Opposite edge hits visibly rotate in opposite directions")
+	check(absf(edge_angles[1])<0.001,"Central virus contact does not invent torque")
+	s=setup();wall=add(s,"wall",Vector2.ZERO)
+	virus={"id":900,"type":"basic","p":Vector2(32,22),"alive":true,"freeze":0.0}
+	s.physics.state(virus).v=Vector2(0,-100)
+	var hit=s.physics.collision(s,wall,virus)
+	s.physics.solve_contact(s,wall,virus,hit)
+	var momentum=s.physics.velocity(wall)*s.physics.mass(s,wall)+s.physics.velocity(virus)*s.physics.mass(s,virus)
+	check(momentum.distance_to(Vector2(0,-100)*s.physics.mass(s,virus))<0.001,"Boosted impact preserves total linear momentum")
+	var boosted=s.physics.velocity(wall).length()
+	s.physics.clear();s.physics.state(virus).v=Vector2(0,-100)
+	s.rules.body_physics.contact_impulse_scale=1.0
+	s.physics.solve_contact(s,wall,virus,hit)
+	check(is_equal_approx(boosted,s.physics.velocity(wall).length()*1.5),"Virus contact boost increases actual impulse by 50 percent")
 	print("RESULT: %d checks, %d failures" % [checks,errors])
 	quit(errors)

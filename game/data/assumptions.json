@@ -65,16 +65,17 @@
   "pusher_virus_range": 90,
   "experimental_rules": "Default OFF, snapshotted per run. Catalog numeric constants and elite overrides are used by existing algorithms. Kinetic network targeting, magnet direct charge draw, Gatling cooldown floor0.05, Factory targeting/launch and PusherVirus remain provisional; no electrical graph or physics reconstruction.",
   "body_physics": {
-    "status": "F2 custom impulse solver; current game shapes and calibrated motor/spring/impulse conversion, not exact Box2D. Density classes and damping follow reference.",
+    "status": "Custom impulse solver, not exact Box2D. MC-039 calibrated pushes, virus contact boost and reduced angular drag are deliberate game-feel settings; geometry and density classes retain the current model.",
     "linear_damping": 0.5,
-    "angular_damping": 5,
+    "angular_damping": 2,
     "restitution": 1,
     "max_step": 0.008333333333333333,
     "motor_response": 8,
     "motor_force": 900,
     "max_speed": 650,
     "max_angular_speed": 10,
-    "impulse_scale": 8,
+    "impulse_scale": 12,
+    "contact_impulse_scale": 1.5,
     "spring_stiffness": 100,
     "spring_damping": 12
   }

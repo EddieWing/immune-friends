@@ -113,6 +113,10 @@ func solve_contact(s,a,b,hit):
 		var denom=ima+imb+pow(arm_a.cross(normal),2)/inertia(s,a)+pow(arm_b.cross(normal),2)/inertia(s,b)
 		var bounce=minf(parameter(s,a,"restitution"),parameter(s,b,"restitution")) if relative < -2.0 else 0.0
 		var value=normal*(-(1.0+bounce)*relative/denom)
+		# Deliberate game-feel boost for approaching virus/cell impacts only.
+		# Equal/opposite impulses retain momentum and the actual contact lever arm.
+		if (a.has("type") and b.has("key")) or (b.has("type") and a.has("key")):
+			value*=float(s.rules.body_physics.get("contact_impulse_scale",1.0))
 		impulse(s,a,-value,hit.p)
 		impulse(s,b,value,hit.p)
 	# Small mass-weighted overlap correction; momentum comes from the impulses above.
