@@ -78,6 +78,9 @@ func run():
  scene.advance_simulation(0.1)
  check(not scene.paused and absf(scene.sim.elapsed-paused_time-0.2)<0.00001,"fast forward resumes at x2")
  scene.sim.reset(42,12)
+ # Start below the maximum regardless of preparation entry magnification.
+ scene.view.scale=Vector2.ONE*0.88
+ scene.zoom_target=0.88
  var wheel=InputEventMouseButton.new()
  wheel.position=Vector2(900,300)
  wheel.pressed=true
