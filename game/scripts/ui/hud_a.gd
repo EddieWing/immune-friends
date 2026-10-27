@@ -55,7 +55,7 @@ func _ready():
  refresh_button=action("⟳",Rect2(1082,754,56,56),func():game.sim.roll_shop();game.changed())
  freeze=action("❄",Rect2(1082,818,56,56),func():game.sim.frozen=not game.sim.frozen;game.changed())
  for b in [refresh_button,freeze]:
-  for state in ["normal","hover","pressed"]: b.get_theme_stylebox(state).set_corner_radius_all(28)
+  for state in ["normal","hover","pressed","disabled"]: b.get_theme_stylebox(state).set_corner_radius_all(28)
  for value in [0,1,2,5]:
   var b=action("Ⅱ" if value==0 else "×"+str(value),Rect2(574+transport.size()*64,14,56,44),func():
    if value==0: game.paused=true;game.update_transport()
@@ -324,6 +324,12 @@ func _process(delta):
  for old in game.speed_buttons:old.hide()
  if game.browsing_from_main_menu():return
  if signature!=JSON.stringify(game.sim.wave) or seen_sim!=game.sim or seen_round!=game.sim.round_no:refresh_data()
+ # Refit after width-dependent wrapping settles, including the initial entry.
+ var note_scroll=note.get_child(1)
+ var note_height=clampf(note_rows.get_combined_minimum_size().y,100,490)
+ if not is_equal_approx(note_scroll.custom_minimum_size.y,note_height):
+  note_scroll.custom_minimum_size.y=note_height
+  note.size.y=0
  var prep=game.sim.phase=="shop" and game.launch_remaining<=0
  var combat=game.sim.phase=="battle" and game.launch_remaining<=0
  var preview=game.results_stage=="forecast"

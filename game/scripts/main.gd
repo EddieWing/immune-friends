@@ -564,7 +564,9 @@ func enter_microscope(action: Callable):
 		hud_opacity=1.0
 		apply_menu_visibility()
 		entering_game=false
-		if tutorial: show_help())
+		if tutorial: show_help()
+		elif results_stage=="finished" and sim.phase in ["win","lose"]: show_run_result()
+		elif results_stage=="losses" and sim.phase in ["recap","win","lose"]: show_infection_results())
 
 func new_run(rounds):
 	launch_remaining=0.0
@@ -1366,6 +1368,9 @@ func load_run():
 	if not data is Dictionary or data.get("version",0)!=1:
 		sim.last_message="Could not read the saved game."
 		return
+	results_pending=false
+	results_stage=""
+	results_delay=0.0
 	sim.experimental=bool(data.get("experimental",false))
 	sim.reset(int(data.seed),int(data.rounds))
 	lab_tools.refresh_available()
@@ -1774,7 +1779,7 @@ func show_infection_results():
 
 func show_run_result():
 	results_stage="finished"
-	var col=clear_modal("Defense successful!" if sim.phase=="win" else "No core cells left","You survived %d rounds." % sim.round_no)
+	var col=clear_modal("Defense successful!" if sim.phase=="win" else "No core cells left",("You survived %d rounds." if sim.phase=="win" else "You reached round %d.") % sim.round_no)
 	button(col,"New run",func():new_run(sim.target_rounds))
 	button(col,"Main menu",show_menu)
 
