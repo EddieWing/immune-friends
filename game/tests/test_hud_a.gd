@@ -17,6 +17,12 @@ func run():
  var hud=scene.hud_a
  hud._process(0.4)
  scene.visor_radius=0.54
+ check(hud.clipped_source_segment(Vector2(1250,400),Vector2(1300,450),[]).is_empty(),"Source outline outside visor is hidden")
+ var clipped=hud.clipped_source_segment(Vector2(1100,450),Vector2(1300,450),[])
+ check(clipped.size()==1 and clipped[0][1].x<=1204.01,"Source outline crossing visor is clipped at optical boundary")
+ var masked=hud.clipped_source_segment(Vector2(600,450),Vector2(800,450),[Rect2(650,400,100,100)])
+ check(masked.size()==2 and masked[0][1].x<=648.01 and masked[1][0].x>=751.99,"UI removes middle of source outline with stroke padding")
+ check(hud.clipped_source_segment(Vector2(680,450),Vector2(720,450),[Rect2(650,400,100,100)]).is_empty(),"Source outline beneath UI is hidden")
  for direction in [Vector2.RIGHT,Vector2.LEFT,Vector2.UP,Vector2.DOWN,Vector2(1,1).normalized()]:
   var marker=hud.source_marker(Vector2(720,450)+direction*1500)
   check(marker.outside and marker.tip.distance_to(Vector2(720,450))<486,"Offscreen source pointer stays inside visor")

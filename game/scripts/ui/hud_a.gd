@@ -571,9 +571,50 @@ func source_layout(wave):
   blocked.append(marker.rect.grow(6))
   if marker.outside:blocked.append(Rect2(marker.tip-Vector2(12,12),Vector2(24,24)))
  return result
+func clipped_source_segment(a:Vector2,b:Vector2,blocked:Array):
+ # Clip the centerline inside the optical circle, leaving room for stroke + AA.
+ var direction=b-a
+ var relative=a-Vector2(720,450)
+ var radius=maxf(0.0,game.visor_radius*900.0-2.0)
+ var aa=direction.length_squared()
+ if aa<0.000001:return []
+ var bb=2.0*relative.dot(direction)
+ var cc=relative.length_squared()-radius*radius
+ var discriminant=bb*bb-4.0*aa*cc
+ if discriminant<0:return []
+ var low=maxf(0.0,(-bb-sqrt(discriminant))/(2.0*aa))
+ var high=minf(1.0,(-bb+sqrt(discriminant))/(2.0*aa))
+ if low>=high:return []
+ var intervals=[Vector2(low,high)]
+ for obstacle in blocked:
+  var rect:Rect2=obstacle.grow(2)
+  var enter=0.0
+  var leave=1.0
+  for axis in range(2):
+   if absf(direction[axis])<0.000001:
+    if a[axis]<rect.position[axis] or a[axis]>rect.end[axis]:leave=-1.0
+   else:
+    var first=(rect.position[axis]-a[axis])/direction[axis]
+    var last=(rect.end[axis]-a[axis])/direction[axis]
+    enter=maxf(enter,minf(first,last))
+    leave=minf(leave,maxf(first,last))
+  if enter>=leave:continue
+  var remaining=[]
+  for interval in intervals:
+   if leave<=interval.x or enter>=interval.y:remaining.append(interval)
+   else:
+    if enter>interval.x:remaining.append(Vector2(interval.x,enter))
+    if leave<interval.y:remaining.append(Vector2(leave,interval.y))
+  intervals=remaining
+  if intervals.is_empty():break
+ var pieces=[]
+ for interval in intervals:pieces.append(PackedVector2Array([a+direction*interval.x,a+direction*interval.y]))
+ return pieces
 func draw_source_labels():
  var wave=game.preview_wave if game.view.staging=="warning" else game.sim.wave
  var layout=source_layout(wave)
+ var blocked=source_obstacles()
+ for item in layout.values():blocked.append(item.rect.grow(3))
  for lane in lanes(wave):
   if not game.view.sources.states.has(lane):continue
   var position=game.view.to_global(game.view.sources.states[lane].p)
@@ -584,7 +625,12 @@ func draw_source_labels():
   var color=GOLD if fresh else Color("#c25874")
   if game.field_new:
    var radius=66*game.view.scale.x
-   for segment in range(24):draw_arc(position,radius,segment*TAU/24,segment*TAU/24+TAU/40,8,color,1.5,true)
+   for segment in range(24):
+    for step in range(7):
+     var start=segment*TAU/24+TAU/40*step/7.0
+     var end=segment*TAU/24+TAU/40*(step+1)/7.0
+     for piece in clipped_source_segment(position+Vector2.from_angle(start)*radius,position+Vector2.from_angle(end)*radius,blocked):
+      draw_line(piece[0],piece[1],color,1.5,true)
   if marker.outside:
    var direction=marker.direction
    var side=direction.orthogonal()*7.0
