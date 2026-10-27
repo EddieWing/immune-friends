@@ -23,6 +23,13 @@ func run():
   check(Rect2(0,0,1440,900).encloses(marker.rect),"Source caption stays on screen")
   check(marker.direction.dot(direction)>0.99,"Source pointer preserves bearing")
  check(not hud.source_marker(Vector2(800,450)).outside,"Visible source keeps its local label")
+ for position in [Vector2(1000,450),Vector2(2000,450),Vector2(-1000,450),Vector2(720,-1000),Vector2(720,1800)]:
+  var blocked=hud.source_obstacles()
+  for i in range(8):
+   var marker=hud.place_source_marker(position+Vector2(i*2,i*2),"SOURCE %d - 12" % (i+1),blocked)
+   check(hud.marker_clear(marker,blocked),"Clustered sources avoid UI and other markers")
+   blocked.append(marker.rect.grow(6))
+   if marker.outside:blocked.append(Rect2(marker.tip-Vector2(12,12),Vector2(24,24)))
  check(scene.ui_new and scene.field_new and scene.visor_new,"New styles default independently")
  check(hud.visible and not scene.dock.visible and hud.note.visible,"New preparation HUD replaces classic controls")
  scene.sim.tier=5

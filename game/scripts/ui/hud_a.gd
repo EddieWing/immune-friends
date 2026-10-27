@@ -519,14 +519,67 @@ func source_marker(position,caption=""):
  pos.x=clampf(pos.x,12,1428-width)
  pos.y=clampf(pos.y,80,700)
  return {"rect":Rect2(pos,Vector2(width,24)),"tip":tip,"direction":direction,"outside":outside}
+func source_obstacles():
+ var blocked=[Rect2(12,8,64,64),Rect2(460,4,520,72),Rect2(1350,285,90,380),Rect2(0,720,1440,180)]
+ for panel in [note,forecast,cell_block,virus_block,game.lab_tools.debug_panel,game.lab_tools.gym_panel]:
+  if is_instance_valid(panel) and panel.is_visible_in_tree():blocked.append(panel.get_global_rect().grow(8))
+ return blocked
+func marker_clear(marker,blocked):
+ var rect=marker.rect.grow(5)
+ if not Rect2(12,80,1416,630).encloses(rect):return false
+ for obstacle in blocked:
+  if rect.intersects(obstacle):return false
+  if marker.outside and Rect2(marker.tip-Vector2(10,10),Vector2(20,20)).intersects(obstacle):return false
+  if marker.outside:
+   var corners=[obstacle.position,Vector2(obstacle.end.x,obstacle.position.y),obstacle.end,Vector2(obstacle.position.x,obstacle.end.y)]
+   for edge in range(4):
+    if Geometry2D.segment_intersects_segment(marker.rect.get_center(),marker.tip,corners[edge],corners[(edge+1)%4])!=null:return false
+ return true
+func place_source_marker(position,caption,blocked):
+ var base=source_marker(position,caption)
+ if marker_clear(base,blocked):return base
+ for step in range(1,91):
+  for sign_value in [-1,1]:
+   var candidate=base.duplicate()
+   if base.outside:
+    var bearing=(position-Vector2(720,450)).rotated(step*0.035*sign_value)
+    candidate=source_marker(Vector2(720,450)+bearing.normalized()*100000,caption)
+    candidate.direction=(position-candidate.tip).normalized()
+   else:
+    var column=[0,-1,1,-2,2][(step-1)%5]
+    var row=int((step-1)/5)+1
+    candidate.rect=Rect2(base.rect.position+Vector2(column*(base.rect.size.x+12),row*34*sign_value),base.rect.size)
+   if marker_clear(candidate,blocked):return candidate
+ for y in range(90,680,34):
+  for x in range(24,1300,24):
+   var candidate=base.duplicate()
+   candidate.rect=Rect2(Vector2(x,y),base.rect.size)
+   candidate.outside=false
+   if marker_clear(candidate,blocked):return candidate
+ return base
+func source_layout(wave):
+ var result={}
+ var blocked=source_obstacles()
+ var ordered=lanes(wave)
+ ordered.sort()
+ for lane in ordered:
+  if not game.view.sources.states.has(lane):continue
+  var position=game.view.to_global(game.view.sources.states[lane].p)
+  var fresh=game.view.staging=="warning" and lane not in lanes(game.sim.wave)
+  var marker=place_source_marker(position,source_caption(lane,wave,fresh),blocked)
+  result[lane]=marker
+  blocked.append(marker.rect.grow(6))
+  if marker.outside:blocked.append(Rect2(marker.tip-Vector2(12,12),Vector2(24,24)))
+ return result
 func draw_source_labels():
  var wave=game.preview_wave if game.view.staging=="warning" else game.sim.wave
+ var layout=source_layout(wave)
  for lane in lanes(wave):
   if not game.view.sources.states.has(lane):continue
   var position=game.view.to_global(game.view.sources.states[lane].p)
   var fresh=game.view.staging=="warning" and lane not in lanes(game.sim.wave)
   var caption=source_caption(lane,wave,fresh)
-  var marker=source_marker(position,caption)
+  var marker=layout[lane]
   var pos=marker.rect.position
   var color=GOLD if fresh else Color("#c25874")
   if game.field_new:
@@ -541,15 +594,18 @@ func draw_source_labels():
   text(pos+Vector2(8,16),caption,10,color.lightened(0.3))
 func source_click(world):
  if game.sim.phase!="shop":return false
- for lane in game.view.sources.states:
-  var source_position=game.view.to_global(game.view.sources.states[lane].p)
-  var marker=source_marker(source_position,source_caption(lane,game.sim.wave))
-  var pointer=game.view.to_global(world)
-  if game.view.sources.states[lane].p.distance_to(world)<70 or marker.rect.has_point(pointer) or (marker.outside and pointer.distance_to(marker.tip)<18):
-   for entry in game.sim.wave:
-    if entry.lane==lane:
-     select_virus(entry.type,lane)
-     return true
+ var layout=source_layout(game.sim.wave)
+ var pointer=game.view.to_global(world)
+ # Labels take priority over nearby source bodies, especially in dense clusters.
+ for pass_index in range(2):
+  for lane in layout:
+   var marker=layout[lane]
+   var hit=marker.rect.has_point(pointer) or (marker.outside and pointer.distance_to(marker.tip)<18)
+   if (pass_index==0 and hit) or (pass_index==1 and game.view.sources.states[lane].p.distance_to(world)<70):
+    for entry in game.sim.wave:
+     if entry.lane==lane:
+      select_virus(entry.type,lane)
+      return true
  return false
 
 func draw_alert():
