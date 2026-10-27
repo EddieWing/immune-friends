@@ -55,7 +55,7 @@ func run():
  scene.zoom_target=0.6
  scene.view.scale=Vector2.ONE*0.6
  button.pressed.emit()
- check(is_equal_approx(scene.zoom_target,1.2) and is_equal_approx(scene.view.scale.x,1.2),"Preparation restores player zoom after forecast overview")
+ check(is_equal_approx(scene.zoom_target,1.5) and scene.shopping_in_focus(),"Preparation opens shop at close zoom after forecast overview")
  check(scene.sim.phase=="shop" and scene.sim.money==budget,"To preparation credits displayed budget once")
  scene.show_appearance()
  var picker=scene.modal.find_child("Appearance_hud",true,false)
