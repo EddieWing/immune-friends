@@ -521,7 +521,7 @@ func source_marker(position,caption=""):
  return {"rect":Rect2(pos,Vector2(width,24)),"tip":tip,"direction":direction,"outside":outside}
 func source_obstacles():
  var blocked=[Rect2(12,8,64,64),Rect2(460,4,520,72),Rect2(1350,285,90,380),Rect2(0,720,1440,180)]
- for panel in [note,forecast,cell_block,virus_block,game.lab_tools.debug_panel,game.lab_tools.gym_panel]:
+ for panel in [note,forecast,cell_block,virus_block,game.focus_cells_button,game.lab_tools.debug_panel,game.lab_tools.gym_panel]:
   if is_instance_valid(panel) and panel.is_visible_in_tree():blocked.append(panel.get_global_rect().grow(8))
  return blocked
 func marker_clear(marker,blocked):
