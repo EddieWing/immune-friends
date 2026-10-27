@@ -349,7 +349,7 @@ func _process(delta):
  refresh_button.disabled=game.sim.money<1
  freeze.modulate=Color("#96d6ff") if game.sim.frozen else Color.WHITE
  if upgrade.get_theme_font_size("font_size")!=15: upgrade.add_theme_font_size_override("font_size",15)
- upgrade.text="+1 XP\n%d C" % int(game.sim.shop_rules.xp_price)
+ upgrade.text="+1 XP"
  upgrade.tooltip_text=game.xp_purchase_tooltip()
  note.visible=prep
  forecast.visible=preview
