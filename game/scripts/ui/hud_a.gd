@@ -328,13 +328,16 @@ func _process(delta):
  var combat=game.sim.phase=="battle" and game.launch_remaining<=0
  var preview=game.results_stage=="forecast"
  if preview and is_instance_valid(game.modal_panel) and game.modal_panel.get_meta("field_report",false):game.modal.hide()
- dock_offset=move_toward(dock_offset,0 if prep else 190,delta*190/0.3)
- for button in [release,upgrade,refresh_button,freeze]:button.visible=prep
- shelf.visible=prep or dock_offset<190
+ dock_offset=move_toward(dock_offset,0 if game.shopping_in_focus() else 190,delta*190/0.3)
+ release.visible=prep
+ for button in [upgrade,refresh_button,freeze]:button.visible=game.shopping_in_focus()
+ shelf.visible=game.shopping_in_focus() or dock_offset<190
+ shelf.mouse_filter=Control.MOUSE_FILTER_STOP if game.shopping_in_focus() else Control.MOUSE_FILTER_IGNORE
+ offers.mouse_filter=shelf.mouse_filter
  shelf.position.y=752+dock_offset
  release.disabled=not game.sim.reward_choices.is_empty()
  if release.get_theme_font_size("font_size")!=23: release.add_theme_font_size_override("font_size",23)
- upgrade.visible=prep and game.sim.tier<5
+ upgrade.visible=game.shopping_in_focus() and game.sim.tier<5
  upgrade.disabled=game.sim.money<3
  refresh_button.tooltip_text="Refresh · 1 Carbon"
  refresh_button.disabled=game.sim.money<1

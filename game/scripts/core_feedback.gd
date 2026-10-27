@@ -12,14 +12,17 @@ func update(sim,delta):
   cursor=sim.event_sequence
   shake=0.0
   bleeding=0.0
+ if delta<=0:return
  clock+=delta
  shake=maxf(0,shake-delta*3.6)
  bleeding=maxf(0,bleeding-delta*1.4)
  for event in sim.events_since(cursor):
-  if event.event=="core_protected": shake=minf(1.0,shake+0.45)
+  if event.event=="core_protected": shake=maxf(shake,0.45)
   elif event.event=="blood_lost":
-   shake=minf(1.0,shake+0.85)
-   bleeding=minf(1.0,bleeding+0.8)
+   shake=maxf(shake,0.85)
+   bleeding=maxf(bleeding,0.8)
+  elif event.event=="camera_blast":shake=maxf(shake,0.8)
+  elif event.event in ["damage","virus_hit"]:shake=maxf(shake,0.3)
  cursor=sim.event_sequence
 func offset():
- return Vector2(sin(clock*83),sin(clock*107+1.7))*shake*shake*3.5
+ return Vector2(sin(clock*83),sin(clock*107+1.7))*pow(shake,3)*3.5

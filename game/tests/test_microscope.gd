@@ -126,21 +126,24 @@ func run():
  scene.advance_camera(0.25)
  scene.changed()
  check(scene.view.position.is_equal_approx(camera_before),"Preparation releases camera after centering")
- scene.visor_radius=0.54
- scene.advance_visor(1)
- var fixed_radius=scene.visor_radius
- scene.view.position+=Vector2(1400,900)
+ scene.auto_camera=false
+ scene.view.position=scene.board_rect.get_center()
  scene.view.scale=Vector2.ONE*1.5
- scene.view.drag_preview=Vector2(3000,3000)
- scene.advance_visor(1)
- check(is_equal_approx(scene.visor_radius,fixed_radius),"Panning, zoom and placement do not change visor geometry")
- scene.view.drag_preview=Vector2.INF
- scene.visor_radius=0.54
- scene.advance_visor(1.0)
+ scene.zoom_target=1.5
+ scene.advance_camera(2)
+ var focused_radius=scene.visor_radius
+ scene.view.position+=Vector2(1400,900)
+ scene.advance_camera(2)
+ check(scene.visor_radius>focused_radius,"Leaving start focus opens visor")
+ scene.view.position=scene.board_rect.get_center()
+ scene.view.scale=Vector2.ONE*1.5
+ scene.zoom_target=1.5
+ scene.advance_camera(2)
  var small=scene.visor_radius
  scene.sim.phase="battle"
- scene.advance_visor(1.0)
- check(scene.visor_radius>small,"battle expands visor independently of zoom")
+ scene.set_automatic_zoom(1)
+ scene.advance_camera(2)
+ check(scene.visor_radius>small,"Launch medium magnification opens visor")
  scene.show_menu()
  scene.advance_visor(1.0)
  check(scene.ui.get_node("MicroscopeVignette").material.get_shader_parameter("visibility")==0.0,"menu hides visor")

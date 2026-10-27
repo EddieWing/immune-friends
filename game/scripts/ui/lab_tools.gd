@@ -133,6 +133,10 @@ func _ready():
  game.button(debug,"Step · 1/60 s",func():
   if game.paused and game.sim.phase=="battle" and game.launch_remaining==0: game.sim.update(1.0/60.0))
  game.button(debug,"+10 Carbons (current session)",func(): game.sim.money+=10; game.refresh())
+ var camera_row=HBoxContainer.new()
+ debug.add_child(camera_row)
+ for level in range(3):
+  game.button(camera_row,["Wide","Medium","Close"][level],func(): game.set_automatic_zoom(level),Vector2(100,30))
  game.button(debug,"Close · F3",debug_panel.hide)
  debug_panel.hide()
 func debug_arm(kind,key):

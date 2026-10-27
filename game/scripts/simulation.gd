@@ -606,6 +606,7 @@ func damage_cell(c, amount, redirected=false, source={}):
 	c.alive=false
 	effect(c.p,Color(catalog[c.key].color),"",40)
 	if c.key in ["bomb","survivor_bomb","hungry_bomb"]:
+		record("camera_blast",{"p":c.p})
 		var reach=range_of(c)
 		effect(c.p,Color("#f9b8d1"),"Pop!",reach)
 		for v in viruses:

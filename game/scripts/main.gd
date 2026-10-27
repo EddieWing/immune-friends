@@ -115,7 +115,14 @@ var zoom_target=0.88
 var water_time=0.0
 var background_motion=1.0
 var optical_intensity=1.0
+var refocus_intensity=1.0
 var flash_intensity=1.0
+var camera_optics=preload("res://scripts/camera_optics.gd").new()
+var overview=false
+var overview_focus=Vector2.ZERO
+var camera_return_target=Vector2.INF
+var refocus_layer: ColorRect
+var focus_cells_button: Button
 var visor_radius=0.54
 var visor_preparation=0.0
 var background_material: ShaderMaterial
@@ -138,6 +145,7 @@ func _ready():
 		settings.save(settings_path)
 	background_motion=float(settings.get_value("comfort","motion",1.0))
 	optical_intensity=float(settings.get_value("comfort","optics",1.0))
+	refocus_intensity=float(settings.get_value("comfort","refocus",1.0))
 	flash_intensity=float(settings.get_value("comfort","flashes",1.0))
 	ui_new=bool(settings.get_value("appearance","hud",ui_new))
 	field_new=bool(settings.get_value("appearance","field",field_new))
@@ -286,6 +294,14 @@ func build_ui():
 	view.sim=sim
 	view.visuals=visuals
 	field.add_child(view)
+	refocus_layer=ColorRect.new()
+	refocus_layer.name="OpticalRefocus"
+	refocus_layer.size=Vector2(1440,900)
+	refocus_layer.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	refocus_layer.material=ShaderMaterial.new()
+	refocus_layer.material.shader=preload("res://shaders/refocus.gdshader")
+	refocus_layer.hide()
+	ui.add_child(refocus_layer)
 	var vignette=ColorRect.new()
 	vignette.name="MicroscopeVignette"
 	vignette.size=Vector2(1440,900)
@@ -306,6 +322,8 @@ func build_ui():
 	zoom_gauge.position=Vector2(1376,320)
 	zoom_gauge.size=Vector2(40,260)
 	ui.add_child(zoom_gauge)
+	focus_cells_button=absolute_button("Focus cells",Vector2(1320,655),Vector2(112,36),focus_shopping)
+	focus_cells_button.tooltip_text="Return to the starting area at close magnification to buy cells."
 	for value in [1,2,5,0]:
 		var b=preload("res://scripts/ui/transport.gd").new()
 		b.mode=value
@@ -562,7 +580,7 @@ func new_run(rounds):
 	sim.reset(Time.get_ticks_usec()%100000,rounds)
 	lab_tools.refresh_available()
 	view.position=Vector2(720,425)
-	view.scale=Vector2.ONE*0.88
+	view.scale=Vector2.ONE*1.5
 	center_preparation_camera()
 	update_zoom()
 	selected={}
@@ -584,7 +602,7 @@ func show_help():
 func show_visual_comfort():
 	var col=clear_modal("Visual comfort","Essential numbers, symbols and event signals remain visible.")
 	modal_panel.set_meta("pause_for_settings",true)
-	for option in [["Background motion","motion",background_motion],["Optical distortion and halos","optics",optical_intensity],["Decorative flashes","flashes",flash_intensity]]:
+	for option in [["Background motion","motion",background_motion],["Optical distortion and halos","optics",optical_intensity],["Decorative flashes","flashes",flash_intensity],["Zoom refocus","refocus",refocus_intensity]]:
 		var title=Label.new()
 		title.text=option[0]
 		col.add_child(title)
@@ -601,6 +619,7 @@ func show_visual_comfort():
 			settings.save(settings_path)
 			if key=="motion": background_motion=v
 			elif key=="optics": optical_intensity=v
+			elif key=="refocus": refocus_intensity=v
 			else: flash_intensity=v)
 		col.add_child(slider)
 	button(col,"Back",show_settings)
@@ -746,6 +765,7 @@ func enter_gym():
 
 func leave_gym():
 	if not gym_mode: return
+	cancel_camera_transition()
 	cancel_placement()
 	dragging=false
 	rotating=false
@@ -982,7 +1002,7 @@ func refresh():
 			incoming.text+="\n[color=#fff7e7]"+virus_glyph(entry.type)+" ×"+str(entry.count)+"[/color]"
 	layout_incoming.call_deferred()
 	var is_shop=sim.phase=="shop"
-	animate_dock(is_shop and not shop_collapsed and not gym_mode)
+	animate_dock(shopping_in_focus() and not shop_collapsed)
 	shop_toggle.hide()
 	update_transport()
 	if not is_shop:
@@ -1111,6 +1131,7 @@ func start_battle():
 	auto_camera=true
 	camera_phase=""
 	sim.begin_battle()
+	set_automatic_zoom(camera_director.ZoomLevel.MEDIUM)
 	launch_remaining=LAUNCH_SECONDS
 	view.staging="launch"
 	beep(420,0.16)
@@ -1163,6 +1184,7 @@ func can_pan_camera():
 
 func begin_camera_pan(screen):
 	if not can_pan_camera() or not board_rect.has_point(screen) or dragging or rotating or dragging_blood>=0: return
+	cancel_camera_transition()
 	panning=true
 	auto_camera=false
 	pan_previous=screen
@@ -1177,6 +1199,7 @@ func advance_manual_camera(delta,direction=Vector2.INF):
 	if direction==Vector2.INF:
 		direction=Vector2(float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT))-float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)),float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP))-float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)))
 	if direction.length_squared()>0:
+		cancel_camera_transition()
 		auto_camera=false
 		view.position+=direction.limit_length(1.0)*delta*280
 
@@ -1454,14 +1477,23 @@ func toggle_shop():
 # Sets a discrete automatic target, leaving the player's preferred zoom intact.
 # advance_camera performs the same smooth interpolation used for manual input.
 func set_automatic_zoom(level: int) -> bool:
+	if browsing_from_main_menu() or entering_game or sim.phase not in ["shop","battle"]:return false
 	var value=camera_director.automatic_zoom(level)
 	if value==null: return false
+	if level==camera_director.ZoomLevel.WIDE:
+		if not overview:overview_focus=(board_rect.get_center()-(view.position-core_shake_offset))/view.scale.x
+		overview=true
+		camera_return_target=Vector2.INF
+	elif overview:
+		overview=false
+		camera_return_target=overview_focus
 	zoom_target=value
 	update_zoom()
 	return true
 
 func set_zoom(value):
 	if browsing_from_main_menu() or entering_game: return
+	cancel_camera_transition()
 	camera_phase="warning" if view.staging=="warning" else sim.phase
 	camera_requested=clampf(value,0.45,1.5)
 	zoom_target=camera_requested
@@ -1475,7 +1507,23 @@ func camera_safe_rect():
 	if view.staging=="warning": safe=Rect2(550,110,750,630)
 	return safe
 
+func cancel_camera_transition():
+	overview=false
+	camera_return_target=Vector2.INF
+
+func focus_shopping():
+	if sim.phase!="shop" or browsing_from_main_menu():return
+	cancel_camera_transition()
+	auto_camera=false
+	camera_requested=1.5
+	zoom_target=1.5
+	camera_return_target=Vector2.ZERO
+
+func shopping_in_focus():
+	return sim.phase=="shop" and camera_optics.focused and launch_remaining<=0 and not gym_mode
+
 func center_preparation_camera():
+	cancel_camera_transition()
 	# One-shot framing: preparation never follows cells after control is released.
 	var center=Vector2.ZERO
 	var count=0
@@ -1498,7 +1546,16 @@ func advance_camera(delta):
 	var phase="warning" if view.staging=="warning" else sim.phase
 	if phase!=camera_phase:
 		camera_phase=phase
-	if follow and phase=="warning":
+		if phase in ["recap","win","lose"]:
+			cancel_camera_transition()
+			zoom_target=view.scale.x
+	if overview and not browsing_from_main_menu():
+		view.position=view.position.lerp(board_rect.get_center(),1.0-exp(-delta*5.0))
+	elif camera_return_target!=Vector2.INF:
+		var destination=board_rect.get_center()-camera_return_target*zoom_target
+		view.position=view.position.lerp(destination,1.0-exp(-delta*5.0))
+		if view.position.distance_to(destination)<0.1:camera_return_target=Vector2.INF
+	elif follow and phase=="warning":
 		var framing=camera_director.forecast_frame(sim,preview_wave,preview_sources,camera_safe_rect(),camera_requested,preview_emitters)
 		if not framing.is_empty():
 			zoom_target=framing.zoom
@@ -1511,6 +1568,13 @@ func advance_camera(delta):
 	var value=lerpf(view.scale.x,zoom_target,1.0-exp(-delta/0.065))
 	if absf(value-zoom_target)<0.0001: value=zoom_target
 	view.scale=Vector2.ONE*value
+	var field_center=(board_rect.get_center()-view.position)/maxf(value,0.01)
+	camera_optics.update_focus(field_center,value,sim.phase in ["shop","battle"] and view.staging!="warning",sim.phase=="shop" and not pending_offer.is_empty())
+	if not ui_new:animate_dock(shopping_in_focus() and not shop_collapsed)
+	focus_cells_button.visible=sim.phase=="shop" and not shopping_in_focus() and not gym_mode and not browsing_from_main_menu() and not entering_game
+	var optical_strength=camera_optics.update_optics(value,delta,optical_intensity*refocus_intensity,not browsing_from_main_menu() and not entering_game)
+	refocus_layer.visible=optical_strength>0.001
+	refocus_layer.material.set_shader_parameter("strength",optical_strength)
 	advance_visor(delta)
 	water_time+=delta*background_motion
 	view.optical_intensity=optical_intensity
@@ -1533,14 +1597,15 @@ func advance_camera(delta):
 
 func advance_visor(delta):
 	var lens=ui.get_node("MicroscopeVignette").material
-	lens.set_shader_parameter("forecast",view.staging=="warning")
 	var menu=browsing_from_main_menu()
 	lens.set_shader_parameter("visibility",hud_opacity if entering_game else (0.0 if menu else 1.0))
 	if menu or entering_game: return
-	var target=0.86 if sim.phase!="shop" or view.staging=="warning" else 0.54
+	var near=camera_optics.focused and sim.phase=="shop" and view.staging!="warning"
+	lens.set_shader_parameter("forecast",not near)
+	var target=0.54 if near else 0.86
 	visor_radius=lerpf(visor_radius,minf(target,1.2),1.0-exp(-delta*3.5))
 	lens.set_shader_parameter("radius",visor_radius)
-	visor_preparation=lerpf(visor_preparation,1.0 if sim.phase=="shop" and view.staging!="warning" else 0.0,1.0-exp(-delta*5.0))
+	visor_preparation=lerpf(visor_preparation,1.0 if near else 0.0,1.0-exp(-delta*5.0))
 	lens.set_shader_parameter("preparation",visor_preparation)
 
 func update_zoom():
