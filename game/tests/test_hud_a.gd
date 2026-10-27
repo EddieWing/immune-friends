@@ -16,6 +16,13 @@ func run():
  scene.modal.hide()
  var hud=scene.hud_a
  hud._process(0.4)
+ scene.visor_radius=0.54
+ for direction in [Vector2.RIGHT,Vector2.LEFT,Vector2.UP,Vector2.DOWN,Vector2(1,1).normalized()]:
+  var marker=hud.source_marker(Vector2(720,450)+direction*1500)
+  check(marker.outside and marker.tip.distance_to(Vector2(720,450))<486,"Offscreen source pointer stays inside visor")
+  check(Rect2(0,0,1440,900).encloses(marker.rect),"Source caption stays on screen")
+  check(marker.direction.dot(direction)>0.99,"Source pointer preserves bearing")
+ check(not hud.source_marker(Vector2(800,450)).outside,"Visible source keeps its local label")
  check(scene.ui_new and scene.field_new and scene.visor_new,"New styles default independently")
  check(hud.visible and not scene.dock.visible and hud.note.visible,"New preparation HUD replaces classic controls")
  scene.sim.tier=5

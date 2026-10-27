@@ -496,6 +496,23 @@ func draw_combat():
   text(Vector2(42,y),row[0],14,Color("#e9ddbc"))
   text(Vector2(218,y),row[1],16,row[2])
   y+=26
+func source_marker(position):
+ var center=Vector2(720,450)
+ var direction=(position-center).normalized()
+ if direction.is_zero_approx():direction=Vector2.RIGHT
+ # The visor shader measures radius in viewport heights (1440 x 900).
+ var radius=game.visor_radius*900.0
+ var limit=radius-10.0
+ if absf(direction.x)>0.001:limit=minf(limit,700.0/absf(direction.x))
+ if direction.y< -0.001:limit=minf(limit,360.0/-direction.y)
+ if direction.y>0.001:limit=minf(limit,280.0/direction.y)
+ var outside=position.distance_to(center)>limit
+ var tip=center+direction*limit
+ var label_center=tip-direction*100.0 if outside else position+Vector2(32.5,-63)
+ var pos=label_center-Vector2(82.5,12)
+ pos.x=clampf(pos.x,12,1263)
+ pos.y=clampf(pos.y,80,700)
+ return {"rect":Rect2(pos,Vector2(165,24)),"tip":tip,"direction":direction,"outside":outside}
 func draw_source_labels():
  var wave=game.preview_wave if game.view.staging=="warning" else game.sim.wave
  for lane in lanes(wave):
@@ -504,24 +521,27 @@ func draw_source_labels():
   var count=0
   for e in wave:
    if e.lane==lane:count+=e.count
-  var pos=position+Vector2(-50,-75)
-  pos.x=clampf(pos.x,12,1280)
-  pos.y=clampf(pos.y,80,700)
+  var marker=source_marker(position)
+  var pos=marker.rect.position
   var fresh=game.view.staging=="warning" and lane not in lanes(game.sim.wave)
   var color=GOLD if fresh else Color("#c25874")
   if game.field_new:
    var radius=66*game.view.scale.x
    for segment in range(24):draw_arc(position,radius,segment*TAU/24,segment*TAU/24+TAU/40,8,color,1.5,true)
-  box(Rect2(pos,Vector2(165,24)),DARK,color)
+  if marker.outside:
+   var direction=marker.direction
+   var side=direction.orthogonal()*7.0
+   draw_line(marker.rect.get_center(),marker.tip-direction*10.0,color,2.0,true)
+   draw_colored_polygon(PackedVector2Array([marker.tip,marker.tip-direction*15.0+side,marker.tip-direction*15.0-side]),color)
+  box(marker.rect,DARK,color)
   text(pos+Vector2(8,16),"● SOURCE %d · %s" % [lane+1,"NEW ★" if fresh else str(count)],10,color.lightened(0.3))
 func source_click(world):
  if game.sim.phase!="shop":return false
  for lane in game.view.sources.states:
   var source_position=game.view.to_global(game.view.sources.states[lane].p)
-  var label_position=source_position+Vector2(-50,-75)
-  label_position.x=clampf(label_position.x,12,1280)
-  label_position.y=clampf(label_position.y,80,700)
-  if game.view.sources.states[lane].p.distance_to(world)<70 or Rect2(label_position,Vector2(145,24)).has_point(game.view.to_global(world)):
+  var marker=source_marker(source_position)
+  var pointer=game.view.to_global(world)
+  if game.view.sources.states[lane].p.distance_to(world)<70 or marker.rect.has_point(pointer) or (marker.outside and pointer.distance_to(marker.tip)<18):
    for entry in game.sim.wave:
     if entry.lane==lane:
      select_virus(entry.type,lane)
