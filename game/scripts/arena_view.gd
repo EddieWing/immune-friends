@@ -1,7 +1,22 @@
 extends Node2D
+const SIMPLE_VIRUS_EYES=preload("res://assets/ui/virus-field-eyes.svg")
 const SIMPLE_VIRUS_BODY=preload("res://assets/ui/virus-field-body.svg")
 const SIMPLE_CORE_BODIES=preload("res://assets/ui/core-field-bodies.svg")
+const CORE_FACE_PARTS=preload("res://assets/ui/core-face-parts.svg")
+const CLASSIC_CORE_BODIES=preload("res://assets/ui/core-classic-bodies.svg")
+var virus_health=[]
+var effect_strokes=preload("res://scripts/stroke_cache.gd").new()
+const CELL_FACE_PARTS=preload("res://assets/ui/cell-face-parts.svg")
 var wall_skins={}
+var hair_roots=PackedVector2Array()
+var hair_tips=PackedVector2Array()
+var hair_tangents=PackedVector2Array()
+func _init():
+	for i in range(30):
+		var normal=Vector2.from_angle(i*TAU/30.0)
+		hair_roots.append(normal*10.7)
+		hair_tips.append(normal*13.0)
+		hair_tangents.append(normal.orthogonal())
 var new_field=false
 var new_hud=false
 var sim
@@ -123,15 +138,21 @@ func _draw():
 		else:
 			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-4),p.p+Vector2(4,0),p.p+Vector2(0,4),p.p+Vector2(-4,0)]),Color("#795791"))
 	virus_behavior.draw_links(self)
+	virus_health.clear()
 	for v in sim.viruses:
 		if v.alive: draw_virus(v)
+	for label in virus_health:
+		draw_set_transform(label[0],0,label[1])
+		draw_string(font,Vector2(12,-9),label[2],HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#e7efe1"))
+	draw_set_transform(Vector2.ZERO)
+	effect_strokes.begin()
 	for e in sim.effects:
 		var alpha=e.life/e.max
 		var color=Color(e.color,alpha*flash_intensity)
 		if e.has("end"):
 			draw_line(e.p,e.end,color,3,true)
 		else:
-			draw_arc(e.p,e.r*(1.3-alpha*0.5),0,TAU,36,color,2,true)
+			effect_strokes.arc(self,e.p,e.r*(1.3-alpha*0.5),0,TAU,36,color,2)
 			if e.text!="": text_at(e.p+Vector2(-12,-30-(1-alpha)*20),e.text,15,Color(e.color,alpha))
 	if not selected.is_empty() and selected.alive:
 		var p=selected.p
@@ -152,25 +173,16 @@ func _draw():
 	if drag_preview!=Vector2.INF:
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
 
+func face_part(index: int,p: Vector2,factor: float):
+	draw_texture_rect_region(CELL_FACE_PARTS,Rect2(p-Vector2(16,16)*factor,Vector2(32,32)*factor),Rect2(index*256,0,256,256))
 func face(p, factor, id, hurt, look=Vector2.ZERO,focused=false):
 	var blink=fmod(time+id*0.71,4.8)<0.14
-	for x in [-6,6]:
-		var eye=p+Vector2(x,-2)*factor
-		if blink or hurt or staging=="aftermath":
-			draw_line(eye+Vector2(-2,0)*factor,eye+Vector2(2,0)*factor,Color("#33434c"),1.8,true)
-		else:
-			draw_circle(eye+look,2.0*factor,Color("#33434c"))
-			draw_circle(eye+look+Vector2(-0.5,-0.5)*factor,0.55*factor,Color("#fff7e6"))
-	if focused:
-		for side in [-1,1]:
-			draw_line(p+Vector2(side*8,-7)*factor,p+Vector2(side*3,-5)*factor,Color("#33434c"),1.5,true)
-	if staging=="launch" or focused:
-		draw_line(p+Vector2(-3,4)*factor,p+Vector2(3,4)*factor,Color("#6c5260"),1.4,true)
-	elif staging=="aftermath" and (sim.round_losses.core>0 or sim.round_losses.cells>0):
-		draw_line(p+Vector2(-3,5)*factor,p+Vector2(3,5)*factor,Color("#6c5260"),1.2,true)
-	else: draw_arc(p+Vector2(0,1)*factor,3.5*factor,0.15,PI-0.15,12,Color("#6c5260"),1.4,true)
-	for x in [-11,11]:
-		draw_circle(p+Vector2(x,3)*factor,2.6*factor,Color(0.95,0.51,0.59,0.38))
+	var closed=blink or hurt or staging=="aftermath"
+	face_part(1 if closed else 0,p if closed else p+look,factor)
+	if focused:face_part(2,p,factor)
+	var mouth=4 if staging=="launch" or focused else (5 if staging=="aftermath" and (sim.round_losses.core>0 or sim.round_losses.cells>0) else 3)
+	face_part(mouth,p,factor)
+	face_part(6,p,factor)
 
 func draw_cell(c):
 	var d=sim.catalog[c.key]
@@ -240,8 +252,8 @@ func draw_cell(c):
 	if c.rank==3:
 		draw_arc(p,23,0,TAU,40,Color("#f5db91"),1.4,true)
 	var fraction=clampf(c.hp/maxf(c.max_hp,c.hp),0,1)
-	draw_line(p+Vector2(-14,26),p+Vector2(14,26),Color("#29424b"),3,true)
-	draw_line(p+Vector2(-14,26),p+Vector2(-14+28*fraction,26),Color("#cae2b0"),3,true)
+	draw_texture_rect_region(CELL_FACE_PARTS,Rect2(p+Vector2(-14,22),Vector2(28,8)),Rect2(1808,96,224,64),Color("#29424b"))
+	if fraction>0:draw_texture_rect_region(CELL_FACE_PARTS,Rect2(p+Vector2(-14,22),Vector2(28*fraction,8)),Rect2(1808,96,224,64),Color("#cae2b0"))
 	text_at(p+Vector2(18,31),str(int(ceil(c.hp))),10,Color("#e7efe1"))
 
 func capsule_style(color):
@@ -260,15 +272,17 @@ func draw_virus(v):
 	var recovery=attacks.jumper_recovery(v)
 	var stretch=0.14 if v.jump else -recovery*0.1
 	draw_set_transform(v.p+reaction.offset,0,Vector2((1+windup*0.2+stretch)*reaction.squash,(1-windup*0.18-stretch)/reaction.squash))
+	if not new_field and v.hp>1:
+		virus_health.append([v.p+reaction.offset,Vector2((1+windup*0.2+stretch)*reaction.squash,(1-windup*0.18-stretch)/reaction.squash),str(int(v.hp))])
 	var rendered=v.duplicate()
+	rendered.defer_health=true
 	rendered.p=Vector2.ZERO
 	rendered.hurt=reaction.hurt
 	rendered.look=virus_behavior.looks.get(v.id,Vector2.ZERO)
 	rendered.feeding=virus_behavior.feeding.has(v.id)
 	if new_field:
 		draw_texture_rect(SIMPLE_VIRUS_BODY,Rect2(-16,-16,32,32),false)
-		for x in [-3,3]:
-			draw_circle(Vector2(x,-1)+rendered.look,1.4,Color("#701c35"))
+		draw_texture_rect(SIMPLE_VIRUS_EYES,Rect2(rendered.look-Vector2(16,16),Vector2(32,32)),false)
 	else: preload("res://scripts/virus_visuals.gd").draw(self,rendered)
 	draw_set_transform(Vector2.ZERO)
 	if v.get("visual_avoiding",false) and v.get("freeze",0)<=0:
@@ -317,36 +331,31 @@ func draw_blood_cluster():
 		if occupied.has(key_a) or occupied.has(key_b): continue
 		occupied[key_a]=true
 		occupied[key_b]=true
+	# Keep each visual layer contiguous so the renderer can batch it. The hair
+	# tips still mark radius 13; root sway and phase are unchanged.
+	var hairs=PackedVector2Array()
 	for b in sim.blood:
-		if not b.alive: continue
-		draw_circle(b.p+Vector2(1,2),12,Color(0.05,0.13,0.17,0.22))
-		# The hair tips lie on the actual radius-13 collision boundary.
-		var hairs=PackedVector2Array()
+		if not b.alive:continue
+		var p: Vector2=b.p
+		draw_texture_rect_region(CORE_FACE_PARTS,Rect2(p+Vector2(1,2)-Vector2(16,16),Vector2(32,32)),Rect2(1280,256,256,256),Color(1,1,1,0.22))
 		for i in range(30):
-			var angle=i*TAU/30.0
-			var normal=Vector2.from_angle(angle)
-			var tangent=normal.orthogonal()*sin(time*1.8+b.id+i)*0.22
-			hairs.append(b.p+normal*10.7+tangent)
-			hairs.append(b.p+normal*13.0)
-		draw_multiline(hairs,Color("#b96b82"),0.75,true)
-		if new_field:
-			var mask=0
-			for slot in range(6):
-				if occupied.has(str(b.id)+":"+str(slot)): mask|=1<<slot
-			draw_texture_rect_region(SIMPLE_CORE_BODIES,Rect2(b.p-Vector2(16,16),Vector2(32,32)),Rect2(Vector2(mask%8,mask/8)*128,Vector2(128,128)))
-		else:
-			draw_circle(b.p,10.8,Color("#df8998"))
-			draw_circle(b.p+Vector2(-1,-1),9,Color("#eca2ac"))
-			draw_arc(b.p,7,0,TAU,24,Color("#c97688"),1.5,true)
-			for slot in range(6):
-				if occupied.has(str(b.id)+":"+str(slot)): continue
-				var center=b.p+Vector2.from_angle(slot*TAU/6)*10.8
-				draw_circle(center,2.2,Color("#b96b82"))
-				draw_circle(center,1.5,Color("#f3b0b8"))
+			var tangent: Vector2=hair_tangents[i]*sin(time*1.8+b.id+i)*0.22
+			hairs.append(p+hair_roots[i]+tangent)
+			hairs.append(p+hair_tips[i])
+	if not hairs.is_empty():draw_multiline(hairs,Color("#b96b82"),0.75,true)
+	for b in sim.blood:
+		if not b.alive:continue
+		var mask=0
+		for slot in range(6):
+			if occupied.has(str(b.id)+":"+str(slot)):mask|=1<<slot
+		var texture=SIMPLE_CORE_BODIES if new_field else CLASSIC_CORE_BODIES
+		draw_texture_rect_region(texture,Rect2(b.p-Vector2(16,16),Vector2(32,32)),Rect2(Vector2(mask%8,mask/8)*128,Vector2(128,128)))
 
 	presentation.draw_bonds(self,"core")
+	blood_faces.begin_draw()
 	for b in sim.blood:
 		if b.alive: blood_faces.draw(self,b,time)
+	blood_faces.finish_draw(self)
 
 func has_transient_effects():
 	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty()

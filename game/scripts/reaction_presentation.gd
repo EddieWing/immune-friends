@@ -52,10 +52,14 @@ func draw(canvas):
    var p=b.p-d*(23+t*8)
    canvas.draw_polyline(PackedVector2Array([p-d*6+d.orthogonal()*5,p,p-d*6-d.orthogonal()*5]),Color(0.94,0.76,0.43,1-t),2,true)
   elif b.kind in ["thawed","tag_ended"]:
+   var points=PackedVector2Array()
    for i in range(5):
     var d=Vector2.from_angle(i*TAU/5)
-    canvas.draw_line(b.p+d*(17+t*12),b.p+d*(20+t*15),color,1.5,true)
+    points.append(b.p+d*(17+t*12));points.append(b.p+d*(20+t*15))
+   canvas.draw_multiline(points,color,1.5,true)
   else:
+   var points=PackedVector2Array()
    for i in range(6):
     var d=Vector2.from_angle(i*TAU/6+PI/4)
-    canvas.draw_line(b.p+d*(13+t*18),b.p+d*(25+t*22),color,3,true)
+    points.append(b.p+d*(13+t*18));points.append(b.p+d*(25+t*22))
+   canvas.draw_multiline(points,color,3,true)

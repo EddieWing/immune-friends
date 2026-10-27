@@ -1,4 +1,5 @@
 extends RefCounted
+var strokes=preload("res://scripts/stroke_cache.gd").new()
 var observed_sim
 var revision=-1
 var elapsed=0.0
@@ -54,10 +55,15 @@ func update(sim,delta):
  if bursts.size()>32: bursts=bursts.slice(bursts.size()-32)
  if merges.size()>8: merges=merges.slice(merges.size()-8)
 func draw_under(canvas):
+ strokes.begin()
  var density=1.0/maxf(1.0,trails.size()/150.0)
+ var points=PackedVector2Array()
+ var colors=PackedColorArray()
  for s in trails:
   var alpha=(1-s.age/1.8)*0.26*density*intensity
-  canvas.draw_line(s.a,s.b,Color(0.56,0.35,0.70,alpha),4,true)
+  points.append(s.a);points.append(s.b)
+  colors.append(Color(0.56,0.35,0.70,alpha))
+ if not points.is_empty():canvas.draw_multiline_colors(points,colors,4,true)
  for b in bursts:
   var t=b.age/0.7
   var core=b.kind=="blood_lost"
@@ -65,7 +71,7 @@ func draw_under(canvas):
   for i in range(8 if core else 5):
    var a=i*TAU/(8 if core else 5)
    var p=b.p+Vector2.from_angle(a)*(12+t*(85 if core else 25))
-   canvas.draw_arc(p,(9 if core else 4)*(1-t)+1,a,a+1.3,8,color,2,true)
+   strokes.arc(canvas,p,(9 if core else 4)*(1-t)+1,a,1.3,8,color,2)
 func draw_over(canvas):
  for m in merges:
   var color=Color("#e6ad39") if m.rank==3 else Color("#f3f9ff")

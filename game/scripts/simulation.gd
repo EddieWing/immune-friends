@@ -540,22 +540,29 @@ func spawn_virus(entry):
 	next_id+=1
 
 func nearest_virus(p: Vector2, reach: float=10000.0) -> Dictionary:
+	# Distances are nonnegative and the original comparison is strict (<).
+	# A nonpositive radius therefore cannot select any target.
+	if reach<=0.0:return {}
 	var best={}
 	var dist=reach
-	for v in viruses:
+	for v: Dictionary in viruses:
 		if not v.alive: continue
-		var d=p.distance_to(v.p)
+		var position: Vector2=v.p
+		var d: float=p.distance_to(position)
 		if d<dist:
 			dist=d
 			best=v
 	return best
 
 func nearest_blood(p: Vector2) -> Dictionary:
-	var best={}
-	var dist=INF
-	for b in blood:
-		if b.alive and p.distance_squared_to(b.p)<dist:
-			dist=p.distance_squared_to(b.p)
+	var best: Dictionary={}
+	var dist: float=INF
+	for b: Dictionary in blood:
+		if not b.alive:continue
+		var position: Vector2=b.p
+		var distance: float=p.distance_squared_to(position)
+		if distance<dist:
+			dist=distance
 			best=b
 	return best
 
@@ -666,11 +673,11 @@ func contains_cell(c, p, extra=0.0):
 		return absf(local.x)<43+extra and absf(local.y)<13+extra
 	return local.length()<18+extra
 
-func update(delta):
-	var movement_delta=delta*float(rules.get("movement_multiplier",1.0))
-	for e in effects: e.life-=delta
+func update(delta: float):
+	var movement_delta: float=delta*float(rules.get("movement_multiplier",1.0))
+	for e: Dictionary in effects: e.life-=delta
 	effects=effects.filter(func(e): return e.life>0)
-	for c in cells: c.flash=maxf(0,c.flash-delta)
+	for c: Dictionary in cells: c.flash=maxf(0,c.flash-delta)
 	if phase in ["shop","battle"]: step_blood(delta)
 	if phase!="battle": return
 	elapsed+=delta
@@ -679,11 +686,11 @@ func update(delta):
 		spawn_virus(spawn_queue.pop_front())
 		spawn_timer=0.38
 	var has_network_buffs=false
-	for provider in cells:
+	for provider: Dictionary in cells:
 		if provider.alive and provider.key in ["radar","accelerator"]:
 			has_network_buffs=true
 			break
-	for c in cells:
+	for c: Dictionary in cells:
 		if not c.alive: continue
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
@@ -696,18 +703,18 @@ func update(delta):
 		experiments.tick(self,c,delta)
 		c.cool-=delta
 		c.contact=maxf(0,c.contact-delta)
-		var d=catalog[c.key]
-		var velocity=Vector2.ZERO
-		var reach=range_of(c)
-		var target=nearest_virus(c.p,reach)
+		var d: Dictionary=catalog[c.key]
+		var velocity: Vector2=Vector2.ZERO
+		var reach: float=range_of(c)
+		var target: Dictionary=nearest_virus(c.p,reach)
 		if c.key=="tag_splitter":
 			var distance=reach if target.is_empty() else c.p.distance_to(target.p)
-			for p in particles:
+			for p: Dictionary in particles:
 				if p.life>0 and p.kind=="tag" and p.p.distance_to(c.p)<distance:
 					target={"p":p.p}
 					distance=p.p.distance_to(c.p)
 		if target.is_empty() and d.category=="T" and reach>0:
-			for candidate in viruses:
+			for candidate: Dictionary in viruses:
 				if candidate.alive and candidate.tag>0 and c.p.distance_to(candidate.p)<reach*2:
 					target=candidate
 					break
@@ -716,15 +723,15 @@ func update(delta):
 		elif d.behavior=="seek":
 			# Tagged targets can be detected at twice the normal distance.
 			if target.is_empty():
-				for v in viruses:
+				for v: Dictionary in viruses:
 					if v.alive and v.tag>0 and c.p.distance_to(v.p)<reach*2:
 						target=v
 						break
 			if not target.is_empty(): velocity=c.p.direction_to(target.p)*speed_of(c)*3
 		elif d.behavior=="orbit":
-			var radius=maxf(100,c.start.length())
+			var radius: float=maxf(100,c.start.length())
 			c.orbit-=speed_of(c)*3/radius*movement_delta
-			var desired=Vector2.from_angle(c.orbit)*radius
+			var desired: Vector2=Vector2.from_angle(c.orbit)*radius
 			velocity=(desired-c.p).limit_length(speed_of(c)*3)
 		if c.get("launch_remaining",0.0)>0:
 			velocity=Vector2.RIGHT.rotated(c.angle)*150.0
@@ -738,22 +745,22 @@ func update(delta):
 					if not feeder.is_empty(): shoot(c,feeder.p-c.p)
 					elif not target.is_empty(): shoot(c,target.p-c.p)
 				"sniper":
-					var dir=Vector2.RIGHT.rotated(c.angle)
+					var dir: Vector2=Vector2.RIGHT.rotated(c.angle)
 					var feeder=experiments.feed_target(self,c)
 					if not feeder.is_empty(): shoot(c,dir)
-					for candidate in ([] if not feeder.is_empty() else viruses):
+					for candidate: Dictionary in ([] if not feeder.is_empty() else viruses):
 						if candidate.alive and c.p.distance_to(candidate.p)<reach and absf(dir.angle_to(candidate.p-c.p))<0.20:
 							shoot(c,dir)
 							break
 				"heal":
-					for other in cells:
+					for other: Dictionary in cells:
 						if other.alive and other.p.distance_to(c.p)<reach: heal(other,constant_of(c,"healAmount",1),c)
 				"push":
 					record("attack_fired",{"id":c.id,"p":c.p,"direction":Vector2.ZERO,"key":c.key})
 					effect(c.p,Color("#f7dec3"),"",reach)
-					for v in viruses:
+					for v: Dictionary in viruses:
 						if v.alive and v.p.distance_to(c.p)<reach: push_object(v,(v.p-c.p).normalized()*30,"virus",c.p)
-					for other in cells:
+					for other: Dictionary in cells:
 						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*20,"cell",c.p)
 				"drop":
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":8.0,"r":5.0,"owner":c.id})
@@ -761,10 +768,10 @@ func update(delta):
 					var angle=c.angle+rng.randf_range(-PI/2,PI/2)
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":reach/95,"r":5.0,"owner":c.id})
 		if c.key=="magnet":
-			for v in viruses:
+			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)
 		if c.key=="generator":
-			for p in particles:
+			for p: Dictionary in particles:
 				if p.kind=="food" and p.life>0 and p.p.distance_to(c.p)<45:
 					p.life=0
 					c.food+=1
@@ -776,10 +783,12 @@ func update(delta):
 				record("generator_charged",{"id":c.id,"p":c.p,"amount":increment})
 		if c.charge>0 and c.key!="electromagnet":
 			conduct(c)
-	for c in pending_cells:
+	for c: Dictionary in pending_cells:
 		if cells.size()<int(rules.produced_cell_limit): cells.append(c)
 	pending_cells.clear()
-	for v in viruses:
+	var core_positions: PackedVector2Array=[]
+	for b: Dictionary in blood:core_positions.append(b.p)
+	for v: Dictionary in viruses:
 		if not v.alive: continue
 		v.age+=delta
 		v.cool=maxf(0,v.cool-delta)
@@ -796,16 +805,16 @@ func update(delta):
 				v.age=0.0
 			continue
 		v.jump=v.type=="jumper" and fmod(v.age+v.phase,3.5)>2.8
-		var destination=nearest_blood(v.p)
+		var destination: Dictionary=nearest_blood_at(v.p,core_positions)
 		if destination.is_empty():
 			if gym_mode: continue
 			finish(false)
 			return
-		var target_pos=destination.p
-		var target_key="core:"+str(destination.id)
+		var target_pos: Vector2=destination.p
+		var target_key: String="core:"+str(destination.id)
 		if v.type=="seeker":
-			var nearest=125.0
-			for c in cells:
+			var nearest: float=125.0
+			for c: Dictionary in cells:
 				if c.alive and c.p.distance_to(v.p)<nearest:
 					target_pos=c.p
 					target_key="cell:"+str(c.id)
@@ -813,28 +822,28 @@ func update(delta):
 		if v.type=="seeker" and v.get("visual_target","")!=target_key:
 			record("virus_target",{"id":v.id,"p":v.p,"target":target_pos})
 		v.visual_target=target_key
-		var dir=v.p.direction_to(target_pos)
-		var speed=float(rules.virus_speed)
+		var dir: Vector2=v.p.direction_to(target_pos)
+		var speed: float=float(rules.virus_speed)
 		if v.type=="wave": dir=dir.rotated(sin(v.age*3+v.phase)*0.8)
 		if v.type=="jumper": speed=130 if v.jump else 20
 		speed*=float(tuning.get("virus:"+v.type,{}).get("speed_multiplier",1.0))
 		v.visual_avoiding=false
 		if v.type=="avoider":
-			for c in cells:
+			for c: Dictionary in cells:
 				if c.alive and c.p.distance_to(v.p)<80:
 					dir=(dir+(v.p-c.p).normalized()*1.8).normalized()
 					v.visual_avoiding=true
 		if v.type=="swarmer":
 			var old_host=v.get("host",-1)
-			var host={}
-			for other in viruses:
+			var host: Dictionary={}
+			for other: Dictionary in viruses:
 				if other.id==v.get("host",-1) and other.alive: host=other
 			if not host.is_empty():
 				v.p=host.p+Vector2.from_angle(v.phase)*17
 				speed=0
 			else:
 				v.host=-1
-				for other in viruses:
+				for other: Dictionary in viruses:
 					if other.id!=v.id and other.alive and other.type!="swarmer" and other.p.distance_to(v.p)<100:
 						dir=v.p.direction_to(other.p)
 						if other.p.distance_to(v.p)<22: v.host=other.id
@@ -844,47 +853,62 @@ func update(delta):
 		v.visual_heading=dir
 		physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
 		if v.type=="hungry":
-			for p in particles:
+			for p: Dictionary in particles:
 				if p.kind=="food" and p.life>0 and p.p.distance_to(v.p)<20:
 					p.life=0
 					v.hp+=1
 					v.peak_hp=maxf(v.get("peak_hp",v.hp),v.hp)
 					record("virus_fed",{"id":v.id,"p":v.p,"from":p.p,"hp":v.hp})
 	physics.step(self,delta)
-	for v in viruses:
+	# Contacts already contain every touching pair from the solver. Index those
+	# pairs once instead of probing every cell for every virus. Preserve cell
+	# order: the first live touching cell still consumes the contact cooldown.
+	var contact_cells={}
+	var cell_indices={}
+	for index in range(cells.size()):cell_indices[int(cells[index].id)]=index
+	for pair: Vector2i in physics.contacts:
+		for side in range(2):
+			var cell_id: int=pair[side];var other_id: int=pair[1-side]
+			if not cell_indices.has(cell_id):continue
+			if not contact_cells.has(other_id):contact_cells[other_id]=[]
+			contact_cells[other_id].append(cell_indices[cell_id])
+	for indices in contact_cells.values():indices.sort()
+	for i in range(blood.size()):core_positions[i]=blood[i].p
+	for v: Dictionary in viruses:
 		if not v.alive or v.get("emerging",false):continue
 		# No contact can fire while this virus is cooling down or jumping.
 		if v.cool<=0 and not v.jump:
-			for c in cells:
+			for index in contact_cells.get(int(v.id),[]):
+				var c: Dictionary=cells[index]
 				if not c.alive or v.jump:continue
 				if v.cool<=0 and physics.touching(c,v):
 					v.cool=float(rules.contact_interval)
 					damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
 					damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
-		var destination=nearest_blood(v.p)
+		var destination: Dictionary=nearest_blood_at(v.p,core_positions)
 		if v.alive and not destination.is_empty() and v.p.distance_to(destination.p)<19:
 			hit_core(destination,v)
-	for p in particles:
+	for p: Dictionary in particles:
 		if p.life<=0: continue
 		p.life-=delta
 		p.p+=p.v*movement_delta
 		if p.kind=="bullet":
-			for c in cells:
+			for c: Dictionary in cells:
 				if c.alive and c.key=="bullet_wall" and c.id!=p.owner and not p.get("split",false) and contains_cell(c,p.p,5):
 					p.life=0
-					var dir=p.v.normalized()
+					var dir: Vector2=p.v.normalized()
 					shoot(c,dir.rotated(-0.18),c.p+dir*48,true)
 					shoot(c,dir.rotated(0.18),c.p+dir*48,true)
 					record("bullet_split",{"p":c.p,"direction":dir})
 					break
 			if p.life<=0: continue
-			for v in viruses:
+			for v: Dictionary in viruses:
 				if v.alive and not v.jump and v.p.distance_to(p.p)<12+p.r:
 					damage_virus(v,float(rules.bullet_damage),{"p":p.p-p.v.normalized()*20,"cause":"bullet","owner":p.owner})
 					p.life=0
 					break
 		elif p.kind=="tag":
-			for v in viruses:
+			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(p.p)<17:
 					v.tag=4
 					v.freeze=1
@@ -896,7 +920,7 @@ func update(delta):
 	if gym_mode: return
 	if elapsed>=float(rules.max_battle_seconds) and not viruses.is_empty():
 		# Explicit provisional resolution for an otherwise infinite freeze/stall.
-		for v in viruses:
+		for v: Dictionary in viruses:
 			var b=nearest_blood(v.p)
 			if not b.is_empty():
 				b.alive=false
@@ -1059,7 +1083,13 @@ func move_blood(index,target):
 func release_blood():
 	blood_drag=-1
 
+var web_core_normals: Array[Vector2]=[]
 func step_blood(delta):
+	# Dragging retains the original native path. Otherwise batch the identical
+	# force integration and all eight overlap passes in the browser JIT.
+	if blood_drag<0 and physics.get("web_kernel")!=null:
+		step_blood_web(delta)
+		return
 	var count=maxi(1,int(ceil(minf(delta,0.1)*120)))
 	var dt: float=minf(delta,0.1)/count
 	var config=rules.blood_elasticity
@@ -1122,3 +1152,33 @@ func step_blood(delta):
 					positions[i]-=correction*wa
 					positions[j]+=correction*wb
 		for i in range(blood.size()): blood[i].p=positions[i]
+
+func step_blood_web(delta):
+	var living=false
+	for b: Dictionary in blood:
+		if b.alive:living=true;break
+	if not living:return
+	var count=maxi(1,int(ceil(minf(delta,0.1)*120)))
+	var dt: float=minf(delta,0.1)/count
+	while web_core_normals.size()<blood.size():web_core_normals.append(Vector2.RIGHT.rotated(web_core_normals.size()*2.4))
+	var rows=[];var edges=[]
+	for i in range(blood.size()):
+		var b: Dictionary=blood[i];var velocity: Vector2=blood_velocity.get(i,Vector2.ZERO)
+		rows.append([b.p.x,b.p.y,b.alive,velocity.x,velocity.y,web_core_normals[i].x,web_core_normals[i].y])
+	for link in blood_links:edges.append([link.a,link.b])
+	var rate=float(rules.blood_drift.speed)/maxf(1,float(rules.blood_drift.slow_radius))
+	var payload=JSON.stringify([rows,edges,count,dt,exp(-rate*dt)-1.0,float(rules.blood_elasticity.stiffness),exp(-float(rules.blood_elasticity.damping)*dt)],"",true,true)
+	var result=JavaScriptBridge.js_buffer_to_packed_byte_array(physics.web_kernel.coreStep(payload)).to_float32_array()
+	for i in range(blood.size()):
+		blood[i].p=Vector2(result[i*4],result[i*4+1])
+		if blood[i].alive:blood_velocity[i]=Vector2(result[i*4+2],result[i*4+3])
+
+func nearest_blood_at(p: Vector2,positions: PackedVector2Array) -> Dictionary:
+	var best: Dictionary={}
+	var distance: float=INF
+	for i in range(positions.size()):
+		var candidate: float=p.distance_squared_to(positions[i])
+		if candidate<distance and blood[i].alive:
+			distance=candidate
+			best=blood[i]
+	return best

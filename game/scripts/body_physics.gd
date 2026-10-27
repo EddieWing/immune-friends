@@ -1,20 +1,37 @@
 extends RefCounted
 # F2: impulse-based bodies with circle / oriented-box contacts.
 # Current game geometry is retained. This is not a numerically identical Box2D port.
+var web_kernel
+func _init():
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval(preload("res://scripts/web_physics.gd").SOURCE,true)
+		web_kernel=JavaScriptBridge.get_interface("microcosmContacts")
 var states={}
 var contacts={}
 var drives={}
 var settings={}
 var material_cache={}
+var material_settings={}
+var material_tuning={}
+var web_templates={}
+var web_template_dt=-1.0
+var web_materials=[]
+var web_material_ids={}
+var web_materials_dirty=true
 var contact_axes={}
 var cache_axes=false
+var stepping=false
 var settled_input: Array=[]
 var settled_hits=0
 func clear():
+	stepping=false
 	states.clear()
 	contacts.clear()
 	drives.clear()
 	material_cache.clear()
+	material_settings.clear()
+	material_tuning.clear()
+	web_templates.clear();web_materials.clear();web_material_ids.clear();web_materials_dirty=true
 	settled_input.clear()
 	settled_hits=0
 func id_of(body: Dictionary) -> int:
@@ -35,20 +52,20 @@ func tuning_key(body: Dictionary) -> String:
 	return str(body.key) if body.has("key") else ("virus:"+str(body.type) if body.has("type") else "__core")
 func parameter(s,body: Dictionary,field: String) -> float:
 	var key=tuning_key(body)
-	if material_cache.has(key): return material_cache[key][field]
+	if stepping and material_cache.has(key): return material_cache[key][field]
 	var fallback=s.rules.body_physics.get(field,1.0)
 	if field=="density":
 		fallback=10.0 if tuning_key(body) in ["__core","mortar","seeker_factory","wildcard"] else (0.01 if tuning_key(body)=="kinetic_generator" else 1.0)
 	return float(s.tuning.get(tuning_key(body),{}).get("physics/"+field,fallback))
 func mass(s,body: Dictionary) -> float:
 	var key=tuning_key(body)
-	if material_cache.has(key): return material_cache[key].mass
+	if stepping and material_cache.has(key): return material_cache[key].mass
 	var density=maxf(0.001,parameter(s,body,"density"))
 	var area=86.0*26.0 if is_box(s,body) else PI*pow(radius(body),2)
 	return density*area/(PI*18.0*18.0)
 func inertia(s,body: Dictionary) -> float:
 	var key=tuning_key(body)
-	if material_cache.has(key): return material_cache[key].inertia
+	if stepping and material_cache.has(key): return material_cache[key].inertia
 	return mass(s,body)*((86.0*86.0+26.0*26.0)/12.0 if is_box(s,body) else radius(body)*radius(body)*0.5)
 func impulse(s,body,value,point=Vector2.INF):
 	var st: Dictionary=state(body)
@@ -126,8 +143,8 @@ func solve_contact(s,a: Dictionary,b: Dictionary,hit: Dictionary):
 	var vb: Vector2=sb.v+Vector2(-arm_b.y,arm_b.x)*sb.w
 	var relative: float=(vb-va).dot(normal)
 	if relative>=0 and hit.depth<=0.02:return
-	var ma: Dictionary=material_cache.get(tuning_key(a),{})
-	var mb: Dictionary=material_cache.get(tuning_key(b),{})
+	var ma: Dictionary=material_cache.get(tuning_key(a),{}) if stepping else {}
+	var mb: Dictionary=material_cache.get(tuning_key(b),{}) if stepping else {}
 	var ima: float=1.0/(ma.mass if not ma.is_empty() else mass(s,a));var imb: float=1.0/(mb.mass if not mb.is_empty() else mass(s,b))
 	if relative<0:
 		var iia: float=1.0/(ma.inertia if not ma.is_empty() else inertia(s,a));var iib: float=1.0/(mb.inertia if not mb.is_empty() else inertia(s,b))
@@ -188,14 +205,19 @@ func step(s,delta: float):
 		settled_hits+=1
 		drives.clear()
 		return
+	stepping=true
 	settings=s.rules.body_physics
 	contacts.clear()
 	var bodies=[]
 	for body in s.cells+s.viruses+s.blood:
 		if body.alive: bodies.append(body)
-	# Material values are constant during one physics step, including all solver passes.
-	# Rebuild at each step so session tuning is picked up immediately.
-	material_cache.clear()
+	# Compare values, not dictionary identity: debug edits take effect on the
+	# very next step, while unchanged material data can be reused.
+	if material_settings!=settings or material_tuning!=s.tuning:
+		material_settings=settings.duplicate(true)
+		material_tuning=s.tuning.duplicate(true)
+		material_cache.clear()
+		web_templates.clear();web_materials.clear();web_material_ids.clear();web_materials_dirty=true
 	for body in bodies:
 		var key=tuning_key(body)
 		if material_cache.has(key): continue
@@ -205,8 +227,6 @@ func step(s,delta: float):
 		material.mass=mass(s,body)
 		material.inertia=inertia(s,body)
 		material_cache[key]=material
-	var broad_radii: Array[float]=[]
-	for body in bodies: broad_radii.append(45.0 if is_box(s,body) else radius(body))
 	var live={}
 	for body in bodies: live[id_of(body)]=true
 	for id in states.keys():
@@ -215,6 +235,16 @@ func step(s,delta: float):
 		if s.blood[i].alive:state(s.blood[i]).v=s.blood_velocity.get(i,Vector2.ZERO)
 	var steps=maxi(1,ceili(delta/float(settings.max_step)))
 	var dt: float=delta/steps
+	if web_kernel!=null and web_angles_supported(bodies):
+		advance_web(s,bodies,delta,steps)
+		for i in range(s.blood.size()):
+			if s.blood[i].alive:s.blood_velocity[i]=state(s.blood[i]).v
+		settled_input=input if not input.is_empty() and can_settle(s) and input==step_signature(s,delta) else []
+		drives.clear()
+		stepping=false
+		return
+	var broad_radii: Array[float]=[]
+	for body in bodies: broad_radii.append(45.0 if is_box(s,body) else radius(body))
 	for tick in range(steps):
 		# Existing elastic bonds retain their rest length and nearest-neighbour rules.
 		for link in s.links:
@@ -290,7 +320,7 @@ func step(s,delta: float):
 		if s.blood[i].alive:s.blood_velocity[i]=state(s.blood[i]).v
 	settled_input=input if not input.is_empty() and can_settle(s) and input==step_signature(s,delta) else []
 	drives.clear()
-	material_cache.clear()
+	stepping=false
 
 func step_signature(s,delta: float) -> Array:
 	# can_settle already proves every velocity/drive is exactly zero. Keys also
@@ -308,3 +338,69 @@ func can_settle(s) -> bool:
 	for velocity: Vector2 in s.blood_velocity.values():
 		if velocity!=Vector2.ZERO:return false
 	return true
+
+func web_angles_supported(bodies: Array) -> bool:
+	# The fast float trigonometry covers the wrapped gameplay range. An unusual
+	# external angle takes one native step, retaining its original wrap semantics.
+	for body: Dictionary in bodies:
+		if absf(float(body.get("angle",0)))>7.0:return false
+	return true
+
+func advance_web(s,bodies: Array,delta: float,steps: int):
+	# Compute libm coefficients in Godot once per material, retaining Float64.
+	var dt=delta/steps
+	if dt!=web_template_dt:
+		web_template_dt=dt
+		web_templates.clear();web_materials.clear();web_material_ids.clear();web_materials_dirty=true
+	for m: Dictionary in material_cache.values():
+		m.linear_decay=exp(-float(m.linear_damping)*dt)
+		m.angular_decay=exp(-float(m.angular_damping)*dt)
+	# Shared material columns are prepared once per kind, not looked up for
+	# every body. Dynamic columns remain full-precision Float64 values.
+	for body: Dictionary in bodies:
+		var key: String=tuning_key(body)
+		if web_templates.has(key):continue
+		var m: Dictionary=material_cache[key]
+		var cell: bool=body.has("key");var virus: bool=body.has("type")
+		web_templates[key]=PackedFloat64Array([0,0,0,0,0,radius(body),float(is_box(s,body)),float(cell),float(virus),1.0/m.mass,1.0/m.inertia,m.restitution,0,1,0,1,0,0,0,0,0,m.motor_response,m.motor_force,m.mass,m.linear_damping,m.angular_damping,m.max_speed,m.max_angular_speed,m.inertia,m.linear_decay,m.angular_decay])
+		web_material_ids[key]=web_materials.size()
+		web_materials.append(Array(web_templates[key]))
+		web_materials_dirty=true
+	if web_materials_dirty:
+		web_kernel.setMaterials(JSON.stringify(web_materials,"",true,true))
+		web_materials_dirty=false
+	var rows=PackedFloat64Array()
+	rows.resize(bodies.size()*13)
+	var body_states: Array[Dictionary]=[]
+	var indices={}
+	var row_offset=0
+	for body: Dictionary in bodies:
+		var id: int=id_of(body)
+		var st: Dictionary=state(body)
+		var p: Vector2=body.p;var v: Vector2=st.v
+		var angle: float=body.get("angle",0)
+		var target: Vector2=drives.get(id,Vector2.ZERO)
+		indices[id]=body_states.size()
+		body_states.append(st)
+		rows[row_offset]=p.x;rows[row_offset+1]=p.y
+		rows[row_offset+2]=v.x;rows[row_offset+3]=v.y
+		rows[row_offset+4]=st.w;rows[row_offset+5]=id
+		rows[row_offset+6]=angle;rows[row_offset+7]=target.x;rows[row_offset+8]=target.y
+		rows[row_offset+9]=float(not body.get("jump",false) and not body.get("emerging",false))
+		rows[row_offset+10]=float(body.get("emerging",false))
+		rows[row_offset+11]=float(float(body.get("freeze",0))>0 or int(body.get("host",-1))>=0)
+		rows[row_offset+12]=web_material_ids[tuning_key(body)]
+		row_offset+=13
+	var links=[]
+	for link in s.links:
+		var a=s.endpoint_by_id(link.a);var b=s.endpoint_by_id(link.b)
+		if a.is_empty() or b.is_empty() or not a.alive or not b.alive:continue
+		links.append([indices[id_of(a)],indices[id_of(b)],link.rest])
+	var buffer=web_kernel.advanceCompact(Marshalls.raw_to_base64(rows.to_byte_array()),JSON.stringify([delta,steps,float(settings.get("contact_impulse_scale",1.0)),float(settings.spring_stiffness),float(settings.spring_damping)],"",true,true),JSON.stringify(links,"",true,true))
+	var result=JavaScriptBridge.js_buffer_to_packed_byte_array(buffer).to_float64_array()
+	for i in range(bodies.size()):
+		var offset=i*6;var body: Dictionary=bodies[i]
+		body.p=Vector2(result[offset],result[offset+1])
+		var st: Dictionary=body_states[i];st.v=Vector2(result[offset+2],result[offset+3]);st.w=result[offset+4]
+		if body.has("key"):body.angle=result[offset+5]
+	for i in range(bodies.size()*6,result.size(),2):contacts[Vector2i(result[i],result[i+1])]=true

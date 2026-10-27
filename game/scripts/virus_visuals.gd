@@ -1,38 +1,16 @@
 extends RefCounted
+const BODIES=preload("res://assets/ui/virus-composite.svg")
+const TYPES=["basic","wave","jumper","hungry","swarmer","seeker","avoider"]
 static func draw(canvas,v):
 	var p=v.p
-	var color=Color("#b399c6")
-	if v.type=="hungry": color=Color("#a68bb8")
-	if v.type=="wave": color=Color("#bca4d5")
-	if v.type=="seeker": color=Color("#be8fae")
-	if v.jump: color=Color("#eee0f5")
-	var points=PackedVector2Array()
-	for i in range(64):
-		var angle=i*TAU/64.0
-		var radius=12.0
-		match v.type:
-			"basic": radius+=2.4*cos(angle*7)
-			"wave": radius+=4*sin(angle*3+0.5)
-			"jumper": radius+=4*cos(angle+PI/3)
-			"hungry": radius+=3*sin(angle)
-			"swarmer": radius+=4*cos(angle*3-PI/2)
-			"seeker": radius+=4*cos(angle*3)
-			"avoider": radius-=7*pow(maxf(0,cos(angle)),4)
-		points.append(p+Vector2.from_angle(angle)*radius)
-	canvas.draw_colored_polygon(points,color)
-	points.append(points[0])
-	canvas.draw_polyline(points,color.darkened(0.3),1.5,true)
-	var ink=Color("#352337")
-	for side in [-1,1]:
-		var eye=p+Vector2(side*4,-1)
-		if v.get("hurt",false):
-			canvas.draw_line(eye+Vector2(-2,-1),eye+Vector2(2,1),ink,1.5,true)
-		else:
-			canvas.draw_circle(eye,2.1,Color("#fff0cd"))
-			canvas.draw_circle(eye+Vector2(-side*0.4,0.3)+v.get("look",Vector2.ZERO)*1.1,1.0,ink)
-		canvas.draw_line(p+Vector2(side*7,-5),p+Vector2(side*2,-3),ink,1.8,true)
-	if v.get("feeding",false): canvas.draw_circle(p+Vector2(0,6),3,ink)
-	else: canvas.draw_arc(p+Vector2(0,7),3.2,PI*1.15,PI*1.85,12,ink,1.5,true)
+	var index=maxi(0,TYPES.find(v.type))
+	var hurt=v.get("hurt",false)
+	var feeding=v.get("feeding",false)
+	var row=(4 if v.jump else 0)+(2 if hurt else 0)+(1 if feeding else 0)
+	canvas.draw_texture_rect_region(BODIES,Rect2(p-Vector2(20,20),Vector2(40,40)),Rect2(index*160,row*160,160,160))
+	if not hurt:
+		var look=v.get("look",Vector2.ZERO)*1.1
+		canvas.draw_texture_rect_region(BODIES,Rect2(p+look-Vector2(20,20),Vector2(40,40)),Rect2(0,1280,160,160))
 	if v.get("freeze",0)>0:
 		for i in range(6):
 			var d=Vector2.from_angle(i*TAU/6)
@@ -43,4 +21,4 @@ static func draw(canvas,v):
 		canvas.draw_colored_polygon(PackedVector2Array([p+Vector2(0,-25),p+Vector2(3,-21),p+Vector2(0,-17),p+Vector2(-3,-21)]),Color("#e894c1"))
 	if v.jump:
 		canvas.draw_arc(p,20,0,TAU,24,Color("#efdefb"),2,true)
-	if v.hp>1: canvas.draw_string(ThemeDB.fallback_font,p+Vector2(12,-9),str(int(v.hp)),HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#e7efe1"))
+	if v.hp>1 and not v.get("defer_health",false): canvas.draw_string(ThemeDB.fallback_font,p+Vector2(12,-9),str(int(v.hp)),HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#e7efe1"))

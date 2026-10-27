@@ -138,9 +138,11 @@ func _initialize():
 	s=setup();a=add(s,"seeker",Vector2.ZERO)
 	s.physics.drive(a,Vector2(20,0));s.physics.step(s,0.001)
 	var initial_speed=s.physics.velocity(a).x
-	check(s.physics.material_cache.is_empty(),"Step material cache cannot leak into later impulses or tuning")
 	s.physics.state(a).v=Vector2.ZERO
 	s.apply_tuning("seeker",{"physics/density":2.0})
+	s.physics.impulse(s,a,Vector2(2,0))
+	check(is_equal_approx(s.physics.velocity(a).x,1.0),"Impulse immediately uses edited density outside a step")
+	s.physics.state(a).v=Vector2.ZERO
 	s.physics.drive(a,Vector2(20,0));s.physics.step(s,0.001)
 	check(is_equal_approx(s.physics.velocity(a).x,initial_speed/2.0),"Next step immediately uses edited density, not cached material")
 	var rng=RandomNumberGenerator.new();rng.seed=909

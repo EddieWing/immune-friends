@@ -1,5 +1,7 @@
 extends RefCounted
+const CORE_TIP=preload("res://assets/ui/core-hand-tip.svg")
 const CORE_CLASP=preload("res://assets/ui/bond-clasp.svg")
+var strokes=preload("res://scripts/stroke_cache.gd").new()
 var revision_seen=-1
 var observed_sim
 var round_seen=-1
@@ -67,6 +69,10 @@ func observe_link(active,kind,id_a,id_b,p,q,ca,cb,a,b):
  bond.a=a
  bond.b=b
 func draw_bonds(canvas,kind):
+ var core_arms=PackedVector2Array()
+ var core_clasps: Array[Vector2]=[]
+ var core_tips: Array[Vector2]=[]
+ var core_fingers=PackedVector2Array()
  for bond in bonds.values():
   if bond.kind!=kind: continue
   var core=kind=="core"
@@ -82,6 +88,14 @@ func draw_bonds(canvas,kind):
   var right=end.lerp(middle,progress)
   var width=2.6 if core else 6.0
   var arms=PackedVector2Array([start,left,end,right])
+  if core:
+   core_arms.append_array(arms)
+   if bond.connected and bond.progress>=1:core_clasps.append(middle)
+   else:
+    for hand in [left,right]:
+     core_tips.append(hand)
+     core_fingers.append(hand);core_fingers.append(hand+direction.orthogonal()*2.3)
+   continue
   canvas.draw_multiline(arms,Color("#594352"),width+1.5,true)
   if bond.ca==bond.cb: canvas.draw_multiline(arms,bond.ca,width,true)
   else:
@@ -97,7 +111,14 @@ func draw_bonds(canvas,kind):
    for hand in [left,right]:
     canvas.draw_circle(hand,radius*0.75,Color("#f5dfcb"))
     canvas.draw_line(hand,hand+direction.orthogonal()*radius,Color("#f5dfcb"),1.5,true)
+ # All fully formed Core bonds share the same colours and widths.
+ if not core_arms.is_empty():
+  canvas.draw_multiline(core_arms,Color("#594352"),4.1,true)
+  canvas.draw_multiline(core_arms,Color("#f2acb8"),2.6,true)
+  for middle in core_clasps:
+   canvas.draw_texture_rect(CORE_CLASP,Rect2(middle-Vector2(4,4),Vector2(8,8)),false)
 func draw_events(canvas):
+ strokes.begin()
  for pulse in signals.slice(maxi(0,signals.size()-8)):
   var path=pulse.path
   var progress=clampf(pulse.age/0.65,0,1)
@@ -122,7 +143,7 @@ func draw_events(canvas):
   var color=Color("#efbd58") if hit.kind=="cell" else Color("#f07887") if hit.kind in ["virus","core"] else Color("#dcebf0")
   color.a=1-hit.age/0.65
   var radius=18+hit.age*20
-  canvas.draw_arc(hit.p,radius,0,TAU,40,color,2,true)
+  strokes.arc(canvas,hit.p,radius,0,TAU,40,color,2)
   if hit["from"].distance_to(hit.p)>1:
    var direction=hit.p.direction_to(hit["from"])
    var tip=hit.p+direction*24
