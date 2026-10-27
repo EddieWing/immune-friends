@@ -79,7 +79,11 @@ func run():
  game.advance_camera(1)
  check(game.view.position.is_equal_approx(held),"050: result keeps final focus")
  game.sim.phase="shop"
+ game.launch_remaining=0
+ game.view.scale=Vector2.ONE*0.88
+ game.camera_requested=0.88
  game.center_preparation_camera()
+ check(game.shopping_in_focus() and game.zoom_target==1.5,"051: preparation entry opens shop even after distant saved/battle zoom")
  game.advance_manual_camera(0.2,Vector2.RIGHT)
  held=game.view.position
  game.advance_camera(0.5)

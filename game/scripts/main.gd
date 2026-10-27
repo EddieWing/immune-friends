@@ -1535,9 +1535,13 @@ func center_preparation_camera():
 	core_shake_offset=Vector2.ZERO
 	panning=false
 	auto_camera=false
+	# Every preparation entry must start at a purchasable magnification.
+	if not gym_mode:
+		view.scale=Vector2.ONE*camera_director.automatic_zoom(camera_director.ZoomLevel.CLOSE)
 	zoom_target=view.scale.x
 	camera_requested=zoom_target
 	view.position=board_rect.get_center()-center*view.scale.x
+	camera_optics.update_focus(center,zoom_target,sim.phase=="shop",false)
 
 func advance_camera(delta):
 	view.position-=core_shake_offset
