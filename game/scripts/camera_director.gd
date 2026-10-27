@@ -1,5 +1,13 @@
 extends RefCounted
 
+# Stable targets for scripted camera transitions. Manual zoom is not quantized.
+enum ZoomLevel { WIDE, MEDIUM, CLOSE }
+const AUTOMATIC_ZOOM_LEVELS = [0.45, 0.88, 1.50]
+
+func automatic_zoom(level: int):
+ if level<0 or level>=AUTOMATIC_ZOOM_LEVELS.size(): return null
+ return AUTOMATIC_ZOOM_LEVELS[level]
+
 const RELEASE_LOOKAHEAD = 0.65
 const SOURCE_RADIUS = 68.0
 

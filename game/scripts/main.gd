@@ -1447,6 +1447,15 @@ func toggle_shop():
 	shop_collapsed=not shop_collapsed
 	refresh()
 
+# Sets a discrete automatic target, leaving the player's preferred zoom intact.
+# advance_camera performs the same smooth interpolation used for manual input.
+func set_automatic_zoom(level: int) -> bool:
+	var value=camera_director.automatic_zoom(level)
+	if value==null: return false
+	zoom_target=value
+	update_zoom()
+	return true
+
 func set_zoom(value):
 	if browsing_from_main_menu() or entering_game: return
 	camera_phase="warning" if view.staging=="warning" else sim.phase

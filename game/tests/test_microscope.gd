@@ -23,7 +23,21 @@ func run():
  await process_frame
  scene.main_menu.hide()
  scene.modal.hide()
+ scene.set_process(false)
  scene.auto_camera=true
+ scene.view.staging=""
+ scene.sim.phase="shop"
+ scene.set_zoom(0.97)
+ scene.view.scale=Vector2.ONE*0.97
+ check(scene.set_automatic_zoom(scene.camera_director.ZoomLevel.CLOSE),"Automatic camera can request named close zoom")
+ check(is_equal_approx(scene.view.scale.x,0.97) and scene.zoom_target==1.5 and scene.camera_requested==0.97,"Automatic target preserves current scale and player preference")
+ scene.advance_camera(0.01)
+ check(scene.view.scale.x>0.97 and scene.view.scale.x<1.5,"Automatic zoom interpolates instead of snapping")
+ check(not scene.set_automatic_zoom(99) and scene.zoom_target==1.5,"Invalid level leaves camera state intact")
+ scene.set_zoom(1.03)
+ check(scene.zoom_target==1.03 and scene.camera_requested==1.03 and scene.auto_camera,"Manual zoom interrupts preset with a non-discrete value and keeps Auto")
+ for step in range(100):scene.advance_camera(0.01)
+ check(is_equal_approx(scene.view.scale.x,1.03),"Manual target wins after automatic transition")
  scene.set_zoom(1.5)
  check(scene.auto_camera,"manual zoom retains Auto")
  scene.set_process(false)
