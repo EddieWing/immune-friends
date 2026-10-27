@@ -4,15 +4,22 @@ var observed_sim
 var revision_seen=-1
 var cursor=0
 var phase=""
-func visible(sim,origin,target):
+const WALL_CORNERS=[Vector2(-43,-13),Vector2(43,-13),Vector2(43,13),Vector2(-43,13)]
+func visible(sim,origin: Vector2,target: Vector2):
+ var lower=origin.min(target)-Vector2(45,45)
+ var upper=origin.max(target)+Vector2(45,45)
  for c in sim.cells:
   if not c.alive or sim.catalog[c.key].behavior!="wall": continue
-  var a=(origin-c.p).rotated(-c.angle)
-  var b=(target-c.p).rotated(-c.angle)
-  var corners=[Vector2(-43,-13),Vector2(43,-13),Vector2(43,13),Vector2(-43,13)]
+  var position: Vector2=c.p
+  # A rotated 86x26 wall fits strictly inside radius 45. Reject only rays
+  # whose bounds cannot reach it; retain the original edge test at boundaries.
+  if position.x<lower.x or position.x>upper.x or position.y<lower.y or position.y>upper.y:continue
+  var a: Vector2=(origin-position).rotated(-c.angle)
+  var b: Vector2=(target-position).rotated(-c.angle)
+  if maxf(a.x,b.x)<-43 or minf(a.x,b.x)>43 or maxf(a.y,b.y)<-13 or minf(a.y,b.y)>13:continue
   if Rect2(-43,-13,86,26).has_point(a): continue
   for i in range(4):
-   if Geometry2D.segment_intersects_segment(a,b,corners[i],corners[(i+1)%4])!=null: return false
+   if Geometry2D.segment_intersects_segment(a,b,WALL_CORNERS[i],WALL_CORNERS[(i+1)%4])!=null: return false
  return true
 func update(sim,delta):
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision

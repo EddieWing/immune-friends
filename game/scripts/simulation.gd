@@ -539,7 +539,7 @@ func spawn_virus(entry):
 		"emerging":true,"exit":exit,"spawn_position":p,"source_lane":entry.lane})
 	next_id+=1
 
-func nearest_virus(p, reach=10000.0):
+func nearest_virus(p: Vector2, reach: float=10000.0) -> Dictionary:
 	var best={}
 	var dist=reach
 	for v in viruses:
@@ -550,7 +550,7 @@ func nearest_virus(p, reach=10000.0):
 			best=v
 	return best
 
-func nearest_blood(p):
+func nearest_blood(p: Vector2) -> Dictionary:
 	var best={}
 	var dist=INF
 	for b in blood:
@@ -853,12 +853,14 @@ func update(delta):
 	physics.step(self,delta)
 	for v in viruses:
 		if not v.alive or v.get("emerging",false):continue
-		for c in cells:
-			if not c.alive or v.jump:continue
-			if v.cool<=0 and physics.touching(c,v):
-				v.cool=float(rules.contact_interval)
-				damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
-				damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
+		# No contact can fire while this virus is cooling down or jumping.
+		if v.cool<=0 and not v.jump:
+			for c in cells:
+				if not c.alive or v.jump:continue
+				if v.cool<=0 and physics.touching(c,v):
+					v.cool=float(rules.contact_interval)
+					damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
+					damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
 		var destination=nearest_blood(v.p)
 		if v.alive and not destination.is_empty() and v.p.distance_to(destination.p)<19:
 			hit_core(destination,v)
@@ -1075,13 +1077,13 @@ func step_blood(delta):
 				var offset=center*(exp(-rate*dt)-1.0)
 				for b in blood:
 					if b.alive: b.p+=offset
-		var forces={}
-		for i in range(blood.size()): forces[i]=Vector2.ZERO
+		var forces: Array[Vector2]=[]
+		forces.resize(blood.size());forces.fill(Vector2.ZERO)
 		for link in blood_links:
 			var a=blood[link.a]
 			var b=blood[link.b]
 			if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue
-			var offset=b.p-a.p
+			var offset: Vector2=b.p-a.p
 			var distance=offset.length()
 			if distance<0.001: continue
 			var force=offset/distance*(distance-26.0)*float(config.stiffness)
@@ -1089,7 +1091,7 @@ func step_blood(delta):
 			forces[int(link.b)]-=force
 		for i in range(blood.size()):
 			if not blood[i].alive: continue
-			var velocity=blood_velocity.get(i,Vector2.ZERO)
+			var velocity: Vector2=blood_velocity.get(i,Vector2.ZERO)
 			velocity=(velocity+forces[i]*dt)*exp(-float(config.damping)*dt)
 			velocity=velocity.limit_length(650)
 			if i==blood_drag:
@@ -1110,6 +1112,7 @@ func step_blood(delta):
 				for j in range(i+1,positions.size()):
 					if not alive[j]: continue
 					var offset=positions[j]-positions[i]
+					if offset.length_squared()>=676.0:continue
 					var distance=offset.length()
 					if distance>=26: continue
 					var normal=offset/distance if distance>0.001 else Vector2.RIGHT.rotated(i*2.4)

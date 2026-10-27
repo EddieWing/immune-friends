@@ -6,11 +6,17 @@ var contacts={}
 var drives={}
 var settings={}
 var material_cache={}
+var contact_axes={}
+var cache_axes=false
+var settled_input: Array=[]
+var settled_hits=0
 func clear():
 	states.clear()
 	contacts.clear()
 	drives.clear()
 	material_cache.clear()
+	settled_input.clear()
+	settled_hits=0
 func id_of(body: Dictionary) -> int:
 	return int(body.id) if body.has("key") or body.has("type") else -2-int(body.id)
 func state(body: Dictionary) -> Dictionary:
@@ -56,13 +62,16 @@ func accelerate(s,body,force,delta):
 func touching(a,b):
 	var x=id_of(a);var y=id_of(b)
 	return contacts.has(Vector2i(mini(x,y),maxi(x,y)))
-func axes(body):
-	return [Vector2.RIGHT.rotated(float(body.get("angle",0))),Vector2.DOWN.rotated(float(body.get("angle",0)))]
-func extent(s,body,axis):
+func axes(body: Dictionary) -> Array[Vector2]:
+	if cache_axes and contact_axes.has(body.id):return contact_axes[body.id]
+	var result: Array[Vector2]=[Vector2.RIGHT.rotated(float(body.get("angle",0))),Vector2.DOWN.rotated(float(body.get("angle",0)))]
+	if cache_axes:contact_axes[body.id]=result
+	return result
+func extent(s,body: Dictionary,axis: Vector2) -> float:
 	if not is_box(s,body): return radius(body)
 	var basis=axes(body)
 	return absf(axis.dot(basis[0]))*43.0+absf(axis.dot(basis[1]))*13.0
-func support(s,body,axis):
+func support(s,body: Dictionary,axis: Vector2) -> Vector2:
 	if not is_box(s,body): return body.p+axis*radius(body)
 	var basis=axes(body)
 	# Face centre for parallel directions, rather than an arbitrary corner.
@@ -170,8 +179,15 @@ func candidate_pairs(bodies: Array) -> Array:
 					if j>i:pairs.append(Vector2i(i,j))
 	return pairs
 
-func step(s,delta):
+func step(s,delta: float):
 	if delta<=0:return
+	var input=step_signature(s,delta) if can_settle(s) else []
+	if not settled_input.is_empty() and input==settled_input:
+		# Exact fixed point, not threshold-based sleeping. Contacts and states are
+		# already the result of this identical input; gameplay still ticks normally.
+		settled_hits+=1
+		drives.clear()
+		return
 	settings=s.rules.body_physics
 	contacts.clear()
 	var bodies=[]
@@ -222,31 +238,39 @@ func step(s,delta):
 			if body.get("emerging",false):continue # Scripted birth animation remains outside F2.
 			var st=state(body)
 			var material: Dictionary=material_cache[tuning_key(body)]
-			# Preserve existing status / attachment rules; F2 does not redefine tags or Swarmer.
+			var velocity: Vector2=st.v
+			var spin: float=st.w
+			var position: Vector2=body.p
+			var cell=body.has("key")
+			# Work on typed locals, committing once before contact solving.
 			if body.has("type") and (float(body.get("freeze",0))>0 or int(body.get("host",-1))>=0):
-				st.v=Vector2.ZERO
-				st.w=0.0
-			var target=drives.get(id_of(body),Vector2.ZERO)
+				velocity=Vector2.ZERO
+				spin=0.0
+			var target: Vector2=drives.get(id_of(body),Vector2.ZERO)
 			if target.length_squared()>0:
-				var force=(target-st.v)*float(material.motor_response)
+				var force: Vector2=(target-velocity)*float(material.motor_response)
 				force=force.limit_length(float(material.motor_force))
-				st.v+=force/float(material.mass)*dt
-			st.v*=exp(-float(material.linear_damping)*dt)
-			st.w*=exp(-float(material.angular_damping)*dt)
-			st.v=st.v.limit_length(float(material.max_speed))
-			st.w=clampf(st.w,-float(material.max_angular_speed),float(material.max_angular_speed))
-			body.p+=st.v*dt
-			if body.has("key"):body.angle=wrapf(float(body.angle)+st.w*dt,-PI,PI)
-			# Keep the established playfield boundary; reflect velocity, never store out-of-bounds momentum.
-			if body.has("key"):
+				velocity+=force/float(material.mass)*dt
+			velocity*=exp(-float(material.linear_damping)*dt)
+			spin*=exp(-float(material.angular_damping)*dt)
+			velocity=velocity.limit_length(float(material.max_speed))
+			spin=clampf(spin,-float(material.max_angular_speed),float(material.max_angular_speed))
+			position+=velocity*dt
+			if cell:body.angle=wrapf(float(body.angle)+spin*dt,-PI,PI)
+			if cell:
 				var ex=extent(s,body,Vector2.RIGHT);var ey=extent(s,body,Vector2.DOWN)
-				var clipped=body.p.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
-				if clipped.x!=body.p.x:st.v.x=-st.v.x*float(material.restitution)
-				if clipped.y!=body.p.y:st.v.y=-st.v.y*float(material.restitution)
-				body.p=clipped
+				var clipped=position.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
+				if clipped.x!=position.x:velocity.x=-velocity.x*float(material.restitution)
+				if clipped.y!=position.y:velocity.y=-velocity.y*float(material.restitution)
+				position=clipped
+			body.p=position
+			st.v=velocity;st.w=spin
+
 		var pairs=candidate_pairs(bodies)
 		var positions: Array[Vector2]=[]
 		for body in bodies: positions.append(body.p)
+		contact_axes.clear()
+		cache_axes=true
 		for pass_no in range(3):
 			for pair: Vector2i in pairs:
 				var separation: Vector2=positions[pair.y]-positions[pair.x]
@@ -260,7 +284,27 @@ func step(s,delta):
 				solve_contact(s,a,b,hit)
 				positions[pair.x]=a.p
 				positions[pair.y]=b.p
+		cache_axes=false
+		contact_axes.clear()
 	for i in range(s.blood.size()):
 		if s.blood[i].alive:s.blood_velocity[i]=state(s.blood[i]).v
+	settled_input=input if not input.is_empty() and can_settle(s) and input==step_signature(s,delta) else []
 	drives.clear()
 	material_cache.clear()
+
+func step_signature(s,delta: float) -> Array:
+	# can_settle already proves every velocity/drive is exactly zero. Keys also
+	# detect additions/removals without cloning every zero-valued state dictionary.
+	var values: Array=[delta,s.rules.body_physics.duplicate(true),s.tuning.duplicate(true),s.links.duplicate(true),s.blood_velocity.keys(),drives.keys(),states.keys()]
+	for body: Dictionary in s.cells+s.viruses+s.blood:
+		values.append([id_of(body),body.alive,body.p,body.get("angle",0),body.get("key",""),body.get("type",""),body.get("emerging",false),body.get("jump",false),body.get("freeze",0),body.get("host",-1),is_box(s,body)])
+	return values
+
+func can_settle(s) -> bool:
+	for target: Vector2 in drives.values():
+		if target!=Vector2.ZERO:return false
+	for st: Dictionary in states.values():
+		if st.v!=Vector2.ZERO or st.w!=0.0:return false
+	for velocity: Vector2 in s.blood_velocity.values():
+		if velocity!=Vector2.ZERO:return false
+	return true
