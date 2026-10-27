@@ -27,7 +27,7 @@ func run():
  scene.gym_place(Vector2(-300,80))
  check(scene.paused and sim.spawn_queue.back().type=="seeker","Battle placement pauses and adds viruses to the live queue")
  sim.spawn_virus(sim.spawn_queue.back())
- check(sim.viruses.back().emerging and sim.viruses.back().p==Vector2(-300,80),"New threat emerges from its source using normal spawning")
+ check(not sim.viruses.back().emerging and sim.viruses.back().p==Vector2(-300,80),"New threat starts at its source using normal movement")
  var p=sim.blood[0].p
  sim.blood[0].alive=false
  scene.debug_replenish_core()

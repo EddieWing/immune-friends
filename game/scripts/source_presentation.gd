@@ -46,9 +46,7 @@ func update(sim,wave,positions,stage,delta):
   s.surge=maxf(0,s.surge-delta/1.1)
   var emitting=false
   if sim.phase=="battle" and s.active:
-   emitting=stage=="launch" or sim.spawn_queue.any(func(e): return e.lane==lane)
-   if not emitting:
-    emitting=sim.viruses.any(func(v): return v.alive and v.get("emerging",false) and v.get("source_lane",-1)==lane)
+   emitting=stage=="launch" or sim.source_releasing(lane)
   s.opening=move_toward(s.opening,1.0 if emitting else 0.0,delta/0.65)
 func draw(canvas,lane):
  var s=states[lane]
@@ -86,3 +84,13 @@ func draw(canvas,lane):
    var r=30+progress*45+i*7
    canvas.draw_arc(center,r,0,TAU,64,Color(0.74,0.35,0.72,s.surge*alpha*(0.6-i*0.12)),2,true)
   canvas.draw_string(ThemeDB.fallback_font,center+Vector2(-35,-72-progress*12),"THREAT RISING",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(0.34,0.16,0.4,s.surge*alpha))
+
+# A Source label groups infected emitters; births occur at these discrete slots.
+func draw_emitters(canvas,lane,emitters: Array):
+ if observed_sim==null or not states.has(lane): return
+ var state=states[lane]
+ for emitter in emitters:
+  if emitter.lane!=lane: continue
+  for petal in range(5):
+   var offset=Vector2.from_angle(petal*TAU/5+clock*0.12)*7
+   canvas.draw_circle(emitter.p+offset,12,Color(0.35,0.18,0.42,0.09*state.alpha))

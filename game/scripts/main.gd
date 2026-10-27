@@ -99,6 +99,7 @@ const RESULTS_PAUSE=1.25
 const LAUNCH_SECONDS=0.9
 var launch_remaining=0.0
 var preview_sources=[]
+var preview_emitters=[]
 var preview_center=Vector2.ZERO
 var shade: ColorRect
 var speed_buttons=[]
@@ -716,6 +717,7 @@ func enter_gym():
 	lab_tools.refresh_available()
 	sim.gym_mode=true
 	sim.wave=[]
+	sim.source_emitters=[]
 	sim.offers=[]
 	view.sim=sim
 	view.blood_faces.states.clear()
@@ -796,7 +798,8 @@ func gym_place(p):
 		var entry={"type":gym_tool.key,"count":gym_tool.count,"lane":lane}
 		sim.wave.append(entry)
 		if sim.phase=="battle":
-			for i in range(entry.count): sim.spawn_queue.append({"type":entry.type,"lane":lane})
+			var interval=sim.rng.randf_range(1.0,2.0)
+			for i in range(entry.count): sim.spawn_queue.append({"type":entry.type,"lane":lane,"due":sim.elapsed+1.0+i*interval})
 	elif kind=="virus":
 		sim.spawn_virus({"type":gym_tool.key,"lane":0})
 		var v=sim.viruses.back()
@@ -1325,6 +1328,7 @@ func save_run():
 		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
 		"choices":sim.reward_choices,"rng_state":str(sim.rng.state),
 		"setup_particles":sim.particles.filter(func(p):return p.get("setup",false)).map(func(p):return {"p":[p.p.x,p.p.y],"owner":p.owner}),
+		"infection_layout":2,
 		"infection_sources":sim.infection_sources.map(func(p): return [p.x,p.y]),
 		"source_center":[sim.source_center.x,sim.source_center.y]}
 	var file=FileAccess.open(save_path,FileAccess.WRITE)
@@ -1370,7 +1374,7 @@ func load_run():
 	sim.reward_choices=data.choices
 	sim.rng.state=int(data.rng_state)
 	sim.make_wave()
-	if data.has("infection_sources") and data.has("source_center"):
+	if data.get("infection_layout",0)==2 and data.has("infection_sources") and data.has("source_center"):
 		sim.infection_sources=data.infection_sources.map(func(p): return Vector2(p[0],p[1]))
 		sim.source_center=Vector2(data.source_center[0],data.source_center[1])
 	sim.ensure_infection_sources_clear()
@@ -1495,7 +1499,7 @@ func advance_camera(delta):
 	if phase!=camera_phase:
 		camera_phase=phase
 	if follow and phase=="warning":
-		var framing=camera_director.forecast_frame(sim,preview_wave,preview_sources,camera_safe_rect(),camera_requested)
+		var framing=camera_director.forecast_frame(sim,preview_wave,preview_sources,camera_safe_rect(),camera_requested,preview_emitters)
 		if not framing.is_empty():
 			zoom_target=framing.zoom
 			var target=camera_safe_rect().get_center()-framing.focus*zoom_target
@@ -1721,6 +1725,7 @@ func show_recap():
 	next_sim.make_wave()
 	preview_wave=next_sim.wave.duplicate(true)
 	preview_sources=next_sim.infection_sources.duplicate()
+	preview_emitters=next_sim.source_emitters.duplicate(true)
 	preview_center=next_sim.source_center
 	camera_warning_sources=[]
 	var most_growth=-1
@@ -1738,6 +1743,7 @@ func show_recap():
 	camera_requested=zoom_target
 	view.warning_wave=preview_wave
 	view.warning_sources=preview_sources
+	view.warning_emitters=preview_emitters
 	view.staging="warning"
 	view.warning_time=0.0
 	var changes=""

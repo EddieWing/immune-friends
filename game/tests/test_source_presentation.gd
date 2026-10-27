@@ -38,8 +38,8 @@ func _initialize():
  sim.spawn_virus({"type":"basic","lane":0})
  check(sim.viruses[0].p==source.states[0].p,"Virus is born inside the visible source")
  source.update(sim,sim.wave,sim.infection_sources,"",0.5)
- check(source.states[0].opening==1,"Source stays open while its last virus is emerging")
- sim.viruses[0].emerging=false
+ check(source.states[0].opening==1,"Source stays open briefly after its final release")
+ sim.viruses[0].age=1.0
  source.update(sim,sim.wave,sim.infection_sources,"",0.7)
  check(source.states[0].opening==0,"Source settles after emission ends")
  check(sim.infection_sources==snapshot,"Presentation never changes the simulation spawn positions")

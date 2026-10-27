@@ -39,7 +39,7 @@
   "ordinary_sell_price": 1,
   "shop_weights": "Reference tier CDF, then uniform selection among currently enabled implemented cells.",
   "unknown_elites": "Catalog elite overrides inherit ordinary parameters; HP from merged copies remains additive.",
-  "late_waves": "R11/R12 observed fixture recorded; generic generator remains provisional",
+  "late_waves": "External source growth and placement follow Demo 1.0.0; virus selection uses implemented types and local seeded RNG.",
   "protein_lifetime": 12,
   "charge_range": 58,
   "charge_rule": "one charge kills one reachable virus; nearby objects bridge",
@@ -48,11 +48,7 @@
   "stalemate_resolution": "After 180 seconds, remaining viruses each remove one blood cell; provisional safeguard, original unknown",
   "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured",
   "infection_sources": {
-    "distance_min": 510,
-    "distance_max": 660,
-    "angle_jitter_degrees": 25,
-    "exit_distance": 70,
-    "exit_spread": 85,
+    "status": "Reference geometry and schedule in infection_plan.gd. Unit adapter: 26 / 3.5. The remaining emerge_speed is only for legacy manually constructed emerging viruses.",
     "emerge_speed": 95
   },
   "recipe_reach": 24,

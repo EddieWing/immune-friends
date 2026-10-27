@@ -36,7 +36,7 @@
     "ordinary_sell_price": 1,
     "shop_weights": "uniform within unlocked non-reward types",
     "unknown_elites": "3 copies: sum HP, only measured role buffs applied",
-    "late_waves": "R9-12 extrapolated; generated variant selectable internally",
+    "late_waves": "External source growth and placement follow Demo 1.0.0; virus selection uses implemented types and local seeded RNG.",
     "protein_lifetime": 12,
     "charge_range": 58,
     "charge_rule": "one charge kills one reachable virus; nearby objects bridge",
@@ -49,12 +49,8 @@
       "slow_radius": 80
     },
     "infection_sources": {
-      "distance_min": 340.0,
-      "distance_max": 440.0,
-      "angle_jitter_degrees": 25.0,
-      "exit_distance": 70.0,
-      "exit_spread": 85.0,
-      "emerge_speed": 95.0
+      "status": "Reference geometry and schedule in infection_plan.gd. Unit adapter: 26 / 3.5. The remaining emerge_speed is only for legacy manually constructed emerging viruses.",
+      "emerge_speed": 95
     }
   },
   "cells": {

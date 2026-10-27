@@ -32,32 +32,20 @@ func run():
  scene.main_menu.hide()
  var sources_sim=load("res://scripts/simulation.gd").new()
  sources_sim.reset(42,12)
- var original_sources=sources_sim.infection_sources.duplicate()
- var distances_ok=true
- for source in original_sources:
-  var distance=source.distance_to(sources_sim.source_center)
-  distances_ok=distances_ok and distance>=510 and distance<=660
- check(distances_ok,"infection sources respect configured distance range")
+ var original_sources=sources_sim.source_emitters.duplicate(true)
  sources_sim.make_wave()
- check(sources_sim.infection_sources==original_sources,"source positions are stable for the same seed and round")
+ check(sources_sim.source_emitters==original_sources,"source plan is stable for the same seed and round")
  sources_sim.round_no=2
  sources_sim.make_wave()
- check(sources_sim.infection_sources!=original_sources,"next round randomizes source positions")
+ check(sources_sim.source_emitters[0].p==original_sources[0].p,"next round retains existing source positions")
  sources_sim.begin_battle()
  sources_sim.spawn_queue.clear()
  sources_sim.spawn_virus({"lane":0,"type":"basic"})
- var emerging=sources_sim.viruses[0]
- var origin=emerging.p
- var exit_point=emerging.exit
- check(origin==sources_sim.infection_sources[0] and emerging.emerging,"virus begins inside its ink source")
+ var virus=sources_sim.viruses[0]
+ var origin=virus.p
+ check(origin==sources_sim.infection_sources[0] and not virus.emerging,"virus begins at source with ordinary movement enabled")
  sources_sim.update(0.1)
- check(emerging.emerging and emerging.p.distance_to(exit_point)<origin.distance_to(exit_point),"virus first swims toward its spawn exit")
- for step in range(180):
-  if not emerging.emerging: break
-  sources_sim.update(1.0/60.0)
- check(not emerging.emerging and emerging.p.is_equal_approx(exit_point),"virus finishes emergence exactly at its generated spawn point")
- sources_sim.update(0.1)
- check(emerging.p!=exit_point,"normal movement begins after emergence")
+ check(virus.p!=origin,"virus moves without a separate exit phase")
  var final_positions=[]
  for speed in [1,2,5]:
   scene.sim.reset(42,12)
@@ -71,7 +59,7 @@ func run():
   scene.sim.begin_battle()
   scene.clock_accum=0
   scene.set_playback_speed(speed)
-  for i in range(5 if speed==1 else 1): scene.advance_simulation(0.1)
+  for i in range(15 if speed==1 else 3): scene.advance_simulation(0.1)
   final_positions.append(scene.sim.viruses[0].p)
  check(final_positions[0].is_equal_approx(final_positions[1]),"speed does not change trajectory at equal simulated time")
  scene.sim.reset(42,12)

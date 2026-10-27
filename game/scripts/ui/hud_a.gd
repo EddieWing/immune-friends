@@ -468,9 +468,10 @@ func draw_combat():
  text(Vector2(40,179),"KILLED %d     TOTAL %d" % [killed,count],11,MUTED)
  var y=213
  for lane in source_ids:
-  var releasing=sim.spawn_queue.any(func(e):return e.lane==lane) or sim.viruses.any(func(v):return v.alive and v.get("emerging",false) and v.get("source_lane",-1)==lane)
+  var releasing=sim.source_releasing(lane)
+  var waiting=sim.spawn_queue.any(func(e):return e.lane==lane)
   text(Vector2(42,y),"● Source %d" % (lane+1),14,Color("#e9ddbc"))
-  text(Vector2(173,y),"+ RELEASING" if releasing else "— QUIET",11,Color("#f093a0") if releasing else MUTED)
+  text(Vector2(173,y),"+ RELEASING" if releasing else ("— WAITING" if waiting else "— QUIET"),11,Color("#f093a0") if releasing else MUTED)
   y+=25
  y+=18
  var core=sim.blood.filter(func(c):return c.alive).size()

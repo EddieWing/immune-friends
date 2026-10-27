@@ -28,6 +28,12 @@ func _initialize():
  check(director.interest(sim).is_empty(),"Source beyond release threshold is excluded")
  sim.spawn_queue=[]
  check(director.interest(sim).is_empty(),"Empty sources are excluded")
+ sim.spawn_queue=[{"lane":0,"type":"basic","due":2.65,"p":Vector2(400,0)},{"lane":0,"type":"basic","due":2.65,"p":Vector2(600,0)},{"lane":1,"type":"basic","due":9.0}]
+ sim.elapsed=2.0
+ region=director.interest(sim)
+ check(region.focus==Vector2(327.5,0),"Scheduled camera interest includes every imminent emitter, not the group centroid")
+ check(sim.source_releasing(0) and not sim.source_releasing(1),"Future groups wait until release warning window")
+ sim.spawn_queue=[]
  check(director.AUTOMATIC_ZOOM_LEVELS==[0.45,0.88,1.5],"Three stable automatic zoom levels")
  check(director.automatic_zoom(director.ZoomLevel.WIDE)==0.45 and director.automatic_zoom(director.ZoomLevel.MEDIUM)==0.88 and director.automatic_zoom(director.ZoomLevel.CLOSE)==1.5,"Named levels resolve to exact targets")
  check(director.automatic_zoom(-1)==null and director.automatic_zoom(3)==null,"Invalid automatic zoom levels are rejected")

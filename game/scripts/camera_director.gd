@@ -16,13 +16,11 @@ func interest(sim):
  var objects=[]
  for virus in sim.viruses:
   if virus.alive: objects.append({"p":virus.p,"radius":10.0})
- var seen={}
  for index in range(sim.spawn_queue.size()):
-  if maxf(0.0,sim.spawn_timer)+index*sim.SPAWN_INTERVAL>RELEASE_LOOKAHEAD: break
+  if sim.spawn_eta(sim.spawn_queue[index],index)>RELEASE_LOOKAHEAD: continue
   var lane=int(sim.spawn_queue[index].lane)
-  if lane>=0 and lane<sim.infection_sources.size() and not seen.has(lane):
-   seen[lane]=true
-   objects.append({"p":sim.infection_sources[lane],"radius":SOURCE_RADIUS})
+  if lane>=0 and lane<sim.infection_sources.size():
+   objects.append({"p":sim.spawn_queue[index].get("p",sim.infection_sources[lane]),"radius":SOURCE_RADIUS})
  if objects.is_empty(): return {}
  for core in sim.blood:
   if core.alive: objects.append({"p":core.p,"radius":13.0})
@@ -51,7 +49,7 @@ func follow_position(position,scale,safe,region,delta):
 
 # Forecast is a composed overview, not infection tracking. Unused source slots
 # must not influence it; make_wave reserves positions beyond the active wave.
-func forecast_frame(sim,wave,sources,safe,requested):
+func forecast_frame(sim,wave,sources,safe,requested,emitters=[]):
  var points=[]
  for core in sim.blood:
   if core.alive: points.append(core.p)
@@ -63,6 +61,7 @@ func forecast_frame(sim,wave,sources,safe,requested):
   if entry.count>0 and lane>=0 and lane<sources.size() and not lanes.has(lane):
    lanes[lane]=true
    points.append(sources[lane])
+ for emitter in emitters: points.append(emitter.p)
  if points.is_empty(): return {}
  var bounds=Rect2(points[0],Vector2.ZERO)
  for point in points: bounds=bounds.expand(point)

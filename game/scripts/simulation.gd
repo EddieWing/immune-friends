@@ -41,7 +41,9 @@ var phase = "shop"
 var gym_mode=false
 var next_id = 1
 var elapsed = 0.0
-const SPAWN_INTERVAL = 0.38
+const SPAWN_INTERVAL = 1.5 # Fallback for manually inserted debug/Gym entries.
+var source_emitters: Array = []
+var infection_plan=preload("res://scripts/infection_plan.gd").new()
 var spawn_timer = 0.0
 var spawn_queue: Array = []
 var infection_sources=[]
@@ -402,21 +404,11 @@ func interval_of(c):
 	return interval
 
 func make_wave():
-	make_infection_sources()
-	var basic=2 if round_no==1 else 4
-	wave=[{"type":"basic","count":basic,"lane":0}]
-	if round_no>=3:
-		wave.append({"type":"wave" if seed_value%2==0 else "jumper","count":3 if round_no==3 else 6,"lane":0})
-	if round_no>=5:
-		wave.append({"type":"wave" if seed_value%2==0 else "hungry","count":5 if round_no==5 else 11,"lane":1})
-	if round_no>=7:
-		wave.append({"type":"seeker" if seed_value%2==0 else "swarmer","count":8 if round_no==7 else 17,"lane":2})
-	if round_no>=9:
-		wave.append({"type":"swarmer","count":12+(round_no-9)*14,"lane":1})
-	if experimental and round_no>=9:
-		wave.append({"type":"pusher","count":12+(round_no-9)*4,"lane":2})
-	if round_no>=11:
-		wave.append({"type":"avoider","count":12+(round_no-11)*8,"lane":0})
+	var plan=infection_plan.build(seed_value,round_no,available_virus_keys())
+	source_center=Vector2.ZERO
+	infection_sources=plan.positions
+	source_emitters=plan.emitters
+	wave=plan.wave
 
 func begin_battle():
 	if phase!="shop" or not reward_choices.is_empty():
@@ -461,32 +453,22 @@ func begin_battle():
 			if n.get("key","")=="radar": apply_radar(c,n)
 			if n.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
 	for entry in wave:
-		for i in range(entry.count):
-			spawn_queue.append({"type":entry.type,"lane":entry.lane})
-	# Interleave lanes, preserving deterministic timing for a given seed.
-	for i in range(spawn_queue.size()-1,0,-1):
-		var j=rng.randi_range(0,i)
-		var temp=spawn_queue[i]
-		spawn_queue[i]=spawn_queue[j]
-		spawn_queue[j]=temp
+		var members=source_emitters.filter(func(e): return e.lane==entry.lane and e.type==entry.type)
+		var remaining=int(entry.count)
+		for emitter in members:
+			for i in range(mini(remaining,emitter.amount)):
+				spawn_queue.append({"type":entry.type,"lane":entry.lane,"p":emitter.p,"due":emitter.delay+i*emitter.cooldown})
+			remaining-=mini(remaining,emitter.amount)
+		# Debug/Gym sources use an independent timer as well.
+		var interval=rng.randf_range(1.0,2.0)
+		for i in range(remaining):
+			spawn_queue.append({"type":entry.type,"lane":entry.lane,"due":1.0+i*interval})
+	spawn_queue.sort_custom(func(a,b): return a.due<b.due)
+
 	record("battle_start")
 
 func make_infection_sources():
-	var config=rules.infection_sources
-	var source_rng=RandomNumberGenerator.new()
-	source_rng.seed=seed_value+round_no*104729
-	source_center=Vector2.ZERO
-	var alive=blood.filter(func(b): return b.alive)
-	for b in alive: source_center+=b.p
-	if not alive.is_empty(): source_center/=alive.size()
-	infection_sources.clear()
-	var minimum=maxf(1,config.distance_min)
-	var maximum=maxf(minimum,config.distance_max)
-	for angle in [0.0,PI,-PI/2]:
-		var jitter=deg_to_rad(clampf(config.angle_jitter_degrees,0,45))
-		var direction=Vector2.from_angle(angle+source_rng.randf_range(-jitter,jitter))
-		infection_sources.append(source_center+direction*source_rng.randf_range(minimum,maximum))
-	ensure_infection_sources_clear()
+	make_wave()
 
 # 70 units reserve the fully opened ink source plus a small membrane gap.
 func source_position_clear(p):
@@ -502,43 +484,36 @@ func source_position_clear(p):
 	return true
 
 func ensure_infection_sources_clear():
-	for lane in range(infection_sources.size()):
-		var original=infection_sources[lane]
-		if source_position_clear(original): continue
-		var direction=source_center.direction_to(original)
-		if direction==Vector2.ZERO: direction=Vector2.RIGHT.rotated(lane*TAU/3)
-		var found=false
-		# Bounded deterministic search; never consume combat/shop RNG.
-		for step in range(25):
-			var offset=0.0 if step==0 else ceilf(step/2.0)*deg_to_rad(5)*(-1 if step%2 else 1)
-			for ring in range(4):
-				var radius=lerpf(float(rules.infection_sources.distance_min),float(rules.infection_sources.distance_max),ring/3.0)
-				var candidate=source_center+direction.rotated(offset)*radius
-				if source_position_clear(candidate):
-					infection_sources[lane]=candidate
-					found=true
-					break
-			if found: break
-		if found: continue
-		# A crowded ring may require a more distant source, outside every body.
-		var radius=float(rules.infection_sources.distance_max)
-		for c in cells:
-			if c.alive: radius=maxf(radius,source_center.distance_to(c.p)+120.0)
-		for b in blood:
-			if b.alive: radius=maxf(radius,source_center.distance_to(b.p)+120.0)
-		infection_sources[lane]=source_center+direction*radius
+	# Original external sources keep their slots, even after player repositioning.
+	pass
 
 func spawn_virus(entry):
 	if not available_virus_keys().has(entry.type): return
-	var config=rules.infection_sources
-	var p=infection_sources[entry.lane]
-	var inward=p.direction_to(source_center)
-	var exit=p+inward*maxf(1,config.exit_distance)+inward.orthogonal()*rng.randf_range(-config.exit_spread,config.exit_spread)
+	var p=entry.get("p",infection_sources[entry.lane])
 	var hp=float(tuning.get("virus:"+entry.type,{}).get("hp",2.0 if entry.type=="seeker" else 1.0))
 	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"peak_hp":hp,"alive":true,
 		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"jump":false,"phase":rng.randf()*TAU,
-		"emerging":true,"exit":exit,"spawn_position":p,"source_lane":entry.lane})
+		"emerging":false,"exit":p,"spawn_position":p,"source_lane":entry.lane})
 	next_id+=1
+
+func spawn_eta(entry: Dictionary, index: int=0) -> float:
+	return maxf(0.0,float(entry.due)-elapsed) if entry.has("due") else maxf(0.0,spawn_timer)+index*SPAWN_INTERVAL
+
+func source_releasing(lane: int) -> bool:
+	return spawn_queue.any(func(e):return e.lane==lane and spawn_eta(e)<=0.65) or viruses.any(func(v):return v.alive and v.get("source_lane",-1)==lane and v.get("age",1.0)<0.65)
+
+func advance_spawns(delta: float):
+	spawn_timer-=delta
+	var pending=[]
+	for entry in spawn_queue:
+		if entry.has("due"):
+			if float(entry.due)<=elapsed+0.000001: spawn_virus(entry)
+			else: pending.append(entry)
+		elif spawn_timer<=0:
+			spawn_virus(entry)
+			spawn_timer=SPAWN_INTERVAL
+		else: pending.append(entry)
+	spawn_queue=pending
 
 func nearest_virus(p: Vector2, reach: float=10000.0) -> Dictionary:
 	# Distances are nonnegative and the original comparison is strict (<).
@@ -682,10 +657,7 @@ func update(delta: float):
 	if phase in ["shop","battle"]: step_blood(delta)
 	if phase!="battle": return
 	elapsed+=delta
-	spawn_timer-=delta
-	if spawn_timer<=0 and not spawn_queue.is_empty():
-		spawn_virus(spawn_queue.pop_front())
-		spawn_timer=SPAWN_INTERVAL
+	advance_spawns(delta)
 	var has_network_buffs=false
 	for provider: Dictionary in cells:
 		if provider.alive and provider.key in ["radar","accelerator"]:

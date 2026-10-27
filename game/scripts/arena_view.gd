@@ -47,6 +47,7 @@ var debug_ranges=false
 var diagnostics=preload("res://scripts/debug_overlay.gd").new()
 var warning_wave=[]
 var warning_sources=[]
+var warning_emitters=[]
 var warning_time=0.0
 var arrivals={}
 var known_cells={}
@@ -106,6 +107,7 @@ func _draw():
 			draw_circle(source.p,60+source.opening*6+sin(sources.clock*0.8+lane)*1.5,Color(0.38,0.34,0.45,0.35+source.opening*0.08))
 			if not new_hud and (sim.phase=="shop" or staging=="warning"): draw_range_ring(source.p,66,Color("#be4a68"),true)
 		else: sources.draw(self,lane)
+		sources.draw_emitters(self,lane,warning_emitters if staging=="warning" else sim.source_emitters)
 		if staging=="warning" and source.active and not new_hud: draw_warning(source.p,lane)
 	# Range underneath bodies and hands.
 	var selected=sim.cell_by_id(selected_id)
