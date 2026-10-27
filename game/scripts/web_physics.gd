@@ -59,16 +59,16 @@ globalThis.microcosmContacts = (() => {
   const depth=f(Math.max(0,h.depth-.02)),denom=f(a.im+b.im),cx=f(f(f(nx*depth)*f(.65))/denom),cy=f(f(f(ny*depth)*f(.65))/denom);
   a.p=[f(a.p[0]-f(cx*aim)),f(a.p[1]-f(cy*aim))];b.p=[f(b.p[0]+f(cx*bim)),f(b.p[1]+f(cy*bim))];
  }
- function contacts(bodies,scale){
+ function contacts(bodies,scale,groups={}){
   const grid=new Map(),cells=new Map(),tiles=[],pairs=[],found=new Map();
   bodies.forEach((b,i)=>{const tile=[Math.floor(b.p[0]/96),Math.floor(b.p[1]/96)];tiles.push(tile);if(!b.eligible)return;const key=tile.join(',');if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(b.cell){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
-  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=b.cell?grid:cells,t=tiles[i];for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i)pairs.push([i,j])});
+  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=b.cell?grid:cells,t=tiles[i];for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))pairs.push([i,j])});
   for(let pass=0;pass<3;pass++)for(const [i,j] of pairs){const a=bodies[i],b=bodies[j],h=hit(a,b);if(!h)continue;const ids=[Math.min(a.id,b.id),Math.max(a.id,b.id)];found.set(ids.join(','),ids);resolve(a,b,h,scale)}
   return found;
  }
  function run(rows,scale){const bodies=rows.map(shape),found=contacts(bodies,scale);return [bodies.map(b=>[...b.p,...b.v,b.w]),[...found.values()]];}
  const limit=(v,max)=>{max=f(max);const l=len(v);return l>0&&max<l?mul(div(v,l),max):v};
- function advance(rows,delta,steps,scale,links=[],stiffness=0,damping=0){
+ function advance(rows,delta,steps,scale,links=[],stiffness=0,damping=0,groups={}){
   const bodies=rows.map(shape),found=new Map(),dt=delta/steps;
 
   bodies.forEach((b,i)=>b.angle=rows[i][16]);
@@ -95,7 +95,7 @@ globalThis.microcosmContacts = (() => {
      if(x!==b.p[0])b.v[0]=f(-b.v[0]*b.bounce);if(y!==b.p[1])b.v[1]=f(-b.v[1]*b.bounce);b.p=[x,y];
     }
    });
-   for(const [k,v] of contacts(bodies,scale))found.set(k,v);
+   for(const [k,v] of contacts(bodies,scale,groups))found.set(k,v);
   }
 
   return new Float64Array([...bodies.flatMap(b=>[...b.p,...b.v,b.w,b.angle]),...[...found.values()].flat()]);
@@ -165,8 +165,8 @@ globalThis.microcosmContacts = (() => {
  let materials=[];
  function advanceCompact(text,config,links){
   const p=JSON.parse(config),rows=unpack(text,13).map(d=>{const r=materials[d[12]].slice();r[0]=d[0];r[1]=d[1];r[2]=d[2];r[3]=d[3];r[4]=d[4];r[12]=d[5];r[16]=d[6];r[17]=d[7];r[18]=d[8];r[15]=d[9];r[19]=d[10];r[20]=d[11];if(r[6]){r[13]=cosf(r[16]);r[14]=sinf(r[16])}return r});
-  return advance(rows,p[0],p[1],p[2],JSON.parse(links),p[3],p[4]);
+  return advance(rows,p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5]);
  }
- return {advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4])}};
+ return {advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5])}};
 })();
 """

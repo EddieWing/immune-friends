@@ -19,7 +19,9 @@
     "cry_seconds": 3
   },
   "start_blood": 20,
-  "bond_distance": 145,
+  "bond_query_radius": 44.57142857142857,
+  "friendly_collision_stun": 0.5,
+  "bond_rules": "Demo 1.0.0: query radius6 converted by26/3.5, fixture-aware selection sorted by center distance; locked combat topology. Rigid pose projection is a custom solver, not Box2D. Core-to-Core elasticity deliberately retained.",
   "bond_stiffness": 0.65,
   "contact_damage": 1,
   "contact_interval": 0.8,

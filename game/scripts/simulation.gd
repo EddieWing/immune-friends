@@ -3,6 +3,7 @@ extends RefCounted
 var shop_rules: Dictionary
 var selected_rewards: Array = []
 var max_funds = 3
+var bonds=preload("res://scripts/bond_system.gd").new()
 var physics=preload("res://scripts/body_physics.gd").new()
 var tuning={}
 var experimental=false
@@ -344,29 +345,7 @@ func hit_core(b, v):
 	record("blood_lost",{"id":b.id,"p":b.p})
 
 func rebuild_links():
-	links.clear()
-	for c in cells:
-		if catalog[c.key].behavior!="bond":
-			continue
-		var near = cells.filter(func(item): return item.alive)
-		near.erase(c)
-		if c.key=="bodyguard":
-			for b in blood:
-				if b.alive: near.append({"id":core_endpoint(b),"p":b.p})
-		near.sort_custom(func(a,b): return a.p.distance_squared_to(c.p)<b.p.distance_squared_to(c.p))
-		var count = int(constant_of(c,"maxBonds",2))
-		for other in near:
-			if count<=0:
-				break
-			if c.p.distance_to(other.p)>float(rules.bond_distance):
-				continue
-			var exists=false
-			for link in links:
-				if (link.a==c.id and link.b==other.id) or (link.b==c.id and link.a==other.id):
-					exists=true
-			if not exists:
-				links.append({"a":c.id,"b":other.id,"rest":maxf(42,c.p.distance_to(other.p)),"owner":c.id})
-			count-=1
+	bonds.rebuild(self)
 
 func network(id):
 	var found=[id]
@@ -416,6 +395,8 @@ func begin_battle():
 	ensure_infection_sources_clear()
 	round_losses={"viruses":0,"core":0,"cells":0}
 	physics.clear()
+	rebuild_links()
+	bonds.lock(self)
 	phase="battle"
 	elapsed=0
 	spawn_timer=0
@@ -431,6 +412,7 @@ func begin_battle():
 		c.start_angle=c.angle
 		c.cool=0.1
 		c.contact=0
+		c["friendly_stun"]=0.0
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
 		c.speed_buff=1.0
@@ -656,6 +638,7 @@ func update(delta: float):
 	effects=effects.filter(func(e): return e.life>0)
 	for c: Dictionary in cells: c.flash=maxf(0,c.flash-delta)
 	if phase in ["shop","battle"]: step_blood(delta)
+	if phase=="shop": rebuild_links()
 	if phase!="battle": return
 	elapsed+=delta
 	advance_spawns(delta)
@@ -677,6 +660,7 @@ func update(delta: float):
 		experiments.tick(self,c,delta)
 		c.cool-=delta
 		c.contact=maxf(0,c.contact-delta)
+		c["friendly_stun"]=maxf(0,float(c.get("friendly_stun",0))-delta)
 		var d: Dictionary=catalog[c.key]
 		var velocity: Vector2=Vector2.ZERO
 		var reach: float=range_of(c)
@@ -704,12 +688,13 @@ func update(delta: float):
 			if not target.is_empty(): velocity=c.p.direction_to(target.p)*speed_of(c)*3
 		elif d.behavior=="orbit":
 			var radius: float=maxf(100,c.start.length())
-			c.orbit-=speed_of(c)*3/radius*movement_delta
+			if c.friendly_stun<=0:c.orbit-=speed_of(c)*3/radius*movement_delta
 			var desired: Vector2=Vector2.from_angle(c.orbit)*radius
 			velocity=(desired-c.p).limit_length(speed_of(c)*3)
 		if c.get("launch_remaining",0.0)>0:
 			velocity=Vector2.RIGHT.rotated(c.angle)*150.0
 			c.launch_remaining=maxf(0,c.launch_remaining-delta)
+		if c.friendly_stun>0: velocity=Vector2.ZERO
 		physics.drive(c,velocity*float(rules.movement_multiplier)*float(c.speed_buff))
 		if c.cool<=0:
 			c.cool=maxf(0.05,interval_of(c))
@@ -834,6 +819,12 @@ func update(delta: float):
 					v.peak_hp=maxf(v.get("peak_hp",v.hp),v.hp)
 					record("virus_fed",{"id":v.id,"p":v.p,"from":p.p,"hp":v.hp})
 	physics.step(self,delta)
+	for pair: Vector2i in physics.contacts:
+		var a=endpoint_by_id(pair.x);var b=endpoint_by_id(pair.y)
+		if a.is_empty() or b.is_empty() or a.has("type") or b.has("type"):continue
+		for body in [a,b]:
+			if body.has("key") and float(body.get("friendly_stun",0))<=0:
+				body.friendly_stun=float(rules.get("friendly_collision_stun",0.5))
 	# Contacts already contain every touching pair from the solver. Index those
 	# pairs once instead of probing every cell for every virus. Preserve cell
 	# order: the first live touching cell still consumes the contact cooldown.
@@ -964,6 +955,8 @@ func next_round():
 		for l in links:
 			if l.owner==c.id:
 				var other=cell_by_id(l.b)
+				# Core is a physical endpoint, but has no exchangeable HP stat.
+				if other.is_empty():continue
 				exchanges.append([c,other,c.max_hp,other.max_hp])
 				break
 	for swap in exchanges:

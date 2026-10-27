@@ -6,6 +6,7 @@ func _init():
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval(preload("res://scripts/web_physics.gd").SOURCE,true)
 		web_kernel=JavaScriptBridge.get_interface("microcosmContacts")
+var rigid_membership={}
 var states={}
 var contacts={}
 var drives={}
@@ -25,6 +26,7 @@ var settled_input: Array=[]
 var settled_hits=0
 func clear():
 	stepping=false
+	rigid_membership.clear()
 	states.clear()
 	contacts.clear()
 	drives.clear()
@@ -193,11 +195,13 @@ func candidate_pairs(bodies: Array) -> Array:
 				var neighbour=tile+Vector2i(x,y)
 				if not candidates.has(neighbour):continue
 				for j in candidates[neighbour]:
-					if j>i:pairs.append(Vector2i(i,j))
+					if j>i and not (not rigid_membership.is_empty() and rigid_membership.has(id_of(bodies[i])) and rigid_membership.get(id_of(bodies[i]))==rigid_membership.get(id_of(bodies[j]))):pairs.append(Vector2i(i,j))
 	return pairs
 
 func step(s,delta: float):
 	if delta<=0:return
+	s.bonds.prepare(s)
+	rigid_membership=s.bonds.membership
 	var input=step_signature(s,delta) if can_settle(s) else []
 	if not settled_input.is_empty() and input==settled_input:
 		# Exact fixed point, not threshold-based sleeping. Contacts and states are
@@ -237,6 +241,7 @@ func step(s,delta: float):
 	var dt: float=delta/steps
 	if web_kernel!=null and web_angles_supported(bodies):
 		advance_web(s,bodies,delta,steps)
+		s.bonds.project(s)
 		for i in range(s.blood.size()):
 			if s.blood[i].alive:s.blood_velocity[i]=state(s.blood[i]).v
 		settled_input=input if not input.is_empty() and can_settle(s) and input==step_signature(s,delta) else []
@@ -248,6 +253,7 @@ func step(s,delta: float):
 	for tick in range(steps):
 		# Existing elastic bonds retain their rest length and nearest-neighbour rules.
 		for link in s.links:
+			if link.get("locked",false):continue
 			var a=s.endpoint_by_id(link.a);var b=s.endpoint_by_id(link.b)
 			if a.is_empty() or b.is_empty() or not a.alive or not b.alive:continue
 			var offset: Vector2=b.p-a.p
@@ -316,6 +322,7 @@ func step(s,delta: float):
 				positions[pair.y]=b.p
 		cache_axes=false
 		contact_axes.clear()
+	s.bonds.project(s)
 	for i in range(s.blood.size()):
 		if s.blood[i].alive:s.blood_velocity[i]=state(s.blood[i]).v
 	settled_input=input if not input.is_empty() and can_settle(s) and input==step_signature(s,delta) else []
@@ -393,10 +400,11 @@ func advance_web(s,bodies: Array,delta: float,steps: int):
 		row_offset+=13
 	var links=[]
 	for link in s.links:
+		if link.get("locked",false):continue
 		var a=s.endpoint_by_id(link.a);var b=s.endpoint_by_id(link.b)
 		if a.is_empty() or b.is_empty() or not a.alive or not b.alive:continue
 		links.append([indices[id_of(a)],indices[id_of(b)],link.rest])
-	var buffer=web_kernel.advanceCompact(Marshalls.raw_to_base64(rows.to_byte_array()),JSON.stringify([delta,steps,float(settings.get("contact_impulse_scale",1.0)),float(settings.spring_stiffness),float(settings.spring_damping)],"",true,true),JSON.stringify(links,"",true,true))
+	var buffer=web_kernel.advanceCompact(Marshalls.raw_to_base64(rows.to_byte_array()),JSON.stringify([delta,steps,float(settings.get("contact_impulse_scale",1.0)),float(settings.spring_stiffness),float(settings.spring_damping),rigid_membership],"",true,true),JSON.stringify(links,"",true,true))
 	var result=JavaScriptBridge.js_buffer_to_packed_byte_array(buffer).to_float64_array()
 	for i in range(bodies.size()):
 		var offset=i*6;var body: Dictionary=bodies[i]

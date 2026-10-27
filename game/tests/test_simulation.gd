@@ -87,6 +87,7 @@ func run():
 	s.damage_cell(bandage,1)
 	check(patient.hp==4,"bandage death heal")
 	s.reset()
+	s.blood=[];s.blood_links=[]
 	var swapper=add(s,"swapper")
 	var drop=add(s,"tag_dropper",Vector2(60,0))
 	drop.max_hp=12

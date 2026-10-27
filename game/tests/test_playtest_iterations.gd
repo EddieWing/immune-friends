@@ -33,8 +33,8 @@ func _initialize():
 	s.blood=[]
 	s.blood_links=[]
 	var seeker=add(s,"seeker",Vector2(-100,0))
-	var bond=add(s,"bond",Vector2(-160,30))
-	var wall=add(s,"wall",Vector2(-220,50))
+	var bond=add(s,"bond",Vector2(-155,20))
+	var wall=add(s,"wall",Vector2(-215,40))
 	s.begin_battle()
 	s.spawn_queue.clear()
 	s.viruses=[{"id":900,"type":"basic","p":Vector2(-30,0),"hp":1000,"alive":true,"cool":100.0,"tag":0.0,"freeze":100.0,"age":0.0,"jump":false,"phase":0.0}]

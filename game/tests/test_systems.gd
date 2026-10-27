@@ -15,9 +15,10 @@ func _initialize():
 func run():
 	var s=Sim.new()
 	s.reset(42,12)
+	s.blood=[];s.blood_links=[]
 	var wall=add(s,"wall",Vector2.ZERO)
-	var bridge=add(s,"bond",Vector2(70,0))
-	var guard=add(s,"bodyguard",Vector2(140,0))
+	var bridge=add(s,"bond",Vector2(55,0))
+	var guard=add(s,"bodyguard",Vector2(110,0))
 	s.rebuild_links()
 	s.damage_cell(wall,2)
 	check(wall.hp==3 and guard.hp==5,"bodyguard protects beyond direct neighbour")
@@ -25,14 +26,17 @@ func run():
 	s.damage_cell(wall,1)
 	check(wall.hp==2,"dead guard stops redirecting")
 	s.reset()
+	s.blood=[];s.blood_links=[]
 	var radar=add(s,"radar",Vector2.ZERO)
-	var turret=add(s,"turret",Vector2(70,0))
+	s.gym_mode=true
+	var turret=add(s,"turret",Vector2(55,0))
 	s.begin_battle()
 	s.update(0.01)
 	check(turret.range_buff==1.5,"radar network active")
 	s.damage_cell(radar,100,true)
 	s.update(0.01)
 	check(turret.range_buff==1.0,"radar effect removed on death")
+	s.gym_mode=false
 	s.reset()
 	var zapper=add(s,"zapper",Vector2(220,0))
 	s.begin_battle()
