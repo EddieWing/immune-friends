@@ -12,11 +12,10 @@ func run():
  var initial=director.frame(sim,"battle",safe,1.5)
  sim.viruses=[{"alive":true,"p":Vector2(10000,10000)}]
  var distant=director.frame(sim,"battle",safe,1.5)
- check(initial==distant,"distant enemies cannot pull camera away from core")
+ check(initial.is_empty() and not distant.is_empty() and distant.zoom==1.5,"Only threats create interest; distant viruses are included without changing zoom")
  var warning=director.frame(sim,"warning",safe,0.88,[Vector2(-800,100)])
  check(warning.focus==Vector2(-800,100),"forecast frames selected threat")
- for b in sim.blood:
-  if b.alive: check(safe.has_point(b.p*initial.zoom+initial.position),"core stays inside safe frame")
+
  var scene=load("res://main.tscn").instantiate()
  scene.settings_path="user://microscope_test_settings.cfg"
  scene.save_path="user://microscope_test_run.json"
@@ -27,6 +26,31 @@ func run():
  scene.auto_camera=true
  scene.set_zoom(1.5)
  check(scene.auto_camera,"manual zoom retains Auto")
+ scene.set_process(false)
+ scene.zoom_gauge.auto_button.button_pressed=false
+ scene.zoom_gauge.auto_button.button_pressed=true
+ check(scene.auto_camera,"Auto button enables tracking")
+ var arrow=InputEventKey.new()
+ arrow.physical_keycode=KEY_RIGHT
+ arrow.keycode=KEY_RIGHT
+ arrow.pressed=true
+ Input.parse_input_event(arrow)
+ Input.flush_buffered_events()
+ var arrow_before=scene.view.position
+ scene.advance_manual_camera(0.5)
+ arrow=arrow.duplicate()
+ arrow.pressed=false
+ Input.parse_input_event(arrow)
+ Input.flush_buffered_events()
+ check(not scene.auto_camera and scene.view.position.x<arrow_before.x,"Arrow key pans and disables Auto")
+ scene.auto_camera=true
+ scene.dragging_blood=0
+ arrow_before=scene.view.position
+ scene.advance_manual_camera(1,Vector2.LEFT)
+ check(scene.view.position==arrow_before and scene.auto_camera,"Dragging a cell blocks keyboard pan")
+ scene.dragging_blood=-1
+ scene.auto_camera=true
+
  var event=InputEventMouseButton.new()
  event.button_index=MOUSE_BUTTON_RIGHT
  event.position=Vector2(700,400)
@@ -68,6 +92,7 @@ func run():
  scene.begin_camera_pan(Vector2(700,400))
  scene._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
  check(not scene.panning,"Losing window focus cancels right drag")
+ scene._notification(Node.NOTIFICATION_APPLICATION_FOCUS_IN)
  scene.auto_camera=true
  scene.panning=false
  scene.sim.phase="shop"

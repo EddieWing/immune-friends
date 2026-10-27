@@ -41,6 +41,7 @@ var phase = "shop"
 var gym_mode=false
 var next_id = 1
 var elapsed = 0.0
+const SPAWN_INTERVAL = 0.38
 var spawn_timer = 0.0
 var spawn_queue: Array = []
 var infection_sources=[]
@@ -684,7 +685,7 @@ func update(delta: float):
 	spawn_timer-=delta
 	if spawn_timer<=0 and not spawn_queue.is_empty():
 		spawn_virus(spawn_queue.pop_front())
-		spawn_timer=0.38
+		spawn_timer=SPAWN_INTERVAL
 	var has_network_buffs=false
 	for provider: Dictionary in cells:
 		if provider.alive and provider.key in ["radar","accelerator"]:

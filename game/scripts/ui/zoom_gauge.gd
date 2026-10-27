@@ -2,11 +2,34 @@ extends Control
 var modern=false
 var game
 var dragging=false
+var auto_button: Button
 func _ready():
  mouse_filter=Control.MOUSE_FILTER_STOP
  mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
  focus_mode=Control.FOCUS_ALL
  tooltip_text="Click or drag to zoom"
+ auto_button=Button.new()
+ auto_button.text="Auto"
+ auto_button.toggle_mode=true
+ auto_button.add_theme_font_size_override("font_size",13)
+ auto_button.add_theme_color_override("font_color",Color("#fff2cf"))
+ auto_button.add_theme_color_override("font_pressed_color",Color("#292e30"))
+ auto_button.add_theme_stylebox_override("normal",track_style(Color("#292e30")))
+ auto_button.add_theme_stylebox_override("pressed",track_style(Color("#d3aa56")))
+ auto_button.add_theme_stylebox_override("hover_pressed",track_style(Color("#e7be69")))
+ auto_button.focus_mode=Control.FOCUS_NONE
+ auto_button.position=Vector2(-8,298)
+ auto_button.size=Vector2(58,28)
+ auto_button.tooltip_text="Automatic camera tracking. Right drag, WASD or arrow keys return to manual control."
+ auto_button.toggled.connect(func(enabled):
+  game.auto_camera=enabled
+  game.panning=false
+ )
+ add_child(auto_button)
+func _process(_delta):
+ auto_button.set_pressed_no_signal(game.auto_camera)
+ auto_button.disabled=game.modal.visible or game.browsing_from_main_menu() or game.entering_game
+
 func set_from_y(y):
  var ratio=clampf((230.0-y)/200.0,0,1)
  game.set_zoom(0.45+ratio*1.05)

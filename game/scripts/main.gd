@@ -59,6 +59,7 @@ var audio: AudioStreamPlayer
 var ambient: AudioStreamPlayer
 var bottom_panel: PanelContainer
 var shop_toggle: Button
+var camera_input_focused=true
 var auto_camera=true
 var core_feedback=preload("res://scripts/core_feedback.gd").new()
 var core_shake_offset=Vector2.ZERO
@@ -1155,7 +1156,7 @@ func _process(delta):
 		stats.text="%d/%d " % [sim.cells.size(),sim.capacity()]
 
 func can_pan_camera():
-	return sim.phase in ["shop","battle"] and not modal.visible and not browsing_from_main_menu() and not entering_game and launch_remaining<=0
+	return camera_input_focused and sim.phase in ["shop","battle"] and not modal.visible and not browsing_from_main_menu() and not entering_game and launch_remaining<=0
 
 func begin_camera_pan(screen):
 	if not can_pan_camera() or not board_rect.has_point(screen) or dragging or rotating or dragging_blood>=0: return
@@ -1168,15 +1169,20 @@ func advance_manual_camera(delta,direction=Vector2.INF):
 		panning=false
 		return
 	var focus=get_viewport().gui_get_focus_owner()
-	if focus is LineEdit or focus is TextEdit: return
+	if focus is LineEdit or focus is TextEdit or focus==zoom_gauge: return
+	if dragging or rotating or dragging_blood>=0 or zoom_gauge.dragging: return
 	if direction==Vector2.INF:
-		direction=Vector2(float(Input.is_physical_key_pressed(KEY_A))-float(Input.is_physical_key_pressed(KEY_D)),float(Input.is_physical_key_pressed(KEY_W))-float(Input.is_physical_key_pressed(KEY_S)))
+		direction=Vector2(float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT))-float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)),float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP))-float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)))
 	if direction.length_squared()>0:
 		auto_camera=false
 		view.position+=direction.limit_length(1.0)*delta*280
 
 func _notification(what):
-	if what==NOTIFICATION_APPLICATION_FOCUS_OUT: panning=false
+	if what==NOTIFICATION_APPLICATION_FOCUS_OUT:
+		panning=false
+		camera_input_focused=false
+		if is_instance_valid(zoom_gauge): zoom_gauge.dragging=false
+	elif what==NOTIFICATION_APPLICATION_FOCUS_IN: camera_input_focused=true
 
 func _input(event):
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_RIGHT and not event.pressed:
@@ -1475,11 +1481,10 @@ func center_preparation_camera():
 func advance_camera(delta):
 	view.position-=core_shake_offset
 	core_shake_offset=Vector2.ZERO
-	var follow=auto_camera and not panning and not gym_mode and not browsing_from_main_menu() and not entering_game
+	var follow=auto_camera and not panning and not browsing_from_main_menu() and not entering_game
 	var phase="warning" if view.staging=="warning" else sim.phase
 	if phase!=camera_phase:
 		camera_phase=phase
-		if follow and phase=="warning": camera_requested=0.88
 	if follow and phase in ["battle","warning"]:
 		var framing=camera_director.frame(sim,phase,camera_safe_rect(),camera_requested,camera_warning_sources)
 		if ui_new and phase=="warning" and not preview_sources.is_empty():
@@ -1488,11 +1493,8 @@ func advance_camera(delta):
 			for core in sim.blood:
 				if core.alive:bounds=bounds.expand(core.p)
 			bounds=bounds.grow(90)
-			framing.focus=bounds.get_center()
-			framing.zoom=clampf(minf(0.88,minf(750/bounds.size.x,630/bounds.size.y)),0.45,1.5)
-		zoom_target=framing.zoom
-		var target=camera_safe_rect().get_center()-framing.focus*view.scale.x
-		if view.position.distance_to(target)>8: view.position=view.position.lerp(target,1.0-exp(-delta*3.0))
+			framing={"focus":bounds.get_center(),"radius":maxf(bounds.size.x,bounds.size.y)*0.5}
+		view.position=camera_director.follow_position(view.position,view.scale.x,camera_safe_rect(),framing,delta)
 	var value=lerpf(view.scale.x,zoom_target,1.0-exp(-delta/0.065))
 	if absf(value-zoom_target)<0.0001: value=zoom_target
 	view.scale=Vector2.ONE*value
