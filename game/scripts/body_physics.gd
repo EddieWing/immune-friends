@@ -51,7 +51,7 @@ func inertia(s,body: Dictionary) -> float:
 	if material_cache.has(key): return material_cache[key].inertia
 	return mass(s,body)*((86.0*86.0+26.0*26.0)/12.0 if is_box(s,body) else radius(body)*radius(body)*0.5)
 func impulse(s,body,value,point=Vector2.INF):
-	var st=state(body)
+	var st: Dictionary=state(body)
 	st.v+=value/mass(s,body)
 	if point!=Vector2.INF:
 		st.w+=(point-body.p).cross(value)/inertia(s,body)
@@ -69,50 +69,50 @@ func axes(body: Dictionary) -> Array[Vector2]:
 	return result
 func extent(s,body: Dictionary,axis: Vector2) -> float:
 	if not is_box(s,body): return radius(body)
-	var basis=axes(body)
+	var basis: Array[Vector2]=axes(body)
 	return absf(axis.dot(basis[0]))*43.0+absf(axis.dot(basis[1]))*13.0
 func support(s,body: Dictionary,axis: Vector2) -> Vector2:
 	if not is_box(s,body): return body.p+axis*radius(body)
-	var basis=axes(body)
+	var basis: Array[Vector2]=axes(body)
 	# Face centre for parallel directions, rather than an arbitrary corner.
 	return body.p+basis[0]*43.0*signf(axis.dot(basis[0]))+basis[1]*13.0*signf(axis.dot(basis[1]))
 func collision(s,a: Dictionary,b: Dictionary) -> Dictionary:
 	var delta: Vector2=b.p-a.p
-	var a_box=is_box(s,a);var b_box=is_box(s,b)
-	var ra=45.0 if a_box else radius(a)
-	var rb=45.0 if b_box else radius(b)
+	var a_box: bool=is_box(s,a);var b_box: bool=is_box(s,b)
+	var ra: float=45.0 if a_box else radius(a)
+	var rb: float=45.0 if b_box else radius(b)
 	if delta.length_squared()>(ra+rb+0.02)*(ra+rb+0.02): return {}
 	if not a_box and not b_box:
-		var distance=delta.length()
-		var depth=radius(a)+radius(b)-distance
+		var distance: float=delta.length()
+		var depth: float=radius(a)+radius(b)-distance
 		if depth < -0.02: return {}
-		var normal=delta/distance if distance>0.0001 else Vector2.RIGHT
+		var normal: Vector2=delta/distance if distance>0.0001 else Vector2.RIGHT
 		return {"n":normal,"depth":maxf(0,depth),"p":a.p+normal*(radius(a)-depth*0.5)}
 	if a_box and b_box:
-		var normal=Vector2.RIGHT
-		var depth=INF
+		var normal: Vector2=Vector2.RIGHT
+		var depth: float=INF
 		for axis in axes(a)+axes(b):
-			var overlap=extent(s,a,axis)+extent(s,b,axis)-absf(delta.dot(axis))
+			var overlap: float=extent(s,a,axis)+extent(s,b,axis)-absf(delta.dot(axis))
 			if overlap < -0.02:return {}
 			if overlap<depth:
 				depth=overlap
 				normal=axis if delta.dot(axis)>=0 else -axis
 		return {"n":normal,"depth":maxf(0,depth),"p":(support(s,a,normal)+support(s,b,-normal))*0.5}
-	var box=a if a_box else b
-	var ball=b if a_box else a
-	var angle=float(box.get("angle",0))
+	var box: Dictionary=a if a_box else b
+	var ball: Dictionary=b if a_box else a
+	var angle: float=float(box.get("angle",0))
 	var local: Vector2=(ball.p-box.p).rotated(-angle)
-	var closest=local.clamp(Vector2(-43,-13),Vector2(43,13))
-	var difference=local-closest
-	var distance=difference.length()
-	var normal=Vector2.RIGHT
-	var depth=0.0
+	var closest: Vector2=local.clamp(Vector2(-43,-13),Vector2(43,13))
+	var difference: Vector2=local-closest
+	var distance: float=difference.length()
+	var normal: Vector2=Vector2.RIGHT
+	var depth: float=0.0
 	if distance>0.0001:
 		depth=radius(ball)-distance
 		if depth < -0.02:return {}
 		normal=difference/distance
 	else:
-		var dx=43-absf(local.x);var dy=13-absf(local.y)
+		var dx: float=43-absf(local.x);var dy: float=13-absf(local.y)
 		normal=Vector2(1 if local.x>=0 else -1,0) if dx<dy else Vector2(0,1 if local.y>=0 else -1)
 		closest=local+normal*minf(dx,dy)
 		depth=radius(ball)+minf(dx,dy)
@@ -120,20 +120,20 @@ func collision(s,a: Dictionary,b: Dictionary) -> Dictionary:
 	return {"n":normal if a_box else -normal,"depth":maxf(0,depth),"p":box.p+closest.rotated(angle)}
 func solve_contact(s,a: Dictionary,b: Dictionary,hit: Dictionary):
 	var normal: Vector2=hit.n
-	var sa=state(a);var sb=state(b)
+	var sa: Dictionary=state(a);var sb: Dictionary=state(b)
 	var arm_a: Vector2=hit.p-a.p;var arm_b: Vector2=hit.p-b.p
 	var va: Vector2=sa.v+Vector2(-arm_a.y,arm_a.x)*sa.w
 	var vb: Vector2=sb.v+Vector2(-arm_b.y,arm_b.x)*sb.w
-	var relative=(vb-va).dot(normal)
+	var relative: float=(vb-va).dot(normal)
 	if relative>=0 and hit.depth<=0.02:return
-	var ma=material_cache.get(tuning_key(a),{})
-	var mb=material_cache.get(tuning_key(b),{})
-	var ima=1.0/(ma.mass if not ma.is_empty() else mass(s,a));var imb=1.0/(mb.mass if not mb.is_empty() else mass(s,b))
+	var ma: Dictionary=material_cache.get(tuning_key(a),{})
+	var mb: Dictionary=material_cache.get(tuning_key(b),{})
+	var ima: float=1.0/(ma.mass if not ma.is_empty() else mass(s,a));var imb: float=1.0/(mb.mass if not mb.is_empty() else mass(s,b))
 	if relative<0:
-		var iia=1.0/(ma.inertia if not ma.is_empty() else inertia(s,a));var iib=1.0/(mb.inertia if not mb.is_empty() else inertia(s,b))
-		var denom=ima+imb+pow(arm_a.cross(normal),2)*iia+pow(arm_b.cross(normal),2)*iib
-		var bounce=minf(ma.restitution if not ma.is_empty() else parameter(s,a,"restitution"),mb.restitution if not mb.is_empty() else parameter(s,b,"restitution")) if relative < -2.0 else 0.0
-		var value=normal*(-(1.0+bounce)*relative/denom)
+		var iia: float=1.0/(ma.inertia if not ma.is_empty() else inertia(s,a));var iib: float=1.0/(mb.inertia if not mb.is_empty() else inertia(s,b))
+		var denom: float=ima+imb+pow(arm_a.cross(normal),2)*iia+pow(arm_b.cross(normal),2)*iib
+		var bounce: float=minf(ma.restitution if not ma.is_empty() else parameter(s,a,"restitution"),mb.restitution if not mb.is_empty() else parameter(s,b,"restitution")) if relative < -2.0 else 0.0
+		var value: Vector2=normal*(-(1.0+bounce)*relative/denom)
 		# Deliberate game-feel boost for approaching virus/cell impacts only.
 		# Equal/opposite impulses retain momentum and the actual contact lever arm.
 		if (a.has("type") and b.has("key")) or (b.has("type") and a.has("key")):
@@ -143,7 +143,7 @@ func solve_contact(s,a: Dictionary,b: Dictionary,hit: Dictionary):
 		sb.v+=value*imb
 		sb.w+=arm_b.cross(value)*iib
 	# Small mass-weighted overlap correction; momentum comes from the impulses above.
-	var correction=normal*maxf(0,hit.depth-0.02)*0.65/(ima+imb)
+	var correction: Vector2=normal*maxf(0,hit.depth-0.02)*0.65/(ima+imb)
 	a.p-=correction*ima
 	b.p+=correction*imb
 func candidate_pairs(bodies: Array) -> Array:
@@ -214,29 +214,29 @@ func step(s,delta: float):
 	for i in range(s.blood.size()):
 		if s.blood[i].alive:state(s.blood[i]).v=s.blood_velocity.get(i,Vector2.ZERO)
 	var steps=maxi(1,ceili(delta/float(settings.max_step)))
-	var dt=delta/steps
+	var dt: float=delta/steps
 	for tick in range(steps):
 		# Existing elastic bonds retain their rest length and nearest-neighbour rules.
 		for link in s.links:
 			var a=s.endpoint_by_id(link.a);var b=s.endpoint_by_id(link.b)
 			if a.is_empty() or b.is_empty() or not a.alive or not b.alive:continue
-			var offset=b.p-a.p
-			var length=offset.length()
+			var offset: Vector2=b.p-a.p
+			var length: float=offset.length()
 			if length<0.001:continue
-			var normal=offset/length
-			var relative=(velocity(b)-velocity(a)).dot(normal)
-			var stiffness=float(settings.spring_stiffness)
-			var damping=float(settings.spring_damping)
-			var arm_a=Vector2.RIGHT.rotated(float(a.get("angle",0)))*minf(25,extent(s,a,normal))
-			var arm_b=Vector2.RIGHT.rotated(float(b.get("angle",0)))*minf(25,extent(s,b,-normal))
-			var inverse_mass=1.0/mass(s,a)+1.0/mass(s,b)+pow(arm_a.cross(normal),2)/inertia(s,a)+pow(arm_b.cross(normal),2)/inertia(s,b)
-			var force=normal*((length-link.rest)*stiffness+relative*damping)/(1.0+(damping*dt+stiffness*dt*dt)*inverse_mass)
+			var normal: Vector2=offset/length
+			var relative: float=(velocity(b)-velocity(a)).dot(normal)
+			var stiffness: float=float(settings.spring_stiffness)
+			var damping: float=float(settings.spring_damping)
+			var arm_a: Vector2=Vector2.RIGHT.rotated(float(a.get("angle",0)))*minf(25,extent(s,a,normal))
+			var arm_b: Vector2=Vector2.RIGHT.rotated(float(b.get("angle",0)))*minf(25,extent(s,b,-normal))
+			var inverse_mass: float=1.0/mass(s,a)+1.0/mass(s,b)+pow(arm_a.cross(normal),2)/inertia(s,a)+pow(arm_b.cross(normal),2)/inertia(s,b)
+			var force: Vector2=normal*((length-link.rest)*stiffness+relative*damping)/(1.0+(damping*dt+stiffness*dt*dt)*inverse_mass)
 			impulse(s,a,force*dt,a.p+arm_a)
 			impulse(s,b,-force*dt,b.p-arm_b)
 		for body in bodies:
 			if not body.has("key") and not body.has("type"):continue # Blood retains its soft-body integrator until F5.
 			if body.get("emerging",false):continue # Scripted birth animation remains outside F2.
-			var st=state(body)
+			var st: Dictionary=state(body)
 			var material: Dictionary=material_cache[tuning_key(body)]
 			var velocity: Vector2=st.v
 			var spin: float=st.w
@@ -258,8 +258,8 @@ func step(s,delta: float):
 			position+=velocity*dt
 			if cell:body.angle=wrapf(float(body.angle)+spin*dt,-PI,PI)
 			if cell:
-				var ex=extent(s,body,Vector2.RIGHT);var ey=extent(s,body,Vector2.DOWN)
-				var clipped=position.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
+				var ex: float=extent(s,body,Vector2.RIGHT);var ey: float=extent(s,body,Vector2.DOWN)
+				var clipped: Vector2=position.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
 				if clipped.x!=position.x:velocity.x=-velocity.x*float(material.restitution)
 				if clipped.y!=position.y:velocity.y=-velocity.y*float(material.restitution)
 				position=clipped
