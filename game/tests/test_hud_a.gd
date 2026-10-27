@@ -51,7 +51,11 @@ func run():
  var budget=mini(scene.sim.round_no+4,10)+3
  var button=hud.forecast_rows.get_child(hud.forecast_rows.get_child_count()-1)
  check(str(budget) in button.text and scene.sim.money==money,"Forecast budget includes pending Mint without crediting early")
+ scene.camera_requested=1.2
+ scene.zoom_target=0.6
+ scene.view.scale=Vector2.ONE*0.6
  button.pressed.emit()
+ check(is_equal_approx(scene.zoom_target,1.2) and is_equal_approx(scene.view.scale.x,1.2),"Preparation restores player zoom after forecast overview")
  check(scene.sim.phase=="shop" and scene.sim.money==budget,"To preparation credits displayed budget once")
  scene.show_appearance()
  var picker=scene.modal.find_child("Appearance_hud",true,false)

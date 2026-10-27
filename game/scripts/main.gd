@@ -1485,16 +1485,16 @@ func advance_camera(delta):
 	var phase="warning" if view.staging=="warning" else sim.phase
 	if phase!=camera_phase:
 		camera_phase=phase
-	if follow and phase in ["battle","warning"]:
-		var framing=camera_director.frame(sim,phase,camera_safe_rect(),camera_requested,camera_warning_sources)
-		if ui_new and phase=="warning" and not preview_sources.is_empty():
-			var bounds=Rect2(preview_sources[0],Vector2.ZERO)
-			for p in preview_sources:bounds=bounds.expand(p)
-			for core in sim.blood:
-				if core.alive:bounds=bounds.expand(core.p)
-			bounds=bounds.grow(90)
-			framing={"focus":bounds.get_center(),"radius":maxf(bounds.size.x,bounds.size.y)*0.5}
+	if follow and phase=="warning":
+		var framing=camera_director.forecast_frame(sim,preview_wave,preview_sources,camera_safe_rect(),camera_requested)
+		if not framing.is_empty():
+			zoom_target=framing.zoom
+			var target=camera_safe_rect().get_center()-framing.focus*zoom_target
+			view.position=view.position.lerp(target,1.0-exp(-delta*5.0))
+	elif follow and phase=="battle":
+		var framing=camera_director.frame(sim,phase,camera_safe_rect(),camera_requested)
 		view.position=camera_director.follow_position(view.position,view.scale.x,camera_safe_rect(),framing,delta)
+
 	var value=lerpf(view.scale.x,zoom_target,1.0-exp(-delta/0.065))
 	if absf(value-zoom_target)<0.0001: value=zoom_target
 	view.scale=Vector2.ONE*value
@@ -1725,6 +1725,8 @@ func show_recap():
 		if growth>most_growth: most_growth=growth; selected_lane=lane
 	if not preview_sources.is_empty(): camera_warning_sources=[preview_sources[selected_lane]]
 	auto_camera=true
+	panning=false
+	camera_requested=zoom_target
 	view.warning_wave=preview_wave
 	view.warning_sources=preview_sources
 	view.staging="warning"
@@ -1773,6 +1775,8 @@ func advance_recap():
 	view.staging=""
 	preview_sources=[]
 	preview_wave=[]
+	# Restore player magnification after the composed forecast overview.
+	view.scale=Vector2.ONE*camera_requested
 	center_preparation_camera()
 	showing_recap=false
 	shop_page=0

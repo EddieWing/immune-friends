@@ -40,3 +40,24 @@ func follow_position(position,scale,safe,region,delta):
  if distance*scale<=8.0 or distance+region.radius<=view_radius+2.0/scale: return position
  var target=safe.get_center()-region.focus*scale
  return position.lerp(target,1.0-exp(-delta*3.0))
+
+# Forecast is a composed overview, not infection tracking. Unused source slots
+# must not influence it; make_wave reserves positions beyond the active wave.
+func forecast_frame(sim,wave,sources,safe,requested):
+ var points=[]
+ for core in sim.blood:
+  if core.alive: points.append(core.p)
+ for cell in sim.cells:
+  if cell.alive: points.append(cell.p)
+ var lanes={}
+ for entry in wave:
+  var lane=int(entry.lane)
+  if entry.count>0 and lane>=0 and lane<sources.size() and not lanes.has(lane):
+   lanes[lane]=true
+   points.append(sources[lane])
+ if points.is_empty(): return {}
+ var bounds=Rect2(points[0],Vector2.ZERO)
+ for point in points: bounds=bounds.expand(point)
+ bounds=bounds.grow(100.0)
+ var zoom=minf(requested,minf(safe.size.x/bounds.size.x,safe.size.y/bounds.size.y))
+ return {"focus":bounds.get_center(),"zoom":maxf(0.1,zoom),"bounds":bounds}

@@ -35,4 +35,12 @@ func _initialize():
  check(moved.x<position.x and moved.x>-100,"Camera smoothly follows outside interest")
  check(director.follow_position(position,1.0,safe,{"focus":Vector2(1,0),"radius":500},1)==position,"Oversized region does not produce center jitter")
  check(director.follow_position(position,1.0,safe,{},1)==position,"No interest holds camera")
+ sim.blood=[{"alive":true,"p":Vector2.ZERO}]
+ sim.cells=[]
+ var forecast=director.forecast_frame(sim,[{"lane":0,"count":10}],[Vector2(400,0),Vector2(10000,10000)],safe,0.9)
+ check(forecast.focus==Vector2(200,0),"Forecast ignores reserved but inactive source positions")
+ var far=director.forecast_frame(sim,[{"lane":0,"count":10}],[Vector2(1800,900)],safe,0.9)
+ var origin=safe.get_center()-far.focus*far.zoom
+ var screen_bounds=Rect2(far.bounds.position*far.zoom+origin,far.bounds.size*far.zoom)
+ check(safe.grow(0.01).encloses(screen_bounds),"Forecast fits actual formation and distant active source")
  quit(failures)
