@@ -29,6 +29,7 @@
   "bullet_speed": 280,
   "bomb_damage": 2,
   "virus_speed": 31,
+  "virus_movement_multiplier": 2.0,
   "xp_thresholds": [
     3,
     6,

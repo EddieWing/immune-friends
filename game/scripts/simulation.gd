@@ -785,6 +785,7 @@ func update(delta: float):
 		var speed: float=float(rules.virus_speed)
 		if v.type=="wave": dir=dir.rotated(sin(v.age*3+v.phase)*0.8)
 		if v.type=="jumper": speed=130 if v.jump else 20
+		speed*=float(rules.get("virus_movement_multiplier",1.0))
 		speed*=float(tuning.get("virus:"+v.type,{}).get("speed_multiplier",1.0))
 		v.visual_avoiding=false
 		if v.type=="avoider":
