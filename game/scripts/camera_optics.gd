@@ -6,6 +6,11 @@ const SHOP_ZOOM_EXIT=1.30
 var focused=false
 var refocus=0.0
 var previous_zoom=-1.0
+func visor_state(zoom: float):
+ # Keep the circular visor through the full manual range down to 0.6.
+ # Below that, blend continuously into the wide optical vignette.
+ var travel=smoothstep(0.6,1.5,zoom)
+ return {"radius":lerpf(0.72,0.54,travel),"rim":smoothstep(0.45,0.6,zoom)}
 func update_focus(center: Vector2,zoom: float,preparation: bool,placing: bool):
  if not preparation: focused=false
  elif placing: focused=true

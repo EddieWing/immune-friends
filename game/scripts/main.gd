@@ -1144,7 +1144,7 @@ func start_battle():
 func xp_purchase_tooltip():
 	if sim.tier>=5:return "Maximum shop level · Capacity %d" % sim.capacity()
 	var goal=int(sim.rules.xp_thresholds[sim.tier-1])
-	return "Buy 1 XP · %d Carbons\nLevel %d · XP %d / %d\nAt %d XP: level %d, capacity %d → %d immediately" % [int(sim.shop_rules.xp_price),sim.tier,sim.xp,goal,goal,sim.tier+1,sim.capacity(),sim.capacity()+3]
+	return "Buy 1 XP · %d Carbons\nEach new round grants +1 free XP\nLevel %d · XP %d / %d\nAt %d XP: level %d, capacity %d → %d immediately" % [int(sim.shop_rules.xp_price),sim.tier,sim.xp,goal,goal,sim.tier+1,sim.capacity(),sim.capacity()+3]
 
 func changed():
 	if sim.phase=="shop": sim.ensure_infection_sources_clear()
@@ -1525,7 +1525,7 @@ func focus_shopping():
 	camera_return_target=Vector2.ZERO
 
 func shopping_in_focus():
-	return sim.phase=="shop" and camera_optics.focused and launch_remaining<=0 and not gym_mode
+	return sim.phase=="shop" and launch_remaining<=0 and not gym_mode
 
 func center_preparation_camera():
 	cancel_camera_transition()
@@ -1609,12 +1609,12 @@ func advance_visor(delta):
 	var menu=browsing_from_main_menu()
 	lens.set_shader_parameter("visibility",hud_opacity if entering_game else (0.0 if menu else 1.0))
 	if menu or entering_game: return
-	var near=camera_optics.focused and sim.phase=="shop" and view.staging!="warning"
-	lens.set_shader_parameter("forecast",not near)
-	var target=0.54 if near else 0.86
+	var state=camera_optics.visor_state(view.scale.x)
+	lens.set_shader_parameter("forecast",false)
+	var target=state.radius
 	visor_radius=lerpf(visor_radius,minf(target,1.2),1.0-exp(-delta*3.5))
 	lens.set_shader_parameter("radius",visor_radius)
-	visor_preparation=lerpf(visor_preparation,1.0 if near else 0.0,1.0-exp(-delta*5.0))
+	visor_preparation=lerpf(visor_preparation,state.rim,1.0-exp(-delta*5.0))
 	lens.set_shader_parameter("preparation",visor_preparation)
 
 func update_zoom():

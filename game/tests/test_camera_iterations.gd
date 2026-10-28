@@ -6,6 +6,9 @@ func check(ok,message):
 func _initialize():call_deferred("run")
 func run():
  var optics=preload("res://scripts/camera_optics.gd").new()
+ check(optics.visor_state(1.4).rim==1.0 and optics.visor_state(0.6).rim==1.0,"Visor: circle persists from 1.4 through 0.6")
+ check(optics.visor_state(1.4).radius<optics.visor_state(1.0).radius and optics.visor_state(1.0).radius<optics.visor_state(0.6).radius,"Visor: circle travels continuously with zoom")
+ check(optics.visor_state(0.525).rim>0.0 and optics.visor_state(0.525).rim<1.0 and optics.visor_state(0.45).rim==0.0,"Visor: below 0.6 rim fades into vignette")
  check(optics.update_focus(Vector2.ZERO,1.5,true,false),"051: near + close opens purchase focus")
  check(optics.update_focus(Vector2.ZERO,1.32,true,false),"051: zoom hysteresis prevents flicker")
  check(not optics.update_focus(Vector2.ZERO,1.2,true,false),"051: zoom out closes purchase focus")
@@ -70,7 +73,12 @@ func run():
  game.view.position+=Vector2(2000,0)
  game.advance_camera(1)
  game.hud_a._process(0.5)
- check(not game.hud_a.shelf.visible and game.hud_a.release.visible,"051: distant shop hidden but Play remains available")
+ check(game.hud_a.shelf.visible and game.hud_a.release.visible,"Preparation: distant camera cannot hide shop or Play")
+ game.set_zoom(0.45)
+ for i in range(90):game.advance_camera(1.0/60)
+ game.hud_a._process(0.5)
+ check(game.hud_a.shelf.visible and game.hud_a.refresh_button.visible,"Preparation: minimum zoom retains shop controls")
+ check(game.xp_purchase_tooltip().contains("+1 free XP"),"XP tooltip explains automatic round reward")
  game.start_battle()
  check(game.zoom_target==0.88 and game.auto_camera,"050: launch selects Medium and Auto")
  game.sim.phase="recap"

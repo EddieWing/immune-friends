@@ -35,11 +35,11 @@ void fragment() {
   composite=mix(composite,vec3(0.25,0.37,0.41),ticks);
   alpha=max(alpha,ticks*0.5);
   composite=mix(composite,vec3(0.65,0.05,0.12),blood_alpha*2.0);
-  if(forecast) {
+  {
    // Wide overview: soft optical shading, never an isolated gold arc.
    float soft_edge=smoothstep(r-0.20,r+0.10,d);
-   composite=vec3(0.035,0.048,0.050);
-   alpha=soft_edge*0.72;
+   composite=mix(vec3(0.035,0.048,0.050),composite,preparation);
+   alpha=mix(soft_edge*0.72,alpha,preparation);
   }
  }
  COLOR = vec4(composite,alpha*visibility);

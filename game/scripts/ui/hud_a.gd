@@ -295,7 +295,8 @@ func build_forecast():
   line(rows,game.wave_trait(kind),INK,13)
  var button=Button.new()
  button.add_theme_font_override("font",game.symbol_font)
- button.text="TO PREPARATION →\n%d Carbons available" % game.sim.next_budget()
+ button.text="TO PREPARATION →\n%d Carbons" % game.sim.next_budget()
+ if game.sim.tier<5:button.text+=" · +1 free XP"
  button.custom_minimum_size=Vector2(0,62)
  button.add_theme_stylebox_override("normal",game.style(GOLD,2,Color("#906b23")))
  button.add_theme_font_size_override("font_size",16)
@@ -413,6 +414,8 @@ func _draw():
   text(Vector2(151,850),str(sim.money),34,GOLD)
   text(Vector2(136,870),"CARBONS",10,MUTED)
   if sim.tier<5:
+   box(Rect2(204,736,112,39),DARK,Color("#6e654e"))
+   text(Vector2(209,751),"+1 FREE XP / ROUND",10,Color("#e8e4d7"))
    text(Vector2(209,769),"LV %d · XP %d/%d" % [sim.tier,sim.xp,int(sim.rules.xp_thresholds[sim.tier-1])],11,GOLD)
    var prev=0 if sim.tier==1 else int(sim.rules.xp_thresholds[sim.tier-2])
    var goal=int(sim.rules.xp_thresholds[sim.tier-1])
