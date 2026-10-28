@@ -134,7 +134,7 @@ func run():
  var focused_radius=scene.visor_radius
  scene.view.position+=Vector2(1400,900)
  scene.advance_camera(2)
- check(scene.visor_radius>focused_radius,"Leaving start focus opens visor")
+ check(absf(scene.visor_radius-focused_radius)<0.001,"Panning cannot switch visor geometry at unchanged zoom")
  scene.view.position=scene.board_rect.get_center()
  scene.view.scale=Vector2.ONE*1.5
  scene.zoom_target=1.5
