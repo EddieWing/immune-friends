@@ -326,7 +326,11 @@ func endpoint_by_id(id):
 		for b in blood:
 			if -2-int(b.id)==id: return b
 		return {}
-	return cell_by_id(id)
+	var cell=cell_by_id(id)
+	if not cell.is_empty():return cell
+	for v in viruses:
+		if v.id==id:return v
+	return {}
 
 func core_endpoint(b):
 	return -2-int(b.id)
@@ -822,27 +826,12 @@ func update(delta: float):
 				v.visual_avoiding=true
 			speed*=20.0/15.0
 		if v.type=="seeker":speed*=25.0/15.0
-		if v.type=="swarmer":
-			var old_host=v.get("host",-1)
-			var host: Dictionary={}
-			for other: Dictionary in viruses:
-				if other.id==v.get("host",-1) and other.alive: host=other
-			if not host.is_empty():
-				v.p=host.p+Vector2.from_angle(v.phase)*17
-				speed=0
-			else:
-				v.host=-1
-				for other: Dictionary in viruses:
-					if other.id!=v.id and other.alive and other.type!="swarmer" and other.p.distance_to(v.p)<100:
-						dir=v.p.direction_to(other.p)
-						if other.p.distance_to(v.p)<22: v.host=other.id
-						break
-			if old_host!=v.get("host",-1):
-				record("virus_attachment",{"id":v.id,"p":v.p,"old_host":old_host,"host":v.get("host",-1)})
+		if v.type=="swarmer":update_swarm_attraction(v,delta)
 		v.visual_heading=dir
 		if not virus_motion.tick(self,v,dir,delta):
 			physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
 	physics.step(self,delta)
+	join_swarm_contacts()
 	for pair: Vector2i in physics.contacts:
 		var a=endpoint_by_id(pair.x);var b=endpoint_by_id(pair.y)
 		if a.is_empty() or b.is_empty() or a.has("type") or b.has("type"):continue
@@ -977,6 +966,34 @@ func resolve_bullet(p,from,to):
 		if target.key=="mortar":target.food+=1
 		else:target["bullet_food"]=int(target.get("bullet_food",0))+1
 		record("protein_eaten",{"id":target.id,"p":target.p,"from":p.p,"kind":"bullet"})
+
+func update_swarm_attraction(v,delta):
+	var attached=[]
+	for link in links:
+		if not link.get("swarm",false):continue
+		var other=link.b if link.a==v.id else (link.a if link.b==v.id else -1)
+		var body=endpoint_by_id(other)
+		if not body.is_empty() and body.alive:attached.append(body)
+	var host=-1 if attached.is_empty() else attached[0].id
+	if v.get("host",-1)!=host:
+		record("virus_attachment",{"id":v.id,"p":v.p,"old_host":v.get("host",-1),"host":host})
+	v.host=host
+	if host!=-1 or v.freeze>0:return
+	var nearby=viruses.filter(func(other):return other.alive and other.id!=v.id and not other.jump and v.p.distance_to(other.p)<60.0*26.0/3.5)
+	nearby.sort_custom(func(a,b):return v.p.distance_squared_to(a.p)<v.p.distance_squared_to(b.p))
+	for other in nearby.slice(0,9):
+		physics.accelerate(self,v,v.p.direction_to(other.p)*25.0*virus_motion.multiplier(self,v)/(PI*1.75*1.75)*physics.mass(self,v),delta)
+
+func join_swarm_contacts():
+	for v in viruses:
+		if not v.alive or v.type!="swarmer" or v.jump or v.get("host",-1)>=0:continue
+		for other in viruses:
+			if not other.alive or other==v or other.jump:continue
+			if links.any(func(l):return (l.a==v.id and l.b==other.id) or (l.b==v.id and l.a==other.id)):continue
+			if v.p.distance_to(other.p)>physics.radius(v)+physics.radius(other)+0.02:continue
+			links.append({"a":v.id,"b":other.id,"owner":v.id,"rest":v.p.distance_to(other.p),"offset":(other.p-v.p).rotated(-float(v.get("angle",0))),"relative_angle":float(other.get("angle",0))-float(v.get("angle",0)),"locked":true,"swarm":true})
+			record("virus_attachment",{"id":v.id,"p":v.p,"old_host":-1,"host":other.id})
+			v.host=other.id
 
 func conduct(c):
 	# Provisional graph: objects within charge_range conduct one charge per victim.

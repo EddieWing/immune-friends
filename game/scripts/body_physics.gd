@@ -279,7 +279,7 @@ func step(s,delta: float):
 			var position: Vector2=body.p
 			var cell=body.has("key")
 			# Work on typed locals, committing once before contact solving.
-			if body.has("type") and (float(body.get("freeze",0))>0 or int(body.get("host",-1))>=0):
+			if body.has("type") and (float(body.get("freeze",0))>0):
 				velocity=Vector2.ZERO
 				spin=0.0
 			var target: Vector2=drives.get(id_of(body),Vector2.ZERO)
@@ -395,7 +395,7 @@ func advance_web(s,bodies: Array,delta: float,steps: int):
 		rows[row_offset+6]=angle;rows[row_offset+7]=target.x;rows[row_offset+8]=target.y
 		rows[row_offset+9]=float(not body.get("jump",false) and not body.get("emerging",false))
 		rows[row_offset+10]=float(body.get("emerging",false))
-		rows[row_offset+11]=float(float(body.get("freeze",0))>0 or int(body.get("host",-1))>=0)
+		rows[row_offset+11]=float(float(body.get("freeze",0))>0)
 		rows[row_offset+12]=web_material_ids[tuning_key(body)]
 		row_offset+=13
 	var links=[]
