@@ -154,7 +154,7 @@ func _draw():
 		if e.has("end"):
 			draw_line(e.p,e.end,color,3,true)
 		else:
-			effect_strokes.arc(self,e.p,e.r*(1.3-alpha*0.5),0,TAU,36,color,2)
+			effect_strokes.arc(self,e.p,e.r if e.get("front",false) else e.r*(1.3-alpha*0.5),0,TAU,36,color,2)
 			if e.text!="": text_at(e.p+Vector2(-12,-30-(1-alpha)*20),e.text,15,Color(e.color,alpha))
 	if not selected.is_empty() and selected.alive:
 		var p=selected.p

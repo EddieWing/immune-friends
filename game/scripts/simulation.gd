@@ -24,6 +24,7 @@ var blood_target=Vector2.ZERO
 var viruses: Array = []
 var particles: Array = []
 var effects: Array = []
+var blasts: Array = []
 var links: Array = []
 var offers: Array = []
 var rewards: Array = []
@@ -104,6 +105,7 @@ func events_since(sequence):
 
 func reset(seed_number = 42, rounds = 12):
 	physics.clear()
+	blasts.clear()
 	presentation_revision+=1
 	elapsed=0.0
 	spawn_timer=0.0
@@ -395,6 +397,7 @@ func begin_battle():
 	ensure_infection_sources_clear()
 	round_losses={"viruses":0,"core":0,"cells":0}
 	physics.clear()
+	blasts.clear()
 	rebuild_links()
 	bonds.lock(self)
 	phase="battle"
@@ -598,16 +601,7 @@ func damage_cell(c, amount, redirected=false, source={}):
 	effect(c.p,Color(catalog[c.key].color),"",40)
 	if c.key in ["bomb","survivor_bomb","hungry_bomb"]:
 		record("camera_blast",{"p":c.p})
-		var reach=range_of(c)
-		effect(c.p,Color("#f9b8d1"),"Pop!",reach)
-		for v in viruses:
-			if v.alive and c.p.distance_to(v.p)<reach:
-				push_object(v,(v.p-c.p).normalized()*40,"virus",c.p)
-				damage_virus(v,float(rules.bomb_damage),{"p":c.p,"cause":"blast"})
-		for other in cells:
-			if other.alive and c.p.distance_to(other.p)<reach:
-				push_object(other,(other.p-c.p).normalized()*28,"cell",c.p)
-				damage_cell(other,float(rules.bomb_damage),false,{"kind":"cell","id":c.id,"p":c.p})
+		start_blast(c.p,range_of(c),1.0,600.0,c.id)
 	if c.key=="bandage":
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<range_of(c):
@@ -836,6 +830,7 @@ func update(delta: float):
 			if body.has("key") and float(body.get("friendly_stun",0))<=0:
 				body.friendly_stun=float(rules.get("friendly_collision_stun",0.5))
 	resolve_cell_contacts()
+	advance_blasts(delta)
 	for p: Dictionary in particles:
 		if p.life<=0: continue
 		p.life-=delta
@@ -907,6 +902,32 @@ func resolve_cell_contacts():
 		damage_cell(hit.cell,hit.virus_hp,false,{"kind":"virus","id":hit.virus.id,"p":hit.virus.p})
 		damage_virus(hit.virus,hit.cell_hp,{"p":hit.cell.p,"cause":"contact"})
 
+func start_blast(position,reach,damage=1.0,force=600.0,owner=-1):
+	var duration=maxf(0.02,reach/float(rules.scale)*0.02)
+	var visual={"p":position,"color":Color("#f9b8d1") if damage>0 else Color("#a5e2f0"),"text":"","r":0.0,"front":true,"life":duration,"max":duration}
+	effects.append(visual)
+	blasts.append({"p":position,"reach":reach,"radius":0.0,"duration":duration,"age":0.0,"hit":{},"damage":damage,"force":force,"owner":owner,"visual":visual})
+
+func advance_blasts(delta):
+	# Iterate a snapshot: a killed bomb starts a distinct front next step.
+	for blast in blasts.duplicate():
+		blast.age+=delta
+		blast.radius=minf(blast.reach,blast.reach*blast.age/blast.duration)
+		blast.visual.r=blast.radius
+		for body in cells+viruses:
+			if not body.alive or blast.hit.has(body.id) or body.id==blast.owner:continue
+			if body.has("type") and body.jump:continue
+			# Distance to the fixture, including rotated rectangular walls.
+			if not contains_cell(body,blast.p,blast.radius) if body.has("key") else body.p.distance_to(blast.p)>blast.radius+physics.radius(body):continue
+			blast.hit[body.id]=true
+			# Force 600 / 400 is integrated for one original fixed physics step.
+			physics.impulse(self,body,blast.p.direction_to(body.p)*blast.force*(26.0/3.5)/60.0,blast.p)
+			if blast.damage>0:
+				if body.has("type"):damage_virus(body,blast.damage,{"p":blast.p,"cause":"blast"})
+				else:damage_cell(body,blast.damage,false,{"kind":"cell","id":blast.owner,"p":blast.p})
+		blast.visual.life=maxf(0.001,blast.duration-blast.age)
+	blasts=blasts.filter(func(b):return b.age<b.duration)
+
 func conduct(c):
 	# Provisional graph: objects within charge_range conduct one charge per victim.
 	var points=[c.p]
@@ -942,6 +963,7 @@ func next_budget():
 func next_round():
 	if phase!="recap": return
 	physics.clear()
+	blasts.clear()
 	cells=cells.filter(func(c):return not c.get("temporary",false))
 	links=links.filter(func(l):return not endpoint_by_id(l.a).is_empty() and not endpoint_by_id(l.b).is_empty())
 	for c in cells:
