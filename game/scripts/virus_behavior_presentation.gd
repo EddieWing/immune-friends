@@ -47,8 +47,9 @@ func update(sim,delta):
   var goal=v.get("visual_heading",Vector2.ZERO)
   if v.get("emerging",false): goal=v.p.direction_to(v.exit)
   looks[v.id]=looks.get(v.id,Vector2.ZERO).lerp(goal,1-exp(-dt/0.14))
-  if v.type=="swarmer" and alive.has(v.get("host",-1)):
-   attachments.append({"a":v.p,"b":alive[v.host].p})
+ for link in sim.links:
+  if link.get("swarm",false) and alive.has(link.a) and alive.has(link.b):
+   attachments.append({"a":alive[link.a].p,"b":alive[link.b].p})
 func scale_of(id):
  return 1+sin((1-feeding.get(id,0.0)/0.55)*PI)*0.13 if feeding.has(id) else 1.0
 func draw_links(canvas):

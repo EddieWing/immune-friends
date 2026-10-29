@@ -25,6 +25,7 @@ func update(sim,delta):
  elapsed=sim.elapsed
  var active={}
  for link in sim.links:
+  if link.get("swarm",false):continue
   var a=sim.endpoint_by_id(link.a)
   var b=sim.endpoint_by_id(link.b)
   if a.is_empty() or b.is_empty() or not a.alive or not b.alive: continue

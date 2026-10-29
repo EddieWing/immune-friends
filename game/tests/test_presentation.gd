@@ -35,6 +35,7 @@ func _initialize():
  sim.cells=[bomb,wall]
  sim.links=[]
  sim.damage_cell(bomb,999,false,{"kind":"virus","id":901,"p":Vector2(-20,0)})
+ sim.advance_blasts(0.2)
  view.update(sim,0.01)
  check(view.hits.any(func(h): return h.kind=="cell" and h.p==wall.p),"Bomb friendly fire has a distinct source kind")
  sim.cells=[]

@@ -61,8 +61,8 @@ globalThis.microcosmContacts = (() => {
  }
  function contacts(bodies,scale,groups={}){
   const grid=new Map(),cells=new Map(),tiles=[],pairs=[],found=new Map();
-  bodies.forEach((b,i)=>{const tile=[Math.floor(b.p[0]/96),Math.floor(b.p[1]/96)];tiles.push(tile);if(!b.eligible)return;const key=tile.join(',');if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(b.cell){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
-  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=b.cell?grid:cells,t=tiles[i];for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))pairs.push([i,j])});
+  bodies.forEach((b,i)=>{const tile=[Math.floor(b.p[0]/96),Math.floor(b.p[1]/96)];tiles.push(tile);if(!b.eligible)return;const key=tile.join(',');if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(!b.virus){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
+  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=!b.virus?grid:cells,t=tiles[i];for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i&&(b.cell||b.virus||bodies[j].cell||bodies[j].virus)&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))pairs.push([i,j])});
   for(let pass=0;pass<3;pass++)for(const [i,j] of pairs){const a=bodies[i],b=bodies[j],h=hit(a,b);if(!h)continue;const ids=[Math.min(a.id,b.id),Math.max(a.id,b.id)];found.set(ids.join(','),ids);resolve(a,b,h,scale)}
   return found;
  }

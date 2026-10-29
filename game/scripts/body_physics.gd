@@ -178,7 +178,7 @@ func candidate_pairs(bodies: Array) -> Array:
 		tiles.append(tile)
 		var include=not body.get("jump",false) and not body.get("emerging",false)
 		eligible.append(include)
-		cells.append(body.has("key"))
+		cells.append(not body.has("type"))
 		if not include: continue
 		if not grid.has(tile):grid[tile]=[]
 		grid[tile].append(i)
@@ -195,6 +195,7 @@ func candidate_pairs(bodies: Array) -> Array:
 				var neighbour=tile+Vector2i(x,y)
 				if not candidates.has(neighbour):continue
 				for j in candidates[neighbour]:
+					if not bodies[i].has("key") and not bodies[i].has("type") and not bodies[j].has("key") and not bodies[j].has("type"):continue
 					if j>i and not (not rigid_membership.is_empty() and rigid_membership.has(id_of(bodies[i])) and rigid_membership.get(id_of(bodies[i]))==rigid_membership.get(id_of(bodies[j]))):pairs.append(Vector2i(i,j))
 	return pairs
 

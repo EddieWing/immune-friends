@@ -14,7 +14,7 @@ func _initialize():
  for kind in ["hungry","swarmer","seeker","avoider"]:
   sim.spawn_virus({"type":kind,"lane":0})
   var v=sim.viruses.back()
-  v.p=Vector2(280+sim.viruses.size()*5,0)
+  v.p=Vector2(280+sim.viruses.size()*5,0) if kind in ["hungry","swarmer"] else Vector2(400+sim.viruses.size()*50,0)
   v.emerging=false
  var hungry=sim.viruses[0]
  var swarmer=sim.viruses[1]

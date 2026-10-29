@@ -59,6 +59,6 @@ func run():
 	start(s);s.spawn_virus({"type":"basic","lane":0})
 	var virus=s.viruses.back();virus.emerging=false;virus.p=Vector2(100,0);virus.freeze=100;virus.cool=100;virus.hp=1000
 	s.update(1.0/60);gun.cool=0;s.update(1.0/60)
-	check(gun.get("friendly_stun",0)>0 and not s.particles.is_empty(),"MC-006: shooting remains active during friendly contact suspension")
+	check(gun.get("friendly_stun",0)>0 and s.events.any(func(e):return e.event=="attack_fired"),"MC-006: shooting remains active during friendly contact suspension")
 	print("BOND ITERATIONS failures: ",failures)
 	quit(1 if failures else 0)

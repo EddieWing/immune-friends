@@ -150,7 +150,7 @@ func candidate_pairs(bodies: Array) -> Array:
 		tiles.append(tile)
 		var include=not body.get("jump",false) and not body.get("emerging",false)
 		eligible.append(include)
-		cells.append(body.has("key"))
+		cells.append(not body.has("type"))
 		if not include: continue
 		if not grid.has(tile):grid[tile]=[]
 		grid[tile].append(i)
@@ -167,6 +167,7 @@ func candidate_pairs(bodies: Array) -> Array:
 				var neighbour=tile+Vector2i(x,y)
 				if not candidates.has(neighbour):continue
 				for j in candidates[neighbour]:
+					if not bodies[i].has("key") and not bodies[i].has("type") and not bodies[j].has("key") and not bodies[j].has("type"):continue
 					if j>i:pairs.append(Vector2i(i,j))
 	return pairs
 
@@ -223,7 +224,7 @@ func step(s,delta):
 			var st=state(body)
 			var material: Dictionary=material_cache[tuning_key(body)]
 			# Preserve existing status / attachment rules; F2 does not redefine tags or Swarmer.
-			if body.has("type") and (float(body.get("freeze",0))>0 or int(body.get("host",-1))>=0):
+			if body.has("type") and (float(body.get("freeze",0))>0):
 				st.v=Vector2.ZERO
 				st.w=0.0
 			var target=drives.get(id_of(body),Vector2.ZERO)
@@ -231,7 +232,7 @@ func step(s,delta):
 				var force=(target-st.v)*float(material.motor_response)
 				force=force.limit_length(float(material.motor_force))
 				st.v+=force/float(material.mass)*dt
-			st.v*=exp(-float(material.linear_damping)*dt)
+			st.v*=1.0 if body.get("jump",false) else exp(-float(material.linear_damping)*dt)
 			st.w*=exp(-float(material.angular_damping)*dt)
 			st.v=st.v.limit_length(float(material.max_speed))
 			st.w=clampf(st.w,-float(material.max_angular_speed),float(material.max_angular_speed))

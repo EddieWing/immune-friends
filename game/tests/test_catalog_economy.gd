@@ -84,6 +84,7 @@ func run():
 	var mint=s.make_cell("mint",Vector2(300,0));mint.rank=3;s.cells=[mint]
 	s.particles=[]
 	for i in range(5): s.particles.append({"kind":"food","p":mint.p,"life":1.0})
+	s.proteins.route_food(s,0)
 	s.proteins.tick(s,mint,0)
 	check(s.battle_income==2 and mint.food==0,"Existing Mint consumption uses catalog5 food and elite2 income")
 	check(s.catalog.size()==41 and s.rules.contact_damage==1 and s.rules.bond_stiffness>0 and s.rules.max_battle_seconds==180,"No new cells, HP damage, rigid bonds or lifetime reconstruction")

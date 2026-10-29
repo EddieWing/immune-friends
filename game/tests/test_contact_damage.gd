@@ -52,4 +52,8 @@ func _initialize():
 	s.spawn_virus({"type":"basic","lane":0,"p":core.p});v=s.viruses[0];v.hp=2
 	s.hit_core(core,v)
 	check(core.alive and guard.hp==2 and not v.alive and s.round_losses.viruses==1,"MC-009: fully protected Core still kills attacker and drops food")
+	s=Sim.new();s.reset(42,12);s.begin_battle();s.spawn_queue=[]
+	core=s.blood[0];s.spawn_virus({"type":"basic","lane":0,"p":core.p+Vector2(5,0)});v=s.viruses[0]
+	s.update(1.0/60)
+	check(not v.alive and s.round_losses.core>0,"MC-009 integration: solver emits Core-virus contacts")
 	quit(failures)

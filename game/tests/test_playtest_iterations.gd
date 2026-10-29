@@ -21,11 +21,11 @@ func _initialize():
 	check(s.links.any(func(l):return l.b==regen.id),"Nearby support replaces one Core partner")
 	regen.p=Vector2(500,0)
 	s.rebuild_links()
-	var v={"id":999,"p":Vector2.ZERO,"alive":true}
+	var v={"id":999,"p":Vector2.ZERO,"alive":true,"hp":1.0,"type":"basic","jump":false}
 	s.hit_core(s.blood[0],v)
 	check(s.blood[0].alive and guard.hp==6 and not v.alive,"Core intercept consumes contact and damages guard")
 	s.damage_cell(guard,100,true)
-	v.alive=true
+	v.alive=true;v.hp=1.0
 	s.hit_core(s.blood[0],v)
 	check(not s.blood[0].alive,"Dead Bodyguard cannot protect Core")
 	s.reset()
@@ -68,6 +68,7 @@ func _initialize():
 		var kind="bullet" if c==mortar else ("food" if c==mint else "tag")
 		var count=4 if c==mortar else (5 if c==mint else 3)
 		for i in range(count): s.particles.append({"kind":kind,"p":c.p,"v":Vector2.ZERO,"life":10.0,"r":5.0,"owner":-1})
+	s.update(0.016)
 	s.update(0.016)
 	check(s.cells.any(func(c):return c.key=="bomb" and c.get("temporary",false)),"Mortar consumes bullets and creates Bomb")
 	check(s.cells.filter(func(c):return c.key=="tag_splitter").size()==2,"Three tags produce a second Splitter")

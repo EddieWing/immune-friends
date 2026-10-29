@@ -37,6 +37,7 @@ func run():
 	food(s,factory,"food",1)
 	food(s,factory,"bullet",2)
 	s.update(0.016)
+	s.update(0.016)
 	check(s.cells.any(func(c):return c.key=="seeker" and c.get("temporary",false)),"Factory recipe produces a temporary Seeker")
 	var kinetic=add(s,"kinetic_generator",Vector2(-300,0))
 	s.experiments.tick(s,kinetic,0.1)
@@ -52,6 +53,7 @@ func run():
 	check(wall.charge==1,"Electric Wall charges on allied contact")
 	var hungry=add(s,"hungry_bomb",Vector2(0,200))
 	food(s,hungry,"food",2)
+	s.proteins.route_food(s,0)
 	s.experiments.tick(s,hungry,0.1)
 	check(s.range_of(hungry)>30,"Hungry Bomb grows by eating Virus Protein")
 	var proof=add(s,"tag_proof",Vector2(500,200))
@@ -73,6 +75,7 @@ func run():
 	v.jump=false
 	var before=proof.p
 	s.damage_virus(v,99)
+	s.advance_blasts(0.2)
 	check(proof.p==before and s.physics.velocity(proof).length()>0,"Pusher Virus death imparts momentum to nearby immune cell")
 	s.phase="shop" # New bonds are selected only during preparation.
 	var bond=add(s,"kinetic_bond",Vector2(-450,-220))
@@ -94,7 +97,7 @@ func run():
 	var toggle=scene.modal.find_child("ExperimentalToggle",true,false)
 	check(toggle!=null and toggle.text=="Turn on experimental","Settings exposes named toggle")
 	toggle.button_pressed=true
-	scene.new_run(12)
+	scene.new_run(12,-1)
 	check(scene.sim.experimental,"New run uses toggle")
 	var dropper=add(scene.sim,"tag_drag",Vector2(100,200))
 	scene.sim.proteins.drag(scene.sim,dropper,Vector2(190,200))
@@ -106,7 +109,7 @@ func run():
 	check(scene.sim.experimental,"Saved run retains experimental mode after preference OFF")
 	check(scene.sim.particles.size()==2 and scene.sim.cells[0].tags==13,"Save restores laid tags and stock")
 	check(scene.sim.cells[1].radius_growth==16,"Save restores Survivor growth")
-	scene.new_run(12)
+	scene.new_run(12,-1)
 	check(not scene.sim.experimental and scene.sim.cells.is_empty(),"New normal run excludes previous experimental state")
 	scene.settings.set_value("gameplay","experimental",true)
 	scene.enter_gym()
