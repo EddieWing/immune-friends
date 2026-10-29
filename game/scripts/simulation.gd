@@ -801,7 +801,7 @@ func update(delta: float):
 		var target_pos: Vector2=destination.p
 		var target_key: String="core:"+str(destination.id)
 		if v.type=="seeker":
-			var nearest: float=125.0
+			var nearest: float=15.0*26.0/3.5
 			for c: Dictionary in cells:
 				if c.alive and c.p.distance_to(v.p)<nearest:
 					target_pos=c.p
@@ -816,10 +816,16 @@ func update(delta: float):
 		speed*=float(tuning.get("virus:"+v.type,{}).get("speed_multiplier",1.0))
 		v.visual_avoiding=false
 		if v.type=="avoider":
+			var avoid={};var distance=15.0*26.0/3.5
 			for c: Dictionary in cells:
-				if c.alive and c.p.distance_to(v.p)<80:
-					dir=(dir+(v.p-c.p).normalized()*1.8).normalized()
-					v.visual_avoiding=true
+				var d=v.p.distance_to(c.p)
+				if c.alive and d<distance:avoid=c;distance=d
+			if not avoid.is_empty() and v.freeze<=0:
+				var force=avoid.p.direction_to(v.p)*150.0*virus_motion.multiplier(self,v)/(PI*1.75*1.75)*physics.mass(self,v)
+				physics.accelerate(self,v,force,delta)
+				v.visual_avoiding=true
+			speed*=20.0/15.0
+		if v.type=="seeker":speed*=25.0/15.0
 		if v.type=="swarmer":
 			var old_host=v.get("host",-1)
 			var host: Dictionary={}
