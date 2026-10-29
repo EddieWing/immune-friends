@@ -30,7 +30,7 @@ func shuffle(values: Array, rng: RandomNumberGenerator):
   values[i]=values[j]
   values[j]=value
 
-func build(seed_value: int, round_no: int, kinds: Array) -> Dictionary:
+func build(seed_value: int, round_no: int, kinds: Array, training: int=3) -> Dictionary:
  # Dedicated RNG makes preview/reload reproducible without consuming shop RNG.
  # It preserves the rules, not the original JS RNG's seed sequence.
  var rng=RandomNumberGenerator.new()
@@ -53,7 +53,9 @@ func build(seed_value: int, round_no: int, kinds: Array) -> Dictionary:
    var layer=layers[direction]
    layers[direction]+=1
    var angle_index=directions[direction]
-   var kind="basic" if group_index<2 else kinds[rng.randi_range(0,kinds.size()-1)]
+   var pool=kinds.filter(func(kind):return kind not in ["basic","splitter"])
+   var basic_group=group_index==0 or (training==0 and group_index<2)
+   var kind="basic" if basic_group or pool.is_empty() else pool[rng.randi_range(0,pool.size()-1)]
    var group={"direction":direction,"layer":layer,"slots":slots(ANGLES[angle_index],DISTANCES[angle_index],layer),"used":0,"members":[],"type":kind}
    groups.append(group)
    for i in range(amount): add_emitter(group,group_index,emitters,rng)
