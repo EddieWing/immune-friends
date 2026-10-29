@@ -565,18 +565,27 @@ func heal(c, amount, source={}):
 	effect(c.p,Color("#a3e4b6"),"+"+str(amount)+" Health",24)
 	record("heal",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"from":source.get("p",c.p)})
 
+# SCAPEGOAT_CHAIN targets Connected (whole component), excluding itself.
+# One live guard absorbs at most its HP; overflow reaches the original target.
+func intercept_damage(target_id,amount,source={}):
+	for id in network(target_id):
+		var guard=cell_by_id(id)
+		if id==target_id or guard.is_empty() or not guard.alive or guard.key!="bodyguard":continue
+		var absorbed=minf(maxf(0,guard.hp),amount)
+		if absorbed<=0:continue
+		record("transfer",{"path":bond_path(target_id,id),"amount":absorbed})
+		damage_cell(guard,absorbed,true,source)
+		return amount-absorbed
+	return amount
+
 func damage_cell(c, amount, redirected=false, source={}):
 	if not c.alive: return
 	if experimental and c.key=="tag_proof" and source.get("kind","")=="virus":
 		for v in viruses:
 			if v.id==source.get("id",-1) and v.tag>0: return
 	if not redirected:
-		for id in network(c.id):
-			var guard=cell_by_id(id)
-			if not guard.is_empty() and guard.id!=c.id and guard.get("key","")=="bodyguard" and guard.alive:
-				record("transfer",{"path":bond_path(c.id,guard.id)})
-				damage_cell(guard,amount,true,source)
-				return
+		amount=intercept_damage(c.id,amount,source)
+	if amount<=0:return
 	c.hp-=amount
 	c.flash=0.25
 	record("damage",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"source_kind":source.get("kind","unknown"),"source_id":source.get("id",-1),"from":source.get("p",c.p)})

@@ -24,4 +24,16 @@ func _initialize():
 		s.physics.contacts[Vector2i(c.id,s.viruses[i].id)]=true
 	s.resolve_cell_contacts()
 	check(not c.alive and s.viruses.all(func(x):return not x.alive),"MC-007: all contacts snapshot before any damage")
+	s=Sim.new();s.reset(42,12)
+	c=s.make_cell("wall",Vector2.ZERO);c.hp=5
+	var bridge=s.make_cell("bond",Vector2(50,0))
+	var guard=s.make_cell("bodyguard",Vector2(100,0));guard.hp=2
+	s.cells=[c,bridge,guard];s.links=[{"a":c.id,"b":bridge.id},{"a":bridge.id,"b":guard.id}]
+	s.damage_cell(c,3)
+	check(c.hp==4 and not guard.alive,"MC-008: network guard absorbs own HP, overflow reaches target")
+	s.damage_cell(c,1)
+	check(c.hp==3,"MC-008: dead guard cannot intercept")
+	guard.alive=true;guard.hp=4;bridge.alive=false
+	s.damage_cell(c,1)
+	check(c.hp==2 and guard.hp==4,"MC-008: broken network removes protection")
 	quit(failures)
