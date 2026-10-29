@@ -36,4 +36,20 @@ func _initialize():
 	guard.alive=true;guard.hp=4;bridge.alive=false
 	s.damage_cell(c,1)
 	check(c.hp==2 and guard.hp==4,"MC-008: broken network removes protection")
+	s=Sim.new();s.reset(42,12)
+	var core=s.blood[0]
+	guard=s.make_cell("bodyguard",core.p+Vector2(40,0));guard.hp=2;s.cells=[guard]
+	s.links=[{"a":guard.id,"b":s.core_endpoint(core)}]
+	s.spawn_virus({"type":"basic","lane":0,"p":core.p});v=s.viruses[0];v.hp=3
+	s.physics.contacts={Vector2i(s.core_endpoint(core),v.id):true};s.resolve_cell_contacts()
+	check(not core.alive and not guard.alive and not v.alive,"MC-009: Core overflow and lethal counterattack")
+	check(s.round_losses.core==1 and s.round_losses.viruses==1 and s.round_losses.cells==1,"MC-009: each death counted exactly once")
+	s.resolve_cell_contacts()
+	check(s.round_losses.core==1 and s.round_losses.viruses==1,"MC-009: repeated dead contact adds no losses")
+	s=Sim.new();s.reset(42,12);core=s.blood[0]
+	guard=s.make_cell("bodyguard",core.p+Vector2(40,0));guard.hp=4;s.cells=[guard]
+	s.links=[{"a":guard.id,"b":s.core_endpoint(core)}]
+	s.spawn_virus({"type":"basic","lane":0,"p":core.p});v=s.viruses[0];v.hp=2
+	s.hit_core(core,v)
+	check(core.alive and guard.hp==2 and not v.alive and s.round_losses.viruses==1,"MC-009: fully protected Core still kills attacker and drops food")
 	quit(failures)

@@ -328,21 +328,21 @@ func endpoint_by_id(id):
 func core_endpoint(b):
 	return -2-int(b.id)
 
-func hit_core(b, v):
-	# One intercepted contact consumes the attacking virus, as a normal breach does.
-	# Exact excess-damage behavior is provisional; no recursive guard redirection.
-	for id in network(core_endpoint(b)):
-		var guard=cell_by_id(id)
-		if not guard.is_empty() and guard.get("key","")=="bodyguard" and guard.alive:
-			record("transfer",{"path":bond_path(core_endpoint(b),guard.id)})
-			damage_cell(guard,float(rules.contact_damage),true,{"kind":"virus","id":v.id,"p":v.p})
-			v.alive=false
-			record("core_protected",{"id":b.id,"guard":guard.id,"p":b.p})
-			return
-	b.alive=false
-	v.alive=false
-	effect(b.p,Color("#eb8f9d"),"",35)
-	record("blood_lost",{"id":b.id,"p":b.p})
+func hit_core(b,v,attack_hp=-1.0):
+	if v.jump:return
+	if not b.alive:
+		if attack_hp>=0:damage_virus(v,999,{"p":b.p,"cause":"core"})
+		return
+	var amount=float(v.hp) if attack_hp<0 else attack_hp
+	amount=intercept_damage(core_endpoint(b),amount,{"kind":"virus","id":v.id,"p":v.p})
+	if amount>0:
+		b["hp"]=float(b.get("hp",1.0))-amount
+		if b.hp<=0:
+			b.alive=false
+			effect(b.p,Color("#eb8f9d"),"",35)
+			record("blood_lost",{"id":b.id,"p":b.p})
+	else:record("core_protected",{"id":b.id,"p":b.p})
+	damage_virus(v,999,{"p":b.p,"cause":"core"})
 
 func rebuild_links():
 	bonds.rebuild(self)
@@ -836,12 +836,6 @@ func update(delta: float):
 			if body.has("key") and float(body.get("friendly_stun",0))<=0:
 				body.friendly_stun=float(rules.get("friendly_collision_stun",0.5))
 	resolve_cell_contacts()
-	for i in range(blood.size()):core_positions[i]=blood[i].p
-	for v: Dictionary in viruses:
-		if not v.alive or v.get("emerging",false) or v.jump:continue
-		var destination: Dictionary=nearest_blood_at(v.p,core_positions)
-		if not destination.is_empty() and v.p.distance_to(destination.p)<19:
-			hit_core(destination,v)
 	for p: Dictionary in particles:
 		if p.life<=0: continue
 		p.life-=delta
@@ -896,6 +890,8 @@ func resolve_cell_contacts():
 		if c.alive:bodies[int(c.id)]=c
 	for v in viruses:
 		if v.alive and not v.jump and not v.get("emerging",false):bodies[int(v.id)]=v
+	for b in blood:
+		if b.alive:bodies[core_endpoint(b)]=b
 	var hits=[]
 	for pair: Vector2i in physics.contacts:
 		if not bodies.has(pair.x) or not bodies.has(pair.y):continue
@@ -903,8 +899,11 @@ func resolve_cell_contacts():
 		if a.has("type")==b.has("type"):continue
 		var v=a if a.has("type") else b
 		var c=b if a.has("type") else a
-		hits.append({"cell":c,"virus":v,"cell_hp":c.hp,"virus_hp":v.hp})
+		hits.append({"cell":c,"virus":v,"cell_hp":c.get("hp",1.0) if c.has("key") else 999.0,"virus_hp":v.hp})
 	for hit in hits:
+		if not hit.cell.has("key"):
+			hit_core(hit.cell,hit.virus,hit.virus_hp)
+			continue
 		damage_cell(hit.cell,hit.virus_hp,false,{"kind":"virus","id":hit.virus.id,"p":hit.virus.p})
 		damage_virus(hit.virus,hit.cell_hp,{"p":hit.cell.p,"cause":"contact"})
 
