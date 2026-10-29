@@ -8,6 +8,7 @@ var physics=preload("res://scripts/body_physics.gd").new()
 var tuning={}
 var experimental=false
 var experiments=preload("res://scripts/experimental_system.gd").new()
+var virus_motion=preload("res://scripts/virus_motion.gd").new()
 var proteins=preload("res://scripts/protein_system.gd").new()
 var pending_cells=[]
 var battle_income=0
@@ -792,7 +793,6 @@ func update(delta: float):
 				v.emerging=false
 				v.age=0.0
 			continue
-		v.jump=v.type=="jumper" and fmod(v.age+v.phase,3.5)>2.8
 		var destination: Dictionary=nearest_blood_at(v.p,core_positions)
 		if destination.is_empty():
 			if gym_mode: continue
@@ -812,8 +812,6 @@ func update(delta: float):
 		v.visual_target=target_key
 		var dir: Vector2=v.p.direction_to(target_pos)
 		var speed: float=float(rules.virus_speed)
-		if v.type=="wave": dir=dir.rotated(sin(v.age*3+v.phase)*0.8)
-		if v.type=="jumper": speed=130 if v.jump else 20
 		speed*=float(rules.get("virus_movement_multiplier",1.0))
 		speed*=float(tuning.get("virus:"+v.type,{}).get("speed_multiplier",1.0))
 		v.visual_avoiding=false
@@ -840,7 +838,8 @@ func update(delta: float):
 			if old_host!=v.get("host",-1):
 				record("virus_attachment",{"id":v.id,"p":v.p,"old_host":old_host,"host":v.get("host",-1)})
 		v.visual_heading=dir
-		physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
+		if not virus_motion.tick(self,v,dir,delta):
+			physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
 		if v.type=="hungry":
 			for p: Dictionary in particles:
 				if p.kind=="food" and p.life>0 and p.p.distance_to(v.p)<20:

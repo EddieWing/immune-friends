@@ -87,7 +87,7 @@ globalThis.microcosmContacts = (() => {
     if(b.virus&&r[20]){b.v=[0,0];b.w=0}
     const target=[r[17],r[18]];
     if(dot(target,target)>0){const force=limit(mul(sub(target,b.v),r[21]),r[22]);b.v=add(b.v,mul(div(force,r[23]),dt))}
-    b.v=limit(mul(b.v,r[29]),r[26]);b.w=Math.max(-r[27],Math.min(r[27],b.w*r[30]));
+    b.v=limit(mul(b.v,b.virus&&!b.eligible?1:r[29]),r[26]);b.w=Math.max(-r[27],Math.min(r[27],b.w*r[30]));
     b.p=add(b.p,mul(b.v,dt));
     if(b.cell){const range=Math.PI*2,value=b.angle+b.w*dt;b.angle=value-range*Math.floor((value+Math.PI)/range);if(Math.abs(b.angle-Math.PI)<Math.max(1e-5,1e-5*Math.abs(b.angle)))b.angle=-Math.PI;r[16]=b.angle;
      b.c=cosf(b.angle);b.s=sinf(b.angle);b.axes=[[b.c,b.s],[-b.s,b.c]];

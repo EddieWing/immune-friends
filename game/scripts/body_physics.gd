@@ -287,7 +287,7 @@ func step(s,delta: float):
 				var force: Vector2=(target-velocity)*float(material.motor_response)
 				force=force.limit_length(float(material.motor_force))
 				velocity+=force/float(material.mass)*dt
-			velocity*=exp(-float(material.linear_damping)*dt)
+			velocity*=1.0 if body.get("jump",false) else exp(-float(material.linear_damping)*dt)
 			spin*=exp(-float(material.angular_damping)*dt)
 			velocity=velocity.limit_length(float(material.max_speed))
 			spin=clampf(spin,-float(material.max_angular_speed),float(material.max_angular_speed))
