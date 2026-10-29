@@ -91,3 +91,21 @@ func add_emitter(group: Dictionary, index: int, emitters: Array, rng: RandomNumb
  group.members.append(emitters.size())
  emitters.append({"p":group.slots[group.used],"lane":index,"type":group.type,"amount":1,"cooldown":1.0+rng.randf(),"delay":0.0})
  group.used+=1
+
+# Schedule contains every future release, independent of surviving active viruses.
+func schedule(wave,emitters,rng):
+ var queue=[]
+ for entry in wave:
+  var remaining=int(entry.count)
+  for index in range(emitters.size()):
+   var emitter=emitters[index]
+   if emitter.lane!=entry.lane or emitter.type!=entry.type:continue
+   var count=mini(remaining,emitter.amount)
+   for i in range(count):
+    queue.append({"type":entry.type,"lane":entry.lane,"emitter":index,"p":emitter.p,"due":emitter.delay+i*emitter.cooldown})
+   remaining-=count
+  # User-created Gym/debug sources have no persistent emitter yet.
+  var interval=rng.randf_range(1.0,2.0)
+  for i in range(remaining):queue.append({"type":entry.type,"lane":entry.lane,"due":1.0+i*interval})
+ queue.sort_custom(func(a,b):return a.due<b.due)
+ return queue

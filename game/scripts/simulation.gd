@@ -464,18 +464,7 @@ func begin_battle():
 			var n=cell_by_id(id)
 			if n.get("key","")=="radar" and ability_reaches(n,c.id): apply_radar(c,n)
 			if n.get("key","")=="accelerator" and ability_reaches(n,c.id): c.speed_buff=float(rules.accelerator_multiplier)
-	for entry in wave:
-		var members=source_emitters.filter(func(e): return e.lane==entry.lane and e.type==entry.type)
-		var remaining=int(entry.count)
-		for emitter in members:
-			for i in range(mini(remaining,emitter.amount)):
-				spawn_queue.append({"type":entry.type,"lane":entry.lane,"p":emitter.p,"due":emitter.delay+i*emitter.cooldown})
-			remaining-=mini(remaining,emitter.amount)
-		# Debug/Gym sources use an independent timer as well.
-		var interval=rng.randf_range(1.0,2.0)
-		for i in range(remaining):
-			spawn_queue.append({"type":entry.type,"lane":entry.lane,"due":1.0+i*interval})
-	spawn_queue.sort_custom(func(a,b): return a.due<b.due)
+	spawn_queue=infection_plan.schedule(wave,source_emitters,rng)
 
 	record("battle_start")
 
