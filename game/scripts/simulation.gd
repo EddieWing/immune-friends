@@ -668,6 +668,7 @@ func update(delta: float):
 	if phase!="battle": return
 	elapsed+=delta
 	advance_spawns(delta)
+	proteins.route_food(self,delta)
 	var has_network_buffs=false
 	for provider: Dictionary in cells:
 		if provider.alive and provider.key in ["radar","accelerator"]:
@@ -756,11 +757,6 @@ func update(delta: float):
 			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)
 		if c.key=="generator":
-			for p: Dictionary in particles:
-				if p.kind=="food" and p.life>0 and p.p.distance_to(c.p)<45:
-					p.life=0
-					c.food+=1
-					record("generator_fed",{"id":c.id,"p":c.p,"from":p.p,"food":c.food})
 			if c.food>=constant_of(c,"proteinAmount",8):
 				c.food-=int(constant_of(c,"proteinAmount",8))
 				var increment=int(constant_of(c,"increment",8))
@@ -846,13 +842,6 @@ func update(delta: float):
 		v.visual_heading=dir
 		if not virus_motion.tick(self,v,dir,delta):
 			physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
-		if v.type=="hungry":
-			for p: Dictionary in particles:
-				if p.kind=="food" and p.life>0 and p.p.distance_to(v.p)<20:
-					p.life=0
-					v.hp+=1
-					v.peak_hp=maxf(v.get("peak_hp",v.hp),v.hp)
-					record("virus_fed",{"id":v.id,"p":v.p,"from":p.p,"hp":v.hp})
 	physics.step(self,delta)
 	for pair: Vector2i in physics.contacts:
 		var a=endpoint_by_id(pair.x);var b=endpoint_by_id(pair.y)

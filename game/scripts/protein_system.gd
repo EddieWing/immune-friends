@@ -4,7 +4,7 @@ func tick(s,c,_delta):
 	if c.key not in ["mortar","mint","tag_splitter"]: return
 	var wanted="bullet" if c.key=="mortar" else ("tag" if c.key=="tag_splitter" else "food")
 	for p in s.particles:
-		if wanted=="bullet" or p.life<=0 or p.kind!=wanted or p.p.distance_to(c.p)>float(s.rules.recipe_reach): continue
+		if wanted in ["bullet","food"] or p.life<=0 or p.kind!=wanted or p.p.distance_to(c.p)>float(s.rules.recipe_reach): continue
 		p.life=0
 		c.food+=1
 		s.record("protein_eaten",{"id":c.id,"p":c.p,"from":p.p,"kind":wanted})
@@ -51,3 +51,32 @@ func drag(s,c,destination):
 		c["tag_distance"]=fmod(float(c.get("tag_distance",0.0))+distance,spacing)
 	c.p=destination
 	s.rebuild_links()
+
+# Shared Capsid ownership: choose the nearest eligible consumer once per particle.
+# This is the food-routing prerequisite for MC-029, not the entire MC-013 recipe port.
+func route_food(s,delta):
+	var consumers=[]
+	for c in s.cells:
+		if not c.alive:continue
+		if c.key in ["mint","generator"] or (s.experimental and c.key in ["hungry_bomb","seeker_factory"]):consumers.append(c)
+	for v in s.viruses:
+		if v.alive and v.type=="hungry":consumers.append(v)
+	for p in s.particles:
+		if p.kind!="food" or p.life<=0:continue
+		var chosen={};var distance=INF
+		for consumer in consumers:
+			var d=consumer.p.distance_to(p.p)
+			var reach=(10.0 if consumer.has("type") else 25.0)*26.0/3.5
+			if d<reach and d<distance:chosen=consumer;distance=d
+		if chosen.is_empty():continue
+		p["consumer"]=chosen.id
+		if distance>s.physics.radius(chosen):
+			p.p=p.p.move_toward(chosen.p,0.75*60.0*(26.0/3.5)*delta)
+			continue
+		p.life=0
+		if chosen.has("type"):
+			chosen.hp+=1;chosen.peak_hp=maxf(chosen.get("peak_hp",chosen.hp),chosen.hp)
+			s.record("virus_fed",{"id":chosen.id,"p":chosen.p,"from":p.p,"hp":chosen.hp})
+		else:
+			chosen.food+=1
+			s.record("generator_fed" if chosen.key=="generator" else "protein_eaten",{"id":chosen.id,"p":chosen.p,"from":p.p,"kind":"food","food":chosen.food})
