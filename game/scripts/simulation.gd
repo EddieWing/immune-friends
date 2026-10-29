@@ -350,6 +350,8 @@ func rebuild_links():
 	bonds.rebuild(self)
 
 func network(id):
+	var source=endpoint_by_id(id)
+	if source.is_empty() or not source.alive:return []
 	var found=[id]
 	var cursor=0
 	while cursor<found.size():
@@ -363,6 +365,26 @@ func network(id):
 			if not c.is_empty() and c.alive:
 				found.append(other)
 	return found
+
+func direct_neighbors(id):
+	var found=[]
+	var source=endpoint_by_id(id)
+	if source.is_empty() or not source.alive:return found
+	for link in links:
+		var other=link.b if link.a==id else (link.a if link.b==id else -1)
+		var body=endpoint_by_id(other)
+		if other!=-1 and not body.is_empty() and body.alive and not found.has(other):found.append(other)
+	return found
+
+func ability_targets(provider):
+	if provider.is_empty() or not provider.alive:return []
+	var direct=provider.key in ["accelerator","swapper"]
+	var ids=direct_neighbors(provider.id) if direct else network(provider.id)
+	# Kinetic Bond includes itself; Connected auras explicitly use NotSelf.
+	return ids.filter(func(id):return id!=provider.id or provider.key=="kinetic_bond")
+
+func ability_reaches(provider,target_id):
+	return ability_targets(provider).has(target_id)
 
 func range_of(c):
 	var r=stat_of(c,"range")*float(rules.scale)
@@ -435,8 +457,8 @@ func begin_battle():
 	for c in cells:
 		for id in network(c.id):
 			var n=cell_by_id(id)
-			if n.get("key","")=="radar": apply_radar(c,n)
-			if n.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
+			if n.get("key","")=="radar" and ability_reaches(n,c.id): apply_radar(c,n)
+			if n.get("key","")=="accelerator" and ability_reaches(n,c.id): c.speed_buff=float(rules.accelerator_multiplier)
 	for entry in wave:
 		var members=source_emitters.filter(func(e): return e.lane==entry.lane and e.type==entry.type)
 		var remaining=int(entry.count)
@@ -657,8 +679,8 @@ func update(delta: float):
 		c.speed_buff=1.0
 		for id in (network(c.id) if has_network_buffs else []):
 			var provider=cell_by_id(id)
-			if provider.get("key","")=="radar": apply_radar(c,provider)
-			if provider.get("key","")=="accelerator": c.speed_buff=float(rules.accelerator_multiplier)
+			if provider.get("key","")=="radar" and ability_reaches(provider,c.id): apply_radar(c,provider)
+			if provider.get("key","")=="accelerator" and ability_reaches(provider,c.id): c.speed_buff=float(rules.accelerator_multiplier)
 		proteins.tick(self,c,delta)
 		experiments.tick(self,c,delta)
 		c.cool-=delta
@@ -1022,13 +1044,13 @@ func next_round():
 	var exchanges=[]
 	for c in cells:
 		if c.key!="swapper": continue
-		for l in links:
-			if l.owner==c.id:
-				var other=cell_by_id(l.b)
-				# Core is a physical endpoint, but has no exchangeable HP stat.
-				if other.is_empty():continue
-				exchanges.append([c,other,c.max_hp,other.max_hp])
-				break
+		var neighbors=ability_targets(c)
+		neighbors.sort_custom(func(a,b):return endpoint_by_id(a).p.distance_squared_to(c.p)<endpoint_by_id(b).p.distance_squared_to(c.p))
+		for id in neighbors:
+			var other=cell_by_id(id)
+			if other.is_empty():continue
+			exchanges.append([c,other,c.max_hp,other.max_hp])
+			break
 	for swap in exchanges:
 		swap[0].max_hp=swap[3]
 		swap[0].hp=swap[3]

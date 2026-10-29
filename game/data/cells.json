@@ -382,7 +382,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#d8a5c6",
-    "description": "Takes damage on behalf of its connected network.",
+    "description": "Absorbs damage to other cells in its connected network, up to its remaining HP.",
     "reference_id": 28,
     "elite": {},
     "constants": {
@@ -400,7 +400,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#9aceb7",
-    "description": "Connects two nearby cells. Adds 20 microns of range to connected cells.",
+    "description": "Increases range of other cells throughout its connected network.",
     "reference_id": 27,
     "elite": {},
     "constants": {
@@ -421,7 +421,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#c3b1da",
-    "description": "Swaps health with its partner at the start of the next shop.",
+    "description": "Exchanges permanent health with the nearest directly bonded cell on return to preparation.",
     "reference_id": 30,
     "elite": {},
     "constants": {
@@ -439,7 +439,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#f0c199",
-    "description": "Original effect unknown. Provisional ability: speeds up the network.",
+    "description": "Accelerates directly bonded neighbours; does not reach through other bonds.",
     "reference_id": 23,
     "elite": {},
     "constants": {
