@@ -26,7 +26,7 @@
   "contact_damage": 1,
   "contact_interval": 0.8,
   "bullet_damage": 1,
-  "bullet_speed": 280,
+  "bullet_speed": 7428.571428571428,
   "bomb_damage": 1,
   "virus_speed": 31,
   "virus_movement_multiplier": 2.0,

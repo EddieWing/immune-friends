@@ -4,7 +4,7 @@ func tick(s,c,_delta):
 	if c.key not in ["mortar","mint","tag_splitter"]: return
 	var wanted="bullet" if c.key=="mortar" else ("tag" if c.key=="tag_splitter" else "food")
 	for p in s.particles:
-		if p.life<=0 or p.kind!=wanted or p.p.distance_to(c.p)>float(s.rules.recipe_reach): continue
+		if wanted=="bullet" or p.life<=0 or p.kind!=wanted or p.p.distance_to(c.p)>float(s.rules.recipe_reach): continue
 		p.life=0
 		c.food+=1
 		s.record("protein_eaten",{"id":c.id,"p":c.p,"from":p.p,"kind":wanted})

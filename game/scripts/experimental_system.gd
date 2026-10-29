@@ -48,9 +48,6 @@ func tick(s,c,delta):
 			if p.kind=="food":
 				p.life=0
 				c.food+=1
-			elif p.kind=="bullet" and c.key=="seeker_factory" and c.get("bullet_food",0)<2:
-				p.life=0
-				c["bullet_food"]=int(c.get("bullet_food",0))+1
 		if c.key=="hungry_bomb" and c.food>0:
 			c["radius_growth"]=float(c.get("radius_growth",0))+c.food*s.constant_of(c,"blastIncrement",1)
 			c.food=0

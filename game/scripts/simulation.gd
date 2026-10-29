@@ -834,22 +834,10 @@ func update(delta: float):
 	for p: Dictionary in particles:
 		if p.life<=0: continue
 		p.life-=delta
+		var previous=p.p
 		p.p+=p.v*movement_delta
 		if p.kind=="bullet":
-			for c: Dictionary in cells:
-				if c.alive and c.key=="bullet_wall" and c.id!=p.owner and not p.get("split",false) and contains_cell(c,p.p,5):
-					p.life=0
-					var dir: Vector2=p.v.normalized()
-					shoot(c,dir.rotated(-0.18),c.p+dir*48,true)
-					shoot(c,dir.rotated(0.18),c.p+dir*48,true)
-					record("bullet_split",{"p":c.p,"direction":dir})
-					break
-			if p.life<=0: continue
-			for v: Dictionary in viruses:
-				if v.alive and not v.jump and v.p.distance_to(p.p)<12+p.r:
-					damage_virus(v,float(rules.bullet_damage),{"p":p.p-p.v.normalized()*20,"cause":"bullet","owner":p.owner})
-					p.life=0
-					break
+			resolve_bullet(p,previous,p.p)
 		elif p.kind=="tag":
 			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(p.p)<17:
@@ -927,6 +915,58 @@ func advance_blasts(delta):
 				else:damage_cell(body,blast.damage,false,{"kind":"cell","id":blast.owner,"p":blast.p})
 		blast.visual.life=maxf(0.001,blast.duration-blast.age)
 	blasts=blasts.filter(func(b):return b.age<b.duration)
+
+# Earliest fraction of a swept projectile against actual circle / rotated box.
+func projectile_fraction(body,from,to,radius):
+	var start=from-body.p;var motion=to-from
+	if physics.is_box(self,body):
+		start=start.rotated(-float(body.get("angle",0)))
+		motion=motion.rotated(-float(body.get("angle",0)))
+		var half=Vector2(43,13)+Vector2.ONE*radius
+		var entry=0.0;var leave=1.0
+		for axis in range(2):
+			if absf(motion[axis])<0.000001:
+				if absf(start[axis])>half[axis]:return INF
+			else:
+				var a=(-half[axis]-start[axis])/motion[axis]
+				var b=(half[axis]-start[axis])/motion[axis]
+				entry=maxf(entry,minf(a,b));leave=minf(leave,maxf(a,b))
+				if entry>leave:return INF
+		return entry
+	var reach=physics.radius(body)+radius
+	var c=start.length_squared()-reach*reach
+	if c<=0:return 0.0
+	var a=motion.length_squared()
+	if a<0.000001:return INF
+	var b=start.dot(motion);var discriminant=b*b-a*c
+	if discriminant<0:return INF
+	var t=(-b-sqrt(discriminant))/a
+	return t if t>=0 and t<=1 else INF
+
+func resolve_bullet(p,from,to):
+	var target={};var nearest=INF
+	for body in cells+viruses:
+		if not body.alive or body.id==p.owner:continue
+		if body.has("type"):
+			if body.jump:continue
+		elif body.key not in ["bullet_wall","mortar","seeker_factory"]:continue
+		elif body.key=="bullet_wall" and p.get("split",false):continue
+		elif body.key=="seeker_factory" and (not experimental or int(body.get("bullet_food",0))>=2):continue
+		var t=projectile_fraction(body,from,to,float(p.r))
+		if t<nearest:nearest=t;target=body
+	if target.is_empty():return
+	p.p=from.lerp(to,nearest);p.life=0
+	if target.has("type"):
+		damage_virus(target,1,{"p":from,"cause":"bullet","owner":p.owner})
+	elif target.key=="bullet_wall":
+		var dir=p.v.normalized()
+		shoot(target,dir.rotated(-0.18),target.p+dir*48,true)
+		shoot(target,dir.rotated(0.18),target.p+dir*48,true)
+		record("bullet_split",{"p":target.p,"direction":dir})
+	else:
+		if target.key=="mortar":target.food+=1
+		else:target["bullet_food"]=int(target.get("bullet_food",0))+1
+		record("protein_eaten",{"id":target.id,"p":target.p,"from":p.p,"kind":"bullet"})
 
 func conduct(c):
 	# Provisional graph: objects within charge_range conduct one charge per victim.
