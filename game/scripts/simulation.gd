@@ -826,33 +826,12 @@ func update(delta: float):
 		for body in [a,b]:
 			if body.has("key") and float(body.get("friendly_stun",0))<=0:
 				body.friendly_stun=float(rules.get("friendly_collision_stun",0.5))
-	# Contacts already contain every touching pair from the solver. Index those
-	# pairs once instead of probing every cell for every virus. Preserve cell
-	# order: the first live touching cell still consumes the contact cooldown.
-	var contact_cells={}
-	var cell_indices={}
-	for index in range(cells.size()):cell_indices[int(cells[index].id)]=index
-	for pair: Vector2i in physics.contacts:
-		for side in range(2):
-			var cell_id: int=pair[side];var other_id: int=pair[1-side]
-			if not cell_indices.has(cell_id):continue
-			if not contact_cells.has(other_id):contact_cells[other_id]=[]
-			contact_cells[other_id].append(cell_indices[cell_id])
-	for indices in contact_cells.values():indices.sort()
+	resolve_cell_contacts()
 	for i in range(blood.size()):core_positions[i]=blood[i].p
 	for v: Dictionary in viruses:
-		if not v.alive or v.get("emerging",false):continue
-		# No contact can fire while this virus is cooling down or jumping.
-		if v.cool<=0 and not v.jump:
-			for index in contact_cells.get(int(v.id),[]):
-				var c: Dictionary=cells[index]
-				if not c.alive or v.jump:continue
-				if v.cool<=0 and physics.touching(c,v):
-					v.cool=float(rules.contact_interval)
-					damage_cell(c,float(rules.contact_damage),false,{"kind":"virus","id":v.id,"p":v.p})
-					damage_virus(v,float(rules.contact_damage),{"p":c.p,"cause":"contact"})
+		if not v.alive or v.get("emerging",false) or v.jump:continue
 		var destination: Dictionary=nearest_blood_at(v.p,core_positions)
-		if v.alive and not destination.is_empty() and v.p.distance_to(destination.p)<19:
+		if not destination.is_empty() and v.p.distance_to(destination.p)<19:
 			hit_core(destination,v)
 	for p: Dictionary in particles:
 		if p.life<=0: continue
@@ -899,6 +878,26 @@ func update(delta: float):
 	elif spawn_queue.is_empty() and viruses.is_empty():
 		if round_no>=target_rounds: finish(true)
 		else: phase="recap"
+
+# Auto Immune PreSolve emits damage on every touching physics step, not only
+# BeginContact. Snapshot ALL attackers before resolving any of this step's hits.
+func resolve_cell_contacts():
+	var bodies={}
+	for c in cells:
+		if c.alive:bodies[int(c.id)]=c
+	for v in viruses:
+		if v.alive and not v.jump and not v.get("emerging",false):bodies[int(v.id)]=v
+	var hits=[]
+	for pair: Vector2i in physics.contacts:
+		if not bodies.has(pair.x) or not bodies.has(pair.y):continue
+		var a=bodies[pair.x];var b=bodies[pair.y]
+		if a.has("type")==b.has("type"):continue
+		var v=a if a.has("type") else b
+		var c=b if a.has("type") else a
+		hits.append({"cell":c,"virus":v,"cell_hp":c.hp,"virus_hp":v.hp})
+	for hit in hits:
+		damage_cell(hit.cell,hit.virus_hp,false,{"kind":"virus","id":hit.virus.id,"p":hit.virus.p})
+		damage_virus(hit.virus,hit.cell_hp,{"p":hit.cell.p,"cause":"contact"})
 
 func conduct(c):
 	# Provisional graph: objects within charge_range conduct one charge per victim.
