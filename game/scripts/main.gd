@@ -528,7 +528,7 @@ func show_menu():
 	button(column,"Continue",func(): enter_microscope(func(): pass),Vector2(370,52))
 	if FileAccess.file_exists(save_path):
 		button(column,"Load saved preparation",func(): enter_microscope(load_run),Vector2(370,52))
-	button(column,"New run · 12 rounds",func(): enter_microscope(func(): new_run(12)),Vector2(370,52))
+	button(column,"New run",show_run_setup,Vector2(370,52))
 	button(column,"Codex",show_codex,Vector2(370,52))
 	button(column,"Gym",func(): enter_microscope(enter_gym),Vector2(370,52))
 	button(column,"How to play",show_help,Vector2(370,52))
@@ -568,7 +568,15 @@ func enter_microscope(action: Callable):
 		elif results_stage=="finished" and sim.phase in ["win","lose"]: show_run_result()
 		elif results_stage=="losses" and sim.phase in ["recap","win","lose"]: show_infection_results())
 
-func new_run(rounds):
+func show_run_setup():
+	var col=clear_modal("New run","Choose a training mode. Shop level progresses separately.")
+	var names=["New Player · 6 rounds · 14 Core", "Beginner · 10 rounds · 30 Core", "Intermediate · 12 rounds · 30 Core", "Trained · 12 rounds · 30 Core"]
+	for index in range(names.size()):
+		var mode=index
+		button(col,names[index],func():enter_microscope(func():new_run([6,10,12,12][mode],mode)))
+	button(col,"Back",func():modal.hide();show_menu())
+
+func new_run(rounds,mode=3):
 	launch_remaining=0.0
 	view.staging=""
 	view.warning_wave=[]
@@ -579,6 +587,7 @@ func new_run(rounds):
 	shop_collapsed=false
 	shop_page=0
 	sim.experimental=bool(settings.get_value("gameplay","experimental",false))
+	sim.training_mode=mode
 	sim.reset(Time.get_ticks_usec()%100000,rounds)
 	lab_tools.refresh_available()
 	view.position=Vector2(720,425)
@@ -701,7 +710,7 @@ func show_settings():
 	experimental_toggle.toggled.connect(func(value): settings.set_value("gameplay","experimental",value); settings.save(settings_path))
 	col.add_child(experimental_toggle)
 	var experimental_note=Label.new()
-	experimental_note.text="Adds 8 cells and Pusher Virus to new runs and Gym.\nCurrent and saved runs keep their own mode."
+	experimental_note.text="Legacy/Gym catalogue toggle. New runs use their training mode.\nOld saves keep their original catalogue and round limit."
 	experimental_note.add_theme_font_size_override("font_size",13)
 	col.add_child(experimental_note)
 	var tutorial=CheckBox.new()
@@ -1349,7 +1358,7 @@ func save_run():
 	for key in sim.catalog: hp_bases[key]=sim.catalog[key].hp
 	var data={"tuning_hp_bases":hp_bases,"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
 		"economy_version":1,"max_funds":sim.max_funds,"selected_rewards":sim.selected_rewards,
-		"experimental":sim.experimental,"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
+		"training_mode":sim.training_mode,"experimental":sim.experimental,"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
 		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
 		"choices":sim.reward_choices,"rng_state":str(sim.rng.state),
 		"setup_particles":sim.particles.filter(func(p):return p.get("setup",false)).map(func(p):return {"p":[p.p.x,p.p.y],"owner":p.owner}),
@@ -1371,6 +1380,7 @@ func load_run():
 	results_pending=false
 	results_stage=""
 	results_delay=0.0
+	sim.training_mode=clampi(int(data.get("training_mode",-1)),-1,3)
 	sim.experimental=bool(data.get("experimental",false))
 	sim.reset(int(data.seed),int(data.rounds))
 	lab_tools.refresh_available()
@@ -1787,6 +1797,7 @@ func show_recap():
 	results_stage="forecast"
 	var next_sim=Simulation.new()
 	cell_tuner.apply_to(next_sim)
+	next_sim.training_mode=sim.training_mode
 	next_sim.experimental=sim.experimental
 	next_sim.reset(sim.seed_value,sim.target_rounds)
 	next_sim.round_no=sim.round_no+1

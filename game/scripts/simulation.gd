@@ -6,6 +6,7 @@ var max_funds = 3
 var bonds=preload("res://scripts/bond_system.gd").new()
 var physics=preload("res://scripts/body_physics.gd").new()
 var tuning={}
+var training_mode=-1 # -1 preserves legacy saves and explicit Gym setup.
 var experimental=false
 var experiments=preload("res://scripts/experimental_system.gd").new()
 var virus_motion=preload("res://scripts/virus_motion.gd").new()
@@ -117,7 +118,8 @@ func reset(seed_number = 42, rounds = 12):
 	round_losses={"viruses":0,"core":0,"cells":0}
 	rng.seed = seed_number
 	seed_value = seed_number
-	target_rounds = rounds
+	target_rounds = [6,10,12,12][training_mode] if training_mode>=0 else rounds
+	if training_mode>=0:experimental=true
 	cells.clear()
 	blood.clear()
 	blood_velocity.clear()
@@ -143,7 +145,7 @@ func reset(seed_number = 42, rounds = 12):
 		for r in range(-5,6):
 			sites.append(Vector2(26.0*(q+r*0.5),26.0*sqrt(3.0)*r*0.5))
 	sites.sort_custom(func(a,b): return a.length_squared()<b.length_squared() if not is_equal_approx(a.length_squared(),b.length_squared()) else a.angle()<b.angle())
-	for i in range(int(rules.start_blood)):
+	for i in range([14,30,30,30][training_mode] if training_mode>=0 else int(rules.start_blood)):
 		blood.append({"p":sites[i],"alive":true,"id":i})
 	rebuild_blood_links()
 	roll_shop(false)
@@ -151,7 +153,14 @@ func reset(seed_number = 42, rounds = 12):
 	record("new_run", {"seed":seed_number,"rounds":rounds})
 
 func available_cell_keys():
-	return catalog.keys().filter(func(key):return experimental or not catalog[key].get("experimental",false))
+	return catalog.keys().filter(func(key):
+		if training_mode<0:return experimental or not catalog[key].get("experimental",false)
+		var id=int(catalog[key].get("reference_id",-1))
+		if training_mode==3:return true
+		if id in [47,48,49,50,51]:return false
+		if training_mode<=2 and id in [15,38,41,40]:return false
+		if training_mode<=1 and id in [6,34,32,35,33]:return false
+		return true)
 
 func available_virus_keys():
 	var keys=["basic","wave","jumper","hungry","swarmer","seeker","avoider"]
@@ -412,7 +421,7 @@ func interval_of(c):
 	return interval
 
 func make_wave():
-	var plan=infection_plan.build(seed_value,round_no,available_virus_keys())
+	var plan=infection_plan.build(seed_value,round_no,available_virus_keys(),training_mode if training_mode>=0 else 0)
 	source_center=Vector2.ZERO
 	infection_sources=plan.positions
 	source_emitters=plan.emitters
