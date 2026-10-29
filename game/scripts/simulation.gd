@@ -499,7 +499,7 @@ func spawn_virus(entry):
 	var p=entry.get("p",infection_sources[entry.lane])
 	var hp=float(tuning.get("virus:"+entry.type,{}).get("hp",2.0 if entry.type=="seeker" else 1.0))
 	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"peak_hp":hp,"alive":true,
-		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"jump":false,"phase":rng.randf()*TAU,
+		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"lived":0.0,"lifespan":12.0+rng.randf()*2.0,"jump":false,"phase":rng.randf()*TAU,
 		"emerging":false,"exit":p,"spawn_position":p,"source_lane":entry.lane})
 	next_id+=1
 
@@ -631,7 +631,7 @@ func damage_cell(c, amount, redirected=false, source={}):
 	record("cell_rest",{"id":c.id,"p":c.p})
 
 func damage_virus(v, amount, source={}):
-	if not v.alive or v.jump: return
+	if not v.alive or (v.jump and source.get("cause","")!="expiry"): return
 	var prior_hp=v.hp
 	v.hp-=amount
 	record("virus_hit",{"id":v.id,"p":v.p,"amount":amount,"from":source.get("p",v.p),"cause":source.get("cause","contact")})
@@ -774,6 +774,10 @@ func update(delta: float):
 	for b: Dictionary in blood:core_positions.append(b.p)
 	for v: Dictionary in viruses:
 		if not v.alive: continue
+		v["lived"]=float(v.get("lived",0))+delta
+		if v.lived>float(v.get("lifespan",14.0)):
+			damage_virus(v,maxf(1,v.hp),{"p":v.p,"cause":"expiry"})
+			continue
 		v.age+=delta
 		v.cool=maxf(0,v.cool-delta)
 		if v.tag>0 and v.tag<=delta: record("tag_ended",{"id":v.id,"p":v.p})
@@ -871,19 +875,9 @@ func update(delta: float):
 	particles=particles.filter(func(p): return p.life>0)
 	viruses=viruses.filter(func(v): return v.alive)
 	if gym_mode: return
-	if elapsed>=float(rules.max_battle_seconds) and not viruses.is_empty():
-		# Explicit provisional resolution for an otherwise infinite freeze/stall.
-		for v: Dictionary in viruses:
-			var b=nearest_blood(v.p)
-			if not b.is_empty():
-				b.alive=false
-				record("blood_lost",{"id":b.id,"p":b.p})
-		viruses.clear()
-		spawn_queue.clear()
-		record("provisional_stalemate_resolution")
 	if blood.filter(func(b): return b.alive).is_empty():
 		finish(false)
-	elif spawn_queue.is_empty() and viruses.is_empty():
+	elif spawn_queue.is_empty() and viruses.is_empty() and blasts.is_empty() and effects.is_empty():
 		if round_no>=target_rounds: finish(true)
 		else: phase="recap"
 
