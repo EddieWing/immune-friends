@@ -30,7 +30,7 @@ func reference_candidates(bodies):
 					if j<=i:continue
 					var b=bodies[j]
 					if b.get("jump",false) or b.get("emerging",false):continue
-					if not a.has("key") and not b.has("key"):continue
+					if not a.has("key") and not b.has("key") and a.has("type")==b.has("type"):continue
 					pairs.append(Vector2i(i,j))
 	return pairs
 func _initialize():
