@@ -889,11 +889,11 @@ func resolve_cell_contacts():
 		damage_cell(hit.cell,hit.virus_hp,false,{"kind":"virus","id":hit.virus.id,"p":hit.virus.p})
 		damage_virus(hit.virus,hit.cell_hp,{"p":hit.cell.p,"cause":"contact"})
 
-func start_blast(position,reach,damage=1.0,force=600.0,owner=-1):
+func start_blast(position,reach,damage=1.0,force=600.0,owner=-1,immune_only=false):
 	var duration=maxf(0.02,reach/float(rules.scale)*0.02)
 	var visual={"p":position,"color":Color("#f9b8d1") if damage>0 else Color("#a5e2f0"),"text":"","r":0.0,"front":true,"life":duration,"max":duration}
 	effects.append(visual)
-	blasts.append({"p":position,"reach":reach,"radius":0.0,"duration":duration,"age":0.0,"hit":{},"damage":damage,"force":force,"owner":owner,"visual":visual})
+	blasts.append({"p":position,"reach":reach,"radius":0.0,"duration":duration,"age":0.0,"hit":{},"immune_only":immune_only,"damage":damage,"force":force,"owner":owner,"visual":visual})
 
 func advance_blasts(delta):
 	# Iterate a snapshot: a killed bomb starts a distinct front next step.
@@ -902,6 +902,7 @@ func advance_blasts(delta):
 		blast.radius=minf(blast.reach,blast.reach*blast.age/blast.duration)
 		blast.visual.r=blast.radius
 		for body in cells+viruses:
+			if blast.immune_only and body.has("type"):continue
 			if not body.alive or blast.hit.has(body.id) or body.id==blast.owner:continue
 			if body.has("type") and body.jump:continue
 			# Distance to the fixture, including rotated rectangular walls.

@@ -19,4 +19,11 @@ func _initialize():
 	var bomb=s.make_cell("bomb",Vector2(50,0));bomb.hp=1;s.cells=[bomb]
 	s.blasts.clear();s.start_blast(Vector2.ZERO,120);s.advance_blasts(0.5)
 	check(not bomb.alive and s.blasts.size()==2,"MC-010: bomb death launches independent chained front")
+	s=Sim.new();s.reset(12,12);s.experimental=true
+	near=s.make_cell("turret",Vector2(25,0));s.cells=[near];var hp=near.hp
+	s.spawn_virus({"type":"pusher","lane":0,"p":Vector2.ZERO})
+	s.spawn_virus({"type":"basic","lane":0,"p":Vector2(15,0)})
+	s.damage_virus(s.viruses[0],999);s.advance_blasts(0.2)
+	check(near.hp==hp and s.physics.velocity(near).x>0,"MC-031: Pusher front pushes immune body without damage")
+	check(s.physics.velocity(s.viruses[1])==Vector2.ZERO and s.blood.all(func(b):return b.alive),"MC-031: viruses and Core excluded from force target filter")
 	quit(errors)

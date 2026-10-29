@@ -69,6 +69,4 @@ func feed_target(s,c):
 
 func virus_death(s,v):
 	if not s.experimental or v.type!="pusher": return
-	for c in s.cells:
-		if c.alive and c.p.distance_to(v.p)<float(s.rules.pusher_virus_range):
-			s.push_object(c,v.p.direction_to(c.p)*30,"cell",v.p)
+	s.start_blast(v.p,6.0*float(s.rules.scale),0.0,400.0,v.id,true)
