@@ -34,12 +34,7 @@ func tick(s,c,delta):
 			s.money+=income
 			s.effect(c.p,Color("#f3d272"),"+%d Carb" % income,24)
 		elif c.key=="mortar":
-			var bomb=s.make_cell("bomb",c.p+Vector2.RIGHT.rotated(c.angle)*45)
-			bomb["temporary"]=true
-			bomb["launch_remaining"]=0.6
-			bomb.angle=c.angle
-			s.pending_cells.append(bomb)
-			s.record("produced",{"id":c.id,"p":c.p,"key":"bomb"})
+			produce(s,c,"bomb",c.rank>=3)
 		else:
 			var clone=s.make_cell("tag_splitter",c.p+Vector2(0,38))
 			clone["temporary"]=true
@@ -130,3 +125,17 @@ func accelerate_cooldown(c):
 	var reserve=float(c.get("cool_reserve",0))
 	var used=minf(reserve,maxf(0,float(c.cool)-0.2))
 	c.cool-=used;c["cool_reserve"]=reserve-used
+
+func produce(s,parent,key,elite=false):
+	var child=s.make_cell(key,parent.p)
+	child.rank=3 if elite else 1
+	child.hp=s.stat_of(child,"hp");child.max_hp=child.hp
+	var direction=Vector2.RIGHT.rotated(parent.angle)
+	child.p=parent.p+direction*(s.physics.radius(parent)+s.physics.radius(child)+1)
+	child.start=child.p;child.angle=parent.angle;child.start_angle=parent.angle
+	child["temporary"]=true;child["creator"]=parent.id
+	# One launch impulse, not a forced velocity over successive frames.
+	s.physics.impulse(s,child,direction*500.0*(26.0/3.5)/60.0)
+	s.pending_cells.append(child)
+	s.record("produced",{"id":parent.id,"p":parent.p,"key":key,"child":child.id,"elite":elite})
+	return child
