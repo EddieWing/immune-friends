@@ -303,7 +303,7 @@
     "interval": 0.05,
     "behavior": "spray",
     "color": "#c59bd9",
-    "description": "Sprays tags across a 180° arc.",
+    "description": "Sprays 30 tags per battle (60 when elite), then stops. Tags seek untagged viruses and mark them for the rest of their life; the first hit stops movement for 1.5 seconds.",
     "reference_id": 34,
     "elite": {},
     "constants": {

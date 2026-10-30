@@ -50,6 +50,8 @@ func update(sim,delta):
   if not active.has(id): buffs.erase(id)
  if effects.size()>48: effects=effects.slice(effects.size()-48)
 func draw_cell(canvas,c):
+ if c.key=="tag_sprayer" and c.has("tags"):
+  canvas.draw_string(ThemeDB.fallback_font,c.p+Vector2(-18,-29),"EMPTY" if c.tags==0 else str(c.tags)+" tags",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("#644c7d"))
  if c.key=="generator":
   for i in range(8):
    var p=c.p+Vector2(-9+(i%4)*6,11+floori(i/4.0)*5)

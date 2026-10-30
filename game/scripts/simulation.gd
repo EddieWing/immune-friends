@@ -463,6 +463,7 @@ func begin_battle():
 		c["recipe_cool"]=0.0
 		c["recipe_pending"]=false
 		c["cool_reserve"]=0.0
+		if c.key=="tag_sprayer":c["tags"]=int(constant_of(c,"tagAmount",30))
 		c["kills"]=0
 		c["distance_charge"]=0.0
 		c["distance_health"]=0.0
@@ -754,10 +755,12 @@ func update(delta: float):
 					for other: Dictionary in cells:
 						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*20,"cell",c.p)
 				"drop":
-					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":8.0,"r":5.0,"owner":c.id})
+					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id})
 				"spray":
-					var angle=c.angle+rng.randf_range(-PI/2,PI/2)
-					particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":reach/95,"r":5.0,"owner":c.id})
+					if int(c.get("tags",0))>0:
+						c.tags-=1
+						var angle=c.angle+rng.randf_range(-PI/2,PI/2)
+						particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":1e12,"r":5.0,"owner":c.id})
 		if c.key=="magnet":
 			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)
@@ -839,6 +842,7 @@ func update(delta: float):
 		if p.life<=0: continue
 		p.life-=delta
 		var previous=p.p
+		if p.kind=="tag":proteins.steer_tag(self,p,delta)
 		p.p+=p.v*movement_delta
 		if p.kind=="bullet":
 			resolve_bullet(p,previous,p.p)

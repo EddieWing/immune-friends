@@ -53,7 +53,7 @@ func drag(s,c,destination):
 		var cursor=spacing-float(c.get("tag_distance",0.0))
 		while cursor<=distance and int(c.get("tags",0))>0:
 			var p=old.lerp(destination,cursor/maxf(distance,0.001))
-			s.particles.append({"kind":"tag","p":p,"v":Vector2.ZERO,"life":8.0,"r":5.0,"owner":c.id,"setup":true})
+			s.particles.append({"kind":"tag","p":p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id,"setup":true})
 			c.tags-=1
 			cursor+=spacing
 		c["tag_distance"]=fmod(float(c.get("tag_distance",0.0))+distance,spacing)
@@ -82,7 +82,7 @@ func route_food(s,delta):
 		if distance>s.physics.radius(chosen):
 			p.p=p.p.move_toward(chosen.p,0.75*60.0*(26.0/3.5)*delta)
 			continue
-		p.life=0
+			p.life=0
 		if chosen.has("type"):
 			chosen.hp+=1;chosen.peak_hp=maxf(chosen.get("peak_hp",chosen.hp),chosen.hp)
 			s.record("virus_fed",{"id":chosen.id,"p":chosen.p,"from":p.p,"hp":chosen.hp})
@@ -104,7 +104,8 @@ func resolve_tag(s,p,from,to):
 	if target.is_empty():return
 	p.p=from.lerp(to,nearest);p.life=0
 	if target.has("type"):
-		target.tag=4;target.freeze=1
+		if target.tag<=0:
+			target.tag=1e12;target.freeze=1.5
 		s.record("tagged",{"id":target.id,"p":target.p,"from":p.p,"owner":p.owner})
 	else:
 		target.food+=1
@@ -135,6 +136,15 @@ func produce(s,parent,key,elite=false,launch_force=500.0):
 	s.pending_cells.append(child)
 	s.record("produced",{"id":parent.id,"p":parent.p,"key":key,"child":child.id,"elite":elite})
 	return child
+
+func steer_tag(s,p,delta):
+	var target={};var nearest=15.0*26.0/3.5
+	for v in s.viruses:
+		if not v.alive or v.tag>0 or v.get("jump",false):continue
+		var distance=p.p.distance_to(v.p)
+		if distance<nearest:nearest=distance;target=v
+	var desired=Vector2.ZERO if target.is_empty() else p.p.direction_to(target.p)*25.0*26.0/3.5
+	p.v=p.v.move_toward(desired,125.0*26.0/3.5*delta)
 
 func split(s,parent):
 	# Original qt removes the parent and constructs two fresh unpromoted bodies.
