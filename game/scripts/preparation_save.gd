@@ -30,7 +30,9 @@ static func capture(sim):
 	var state={}
 	for field in FIELDS: state[field]=encode(sim.get(field))
 	state.particles=encode(sim.particles.filter(func(p):return p.get("setup",false)))
-	return {"version":VERSION,"state":state,"rng_state":str(sim.rng.state)}
+	var bases={}
+	for key in sim.catalog:bases[key]=sim.catalog[key].hp
+	return {"version":VERSION,"state":state,"rng_state":str(sim.rng.state),"hp_bases":bases}
 
 static func inspect(data,sim):
 	if not data is Dictionary: return {"error":"The saved preparation is unreadable."}
@@ -73,13 +75,21 @@ static func inspect(data,sim):
 			if not (emitter.get(field) is int or emitter.get(field) is float):return {"error":"Invalid Source timing."}
 	for entry in state.wave:
 		if not entry is Dictionary or not entry.get("type") is String or not entry.has("count") or not entry.has("lane"):return {"error":"Invalid wave."}
-	return {"state":state,"rng_state":int(data.rng_state)}
+	if not data.get("hp_bases",{}) is Dictionary:return {"error":"Invalid saved health settings."}
+	return {"state":state,"rng_state":int(data.rng_state),"hp_bases":data.get("hp_bases",{})}
 
 static func restore(sim,checked):
 	var state=checked.state
 	sim.training_mode=int(state.training_mode)
 	sim.reset(int(state.seed_value),int(state.target_rounds))
 	for field in FIELDS:sim.set(field,state[field])
+	# Test/Save tuning is intentionally current; preserve permanent HP modifiers.
+	for cell in sim.cells:
+		var previous=float(checked.hp_bases.get(cell.key,sim.catalog[cell.key].hp))
+		var change=(float(sim.catalog[cell.key].hp)-previous)*int(cell.get("copies",cell.rank))
+		if change!=0:
+			cell.max_hp=maxf(1,cell.max_hp+change)
+			cell.hp=maxf(0.1,cell.hp+change)
 	# JSON object keys are strings; the Core solver keys velocities by integer ID.
 	var velocities={}
 	for key in sim.blood_velocity:velocities[int(key)]=sim.blood_velocity[key]
