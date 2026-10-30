@@ -846,13 +846,7 @@ func update(delta: float):
 		if p.kind=="bullet":
 			resolve_bullet(p,previous,p.p)
 		elif p.kind=="tag":
-			for v: Dictionary in viruses:
-				if v.alive and v.p.distance_to(p.p)<17:
-					v.tag=4
-					v.freeze=1
-					record("tagged",{"id":v.id,"p":v.p,"from":p.p,"owner":p.owner})
-					p.life=0
-					break
+			proteins.resolve_tag(self,p,previous,p.p)
 	particles=particles.filter(func(p): return p.life>0)
 	viruses=viruses.filter(func(v): return v.alive)
 	if gym_mode: return
@@ -949,7 +943,7 @@ func resolve_bullet(p,from,to):
 			if body.jump:continue
 		elif body.key not in ["bullet_wall","mortar","seeker_factory"]:continue
 		elif body.key=="bullet_wall" and p.get("split",false):continue
-		elif body.key=="seeker_factory" and (not experimental or int(body.get("bullet_food",0))>=2):continue
+		elif body.key=="seeker_factory" and not experimental:continue
 		var t=projectile_fraction(body,from,to,float(p.r))
 		if t<nearest:nearest=t;target=body
 	if target.is_empty():return

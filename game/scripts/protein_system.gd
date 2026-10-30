@@ -2,12 +2,6 @@ extends RefCounted
 # Recipes are card-derived. Unmeasured radii/launch speeds live in assumptions.
 func tick(s,c,_delta):
 	if c.key not in ["mortar","mint","tag_splitter"]: return
-	var wanted="bullet" if c.key=="mortar" else ("tag" if c.key=="tag_splitter" else "food")
-	for p in s.particles:
-		if wanted in ["bullet","food"] or p.life<=0 or p.kind!=wanted or p.p.distance_to(c.p)>float(s.rules.recipe_reach): continue
-		p.life=0
-		c.food+=1
-		s.record("protein_eaten",{"id":c.id,"p":c.p,"from":p.p,"kind":wanted})
 	var cost=4 if c.key=="mortar" else (3 if c.key=="tag_splitter" else int(s.constant_of(c,"proteinAmount",5)))
 	while c.food>=cost:
 		c.food-=cost
@@ -58,7 +52,7 @@ func route_food(s,delta):
 	var consumers=[]
 	for c in s.cells:
 		if not c.alive:continue
-		if c.key in ["mint","generator"] or (s.experimental and c.key in ["hungry_bomb","seeker_factory"]):consumers.append(c)
+		if c.key in ["mint","generator","accelerator"] or (s.experimental and c.key in ["hungry_bomb","seeker_factory"]):consumers.append(c)
 	for v in s.viruses:
 		if v.alive and v.type=="hungry":consumers.append(v)
 	for p in s.particles:
@@ -68,6 +62,7 @@ func route_food(s,delta):
 			var d=consumer.p.distance_to(p.p)
 			var reach=(10.0 if consumer.has("type") else 25.0)*26.0/3.5
 			if d<reach and d<distance:chosen=consumer;distance=d
+		p.erase("consumer")
 		if chosen.is_empty():continue
 		p["consumer"]=chosen.id
 		if distance>s.physics.radius(chosen):
@@ -80,3 +75,22 @@ func route_food(s,delta):
 		else:
 			chosen.food+=1
 			s.record("generator_fed" if chosen.key=="generator" else "protein_eaten",{"id":chosen.id,"p":chosen.p,"from":p.p,"kind":"food","food":chosen.food})
+
+# Interferon is not attracted: only the first body crossed may consume it.
+func resolve_tag(s,p,from,to):
+	var target={};var nearest=INF
+	for body in s.cells+s.viruses:
+		if not body.alive or body.id==p.owner:continue
+		if body.has("type"):
+			if body.get("jump",false):continue
+		elif body.key!="tag_splitter":continue
+		var fraction=s.projectile_fraction(body,from,to,float(p.r))
+		if fraction<nearest:nearest=fraction;target=body
+	if target.is_empty():return
+	p.p=from.lerp(to,nearest);p.life=0
+	if target.has("type"):
+		target.tag=4;target.freeze=1
+		s.record("tagged",{"id":target.id,"p":target.p,"from":p.p,"owner":p.owner})
+	else:
+		target.food+=1
+		s.record("protein_eaten",{"id":target.id,"p":target.p,"from":p.p,"kind":"tag"})
