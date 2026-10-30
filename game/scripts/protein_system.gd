@@ -91,7 +91,7 @@ func route_food(s,delta):
 			consumed(s,chosen)
 			s.record("generator_fed" if chosen.key=="generator" else "protein_eaten",{"id":chosen.id,"p":chosen.p,"from":p.p,"kind":"food","food":chosen.food})
 
-# Interferon is not attracted: only the first body crossed may consume it.
+# Steering is separate from consumption: only the first body crossed consumes a tag.
 func resolve_tag(s,p,from,to):
 	var target={};var nearest=INF
 	for body in s.cells+s.viruses:
@@ -143,6 +143,11 @@ func steer_tag(s,p,delta):
 		if not v.alive or v.tag>0 or v.get("jump",false):continue
 		var distance=p.p.distance_to(v.p)
 		if distance<nearest:nearest=distance;target=v
+	if target.is_empty():
+		for c in s.cells:
+			if not c.alive or c.key!="tag_splitter":continue
+			var distance=p.p.distance_to(c.p)
+			if distance<nearest:nearest=distance;target=c
 	var desired=Vector2.ZERO if target.is_empty() else p.p.direction_to(target.p)*25.0*26.0/3.5
 	p.v=p.v.move_toward(desired,125.0*26.0/3.5*delta)
 

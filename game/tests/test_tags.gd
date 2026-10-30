@@ -19,4 +19,8 @@ func _initialize():
 	check(sprayer.tags==30,"normal Sprayer starts with 30 tags")
 	for i in range(300):s.update(1.0/60)
 	check(sprayer.tags==0 and s.particles.size()==30,"Sprayer stops after finite ammunition and tags do not expire early")
+	var splitter=s.make_cell("tag_splitter",Vector2(80,0));s.cells=[splitter];s.viruses.clear()
+	var tag={"p":Vector2.ZERO,"v":Vector2.ZERO}
+	s.proteins.steer_tag(s,tag,0.1)
+	check(tag.v.x>0,"tag steers toward consumer when no untagged virus is in range")
 	quit(errors)
