@@ -16,7 +16,11 @@ func run():
 	scene.settings_path="user://mc034-test.cfg";scene.save_path="user://mc034-test.json";root.add_child(scene);await process_frame;scene.set_process(false)
 	scene.sim.training_mode=1;scene.sim.reset(42,12);scene.save_run();scene.sim.training_mode=3;scene.load_run()
 	check(scene.sim.training_mode==1 and scene.sim.target_rounds==10,"MC-034: save restores its mode independently of settings")
-	var data=JSON.parse_string(FileAccess.get_file_as_string(scene.save_path));data.erase("training_mode");data.rounds=12;data.experimental=false
+	# A real legacy v1 fixture; removing a top-level field from v2 is not v1.
+	var data={"version":1,"seed":42,"round":1,"rounds":12,"experimental":false,
+		"money":4,"tier":1,"xp":1,"frozen":false,"next_id":1,"cells":[],
+		"blood":scene.sim.blood.map(func(b):return {"p":[b.p.x,b.p.y],"id":b.id,"alive":b.alive}),
+		"offers":["wall"],"rewards":[],"choices":[],"rng_state":str(scene.sim.rng.state)}
 	var file=FileAccess.open(scene.save_path,FileAccess.WRITE);file.store_string(JSON.stringify(data));file.close();scene.load_run()
 	check(scene.sim.training_mode==-1 and scene.sim.target_rounds==12 and not scene.sim.experimental,"MC-034: old save retains legacy limits/catalogue")
 	quit(errors)
