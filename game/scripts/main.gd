@@ -72,6 +72,7 @@ var catalogue_text: RichTextLabel
 var volumes=[0.45,0.3,0.6,0.3]
 var settings=ConfigFile.new()
 var save_path="user://run.json"
+var battle_replay=preload("res://scripts/battle_replay.gd").new()
 var detail_panel: PanelContainer
 var detail_icon: TextureRect
 var detail_key=""
@@ -529,6 +530,8 @@ func show_menu():
 	if FileAccess.file_exists(save_path):
 		button(column,"Load saved preparation",func(): enter_microscope(load_run),Vector2(370,52))
 	button(column,"New run",show_run_setup,Vector2(370,52))
+	if not battle_replay.last.is_empty() or FileAccess.file_exists(save_path+".replay"):
+		button(column,"Replay last battle",show_battle_replay,Vector2(370,52))
 	button(column,"Codex",show_codex,Vector2(370,52))
 	button(column,"Gym",func(): enter_microscope(enter_gym),Vector2(370,52))
 	button(column,"How to play",show_help,Vector2(370,52))
@@ -1142,6 +1145,7 @@ func start_battle():
 	save_run()
 	auto_camera=true
 	camera_phase=""
+	battle_replay.start(sim)
 	sim.begin_battle()
 	set_automatic_zoom(camera_director.ZoomLevel.MEDIUM)
 	launch_remaining=LAUNCH_SECONDS
@@ -1711,7 +1715,13 @@ func advance_simulation(delta,budget_us=0):
 	var steps=0
 	var started=Time.get_ticks_usec()
 	while clock_accum+0.000000001>=SIMULATION_STEP and steps<MAX_SIMULATION_STEPS_PER_FRAME:
+		var was_recording=not battle_replay.recording.is_empty() and sim.phase=="battle" and not gym_mode
 		sim.update(SIMULATION_STEP)
+		if was_recording:
+			battle_replay.tick(sim)
+			if battle_replay.recording.is_empty():
+				var replay_file=FileAccess.open(save_path+".replay",FileAccess.WRITE)
+				if replay_file: replay_file.store_string(JSON.stringify(battle_replay.last,"",true,true))
 		clock_accum=maxf(0,clock_accum-SIMULATION_STEP)
 		steps+=1
 		if sim.phase!=clock_phase:
@@ -1964,3 +1974,16 @@ func layout_incoming():
 	incoming_tween=create_tween()
 	incoming_tween.tween_property(income_panel,"position:x",destination,0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if not show_panel: incoming_tween.tween_callback(income_panel.hide)
+
+func show_battle_replay():
+	var data=battle_replay.last
+	if data.is_empty() and FileAccess.file_exists(save_path+".replay"):
+		data=JSON.parse_string(FileAccess.get_file_as_string(save_path+".replay"))
+	var col=clear_modal("Last battle replay","Read-only playback · your current run and rewards are unchanged.")
+	modal_panel.set_meta("pause_for_settings",true)
+	var checked=preload("res://scripts/battle_replay.gd").open(data)
+	if checked.has("error"):
+		var error=Label.new();error.text=checked.error;col.add_child(error)
+	else:
+		var player=preload("res://scripts/ui/replay_view.gd").new();player.data=data;col.add_child(player)
+	button(col,"Close",func():modal.hide(),Vector2(220,44))
