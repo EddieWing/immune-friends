@@ -417,7 +417,7 @@ func apply_radar(c, provider={}):
 func interval_of(c):
 	if tuning.get(c.key,{}).has("interval"): return float(tuning[c.key].interval)
 	var interval=stat_of(c,"interval")
-	if c.key=="gatling": return maxf(0.05,interval-constant_of(c,"reduction",0.25)*float(c.get("kills",0)))
+	if c.key=="gatling": return maxf(0.2,interval-constant_of(c,"reduction",0.25)*float(c.get("kills",0)))
 	return interval
 
 func make_wave():
@@ -645,7 +645,7 @@ func damage_virus(v, amount, source={}):
 	v.alive=false
 	experiments.virus_death(self,v)
 	var shooter=cell_by_id(source.get("owner",-1))
-	if experimental and shooter.get("key","")=="gatling": shooter["kills"]=int(shooter.get("kills",0))+1
+	if shooter.get("key","")=="gatling": shooter["kills"]=int(shooter.get("kills",0))+1
 	particles.append({"kind":"food","p":v.p,"v":Vector2.ZERO,"life":float(rules.protein_lifetime),"r":4.0,"owner":-1})
 	effect(v.p,Color("#d4b8e7"),"",20)
 	var core=nearest_blood(v.p)
