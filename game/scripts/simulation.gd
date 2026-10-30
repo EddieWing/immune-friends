@@ -1040,23 +1040,23 @@ func next_round():
 		c.hp=c.max_hp
 		c.alive=true
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
-	# Capture all exchanges before modifying persistent health.
-	var exchanges=[]
+	rebuild_links()
+	# Original TradeHealth processes exchanges sequentially after restoration.
 	for c in cells:
-		if c.key!="swapper": continue
+		if c.key!="swapper":continue
 		var neighbors=ability_targets(c)
-		neighbors.sort_custom(func(a,b):return endpoint_by_id(a).p.distance_squared_to(c.p)<endpoint_by_id(b).p.distance_squared_to(c.p))
+		neighbors.sort_custom(func(a,b):
+			var da=endpoint_by_id(a).p.distance_squared_to(c.p)
+			var db=endpoint_by_id(b).p.distance_squared_to(c.p)
+			return a<b if is_equal_approx(da,db) else da<db)
 		for id in neighbors:
 			var other=cell_by_id(id)
 			if other.is_empty():continue
-			exchanges.append([c,other,c.max_hp,other.max_hp])
+			var before=c.max_hp
+			c.max_hp=other.max_hp;c.hp=c.max_hp
+			other.max_hp=before;other.hp=before
+			record("swap",{"a":c.id,"b":other.id,"p":c.p,"q":other.p,"before_a":before,"after_a":c.hp,"before_b":c.hp,"after_b":before})
 			break
-	for swap in exchanges:
-		swap[0].max_hp=swap[3]
-		swap[0].hp=swap[3]
-		swap[1].max_hp=swap[2]
-		swap[1].hp=swap[2]
-		record("swap",{"a":swap[0].id,"b":swap[1].id,"p":swap[0].p,"q":swap[1].p,"before_a":swap[2],"after_a":swap[3],"before_b":swap[3],"after_b":swap[2]})
 	round_no+=1
 	max_funds=mini(max_funds+int(shop_rules.income),int(shop_rules.max_income))
 	money=max_funds+battle_income
