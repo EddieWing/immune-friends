@@ -40,6 +40,7 @@ func _initialize():
  check(view.hits.any(func(h): return h.kind=="cell" and h.p==wall.p),"Bomb friendly fire has a distinct source kind")
  sim.cells=[]
  sim.particles=[]
+ sim.rules.charge_range=58 # Explicit relay topology for this presentation fixture.
  var zapper=sim.make_cell("zapper",Vector2.ZERO)
  var bridge=sim.make_cell("wall",Vector2(40,0))
  sim.cells=[zapper,bridge]

@@ -44,7 +44,7 @@
   "unknown_elites": "Catalog elite overrides inherit ordinary parameters; HP from merged copies remains additive.",
   "late_waves": "External source growth and placement follow Demo 1.0.0; virus selection uses implemented types and local seeded RNG.",
   "protein_lifetime": 12,
-  "charge_range": 58,
+  "charge_range": 111.42857142857143,
   "charge_rule": "one charge kills one reachable virus; nearby objects bridge",
   "healing": "may exceed base during combat; reset next shop",
   "max_battle_seconds": 180,
