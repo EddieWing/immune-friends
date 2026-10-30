@@ -467,6 +467,8 @@ func begin_battle():
 		c["cool_reserve"]=0.0
 		if c.key=="tag_sprayer":c["tags"]=int(constant_of(c,"tagAmount",30))
 		c["kills"]=0
+		c["electric_cool"]=0.0
+		c["electric_targets"]={}
 		c["distance_charge"]=0.0
 		c["distance_health"]=0.0
 		c["travel_x"]=c.p.x
@@ -837,6 +839,8 @@ func update(delta: float):
 		for body in [a,b]:
 			if body.has("key") and float(body.get("friendly_stun",0))<=0:
 				body.friendly_stun=float(rules.get("friendly_collision_stun",0.5))
+	for c in cells:
+		if c.key=="electric_wall":experiments.electric_contacts(self,c,delta)
 	resolve_cell_contacts()
 	advance_blasts(delta)
 	for p: Dictionary in particles:
