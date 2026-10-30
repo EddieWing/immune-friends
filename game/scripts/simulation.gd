@@ -243,14 +243,14 @@ func purchase(index: int, p: Vector2, reward = false):
 		return false
 	if not reward:
 		money-=int(shop_rules.buy_price)
-		if catalog[key].category=="B":
-			for c in cells:
-				if c.key=="resonant_wall":
-					c.max_hp+=constant_of(c,"healthIncrement",1)
-					c.hp+=constant_of(c,"healthIncrement",1)
-				if c.key=="resonant_buffer":
-					item.max_hp+=constant_of(c,"healthIncrement",1)
-					item.hp+=constant_of(c,"healthIncrement",1)
+	if catalog[key].category=="B":
+		for c in cells:
+			if c.key=="resonant_wall":
+				c.max_hp+=constant_of(c,"healthIncrement",1)
+				c.hp+=constant_of(c,"healthIncrement",1)
+			if c.key=="resonant_buffer":
+				item.max_hp+=constant_of(c,"healthIncrement",1)
+				item.hp+=constant_of(c,"healthIncrement",1)
 	source.remove_at(index)
 	cells.append(item)
 	if direct:
