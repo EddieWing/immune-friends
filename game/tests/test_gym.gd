@@ -53,6 +53,7 @@ func run():
  check(scene.sim.elapsed==before,"Gym pause stops simulation")
  scene.gym_reset_setup()
  check(scene.sim.phase=="shop" and scene.sim.cells[0].p==start and scene.sim.viruses.size()==7,"Reset restores the pre-test setup")
+ check(scene.lab_tools.hint.text.begins_with("Setup restored."),"Reset replaces the stale running hint")
  scene.gym_clear()
  scene.gym_run()
  scene.sim.update(0.1)

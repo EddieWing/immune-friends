@@ -881,6 +881,7 @@ func gym_run():
 
 func gym_reset_setup():
 	if not gym_mode: return
+	if lab_tools: lab_tools.hint.text="Setup restored. Choose an object to place, or Run to repeat the test."
 	sim.presentation_revision+=1
 	view.diagnostics.tracks.clear()
 	if not gym_setup.is_empty():
