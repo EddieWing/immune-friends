@@ -10,6 +10,7 @@ var training_mode=-1 # -1 preserves legacy saves and explicit Gym setup.
 var experimental=false
 var experiments=preload("res://scripts/experimental_system.gd").new()
 var virus_motion=preload("res://scripts/virus_motion.gd").new()
+var electricity=preload("res://scripts/electricity.gd").new()
 var proteins=preload("res://scripts/protein_system.gd").new()
 var pending_cells=[]
 var battle_income=0
@@ -428,6 +429,7 @@ func make_wave():
 	wave=plan.wave
 
 func begin_battle():
+	electricity.reset()
 	if phase!="shop" or not reward_choices.is_empty():
 		return
 	ensure_infection_sources_clear()
@@ -764,8 +766,7 @@ func update(delta: float):
 		if c.key=="magnet":
 			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)
-		if c.charge>0 and c.key!="electromagnet":
-			conduct(c)
+	electricity.update(self)
 	for c: Dictionary in pending_cells:
 		if cells.size()<int(rules.produced_cell_limit): cells.append(c)
 	pending_cells.clear()
@@ -990,34 +991,8 @@ func join_swarm_contacts():
 			record("virus_attachment",{"id":v.id,"p":v.p,"old_host":-1,"host":other.id})
 			v.host=other.id
 
-func conduct(c):
-	# Provisional graph: objects within charge_range conduct one charge per victim.
-	var points=[c.p]
-	var paths=[[c.p]]
-	var seen={}
-	var cursor=0
-	while cursor<points.size() and cursor<200:
-		var p=points[cursor]
-		cursor+=1
-		for v in viruses:
-			if v.alive and not v.jump and p.distance_to(v.p)<float(rules.charge_range):
-				c.charge-=1
-				effects.append({"p":p,"end":v.p,"color":Color("#fff3a9"),"text":"","r":0,"life":0.35,"max":0.35})
-				damage_virus(v,999,{"p":p,"cause":"electric"})
-				record("discharge",{"path":paths[cursor-1]+[v.p],"source":c.id,"target":v.id})
-				record("charge_kill",{"source":c.id})
-				return
-		for other in cells:
-			if other.alive and not seen.has(other.id) and p.distance_to(other.p)<float(rules.charge_range):
-				seen[other.id]=true
-				points.append(other.p)
-				paths.append(paths[cursor-1]+[other.p])
-		for i in range(particles.size()):
-			var particle=particles[i]
-			if particle.life>0 and not seen.has(-i-1) and p.distance_to(particle.p)<float(rules.charge_range):
-				seen[-i-1]=true
-				points.append(particle.p)
-				paths.append(paths[cursor-1]+[particle.p])
+func conduct(_c):
+	electricity.update(self)
 
 func next_budget():
 	return mini(max_funds+int(shop_rules.income),int(shop_rules.max_income))+battle_income
