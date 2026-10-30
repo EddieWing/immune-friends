@@ -18,11 +18,10 @@ func tick(s,c,delta):
 		s.record("generator_charged",{"id":c.id,"p":c.p,"amount":increment})
 	if s.experimental and c.key=="hungry_bomb" and c.food>=1:
 		c.food-=1;c["radius_growth"]=float(c.get("radius_growth",0))+s.constant_of(c,"blastIncrement",1)
-	if s.experimental and c.key=="seeker_factory" and c.food>=1 and c.get("bullet_food",0)>=2:
-		c.food-=1;c.bullet_food-=2
-		var baby=s.make_cell("seeker",c.p+Vector2.RIGHT.rotated(c.angle)*40)
-		baby["temporary"]=true;s.pending_cells.append(baby)
-		s.record("produced",{"id":c.id,"p":c.p,"key":"seeker"})
+	if s.experimental and c.key=="seeker_factory" and c.food>=s.constant_of(c,"capsid",1) and c.get("bullet_food",0)>=s.constant_of(c,"bullet",2):
+		c.food-=int(s.constant_of(c,"capsid",1));c.bullet_food-=int(s.constant_of(c,"bullet",2))
+		# Original factory omits promoted even for an elite parent.
+		produce(s,c,"seeker",false)
 	if c.key not in ["mortar","mint","tag_splitter"]: return
 	var cost=4 if c.key=="mortar" else (3 if c.key=="tag_splitter" else int(s.constant_of(c,"proteinAmount",5)))
 	if c.food>=cost:

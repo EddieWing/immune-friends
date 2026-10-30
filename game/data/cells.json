@@ -713,7 +713,7 @@
     "interval": 0,
     "behavior": "mortar",
     "color": "#7eaecb",
-    "description": "Consumes 1 Virus Protein and 2 Bullet Proteins to create a Seeker. Friendly shooters try to feed it.",
+    "description": "Consumes 1 food particle and 2 bullets to launch a temporary normal Seeker, including from an elite factory. Friendly shooters try to feed it.",
     "experimental": true,
     "reference_id": 22,
     "elite": {},
