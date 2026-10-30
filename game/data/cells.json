@@ -157,7 +157,7 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#e2b78c",
-    "description": "Gains +1 health when you buy a B-cell.",
+    "description": "Gains +1 permanent HP when another B-cell is bought or claimed free (+2 when elite).",
     "reference_id": 16,
     "elite": {},
     "constants": {
@@ -177,7 +177,7 @@
     "interval": 0,
     "behavior": "buffer",
     "color": "#bcd99a",
-    "description": "Each B-cell you buy gains +1 health.",
+    "description": "Other B-cells bought or claimed free gain +1 permanent HP (+2 when elite), before merging.",
     "reference_id": 17,
     "elite": {},
     "constants": {
@@ -511,7 +511,7 @@
     "interval": 0,
     "behavior": "mortar",
     "color": "#7eaecb",
-    "description": "Consumes 4 Bullet Proteins to launch a Bomb. Produced cells last for this battle.",
+    "description": "Consumes 4 bullets to launch a temporary Bomb; an elite Mortar launches an elite Bomb. Recipe cooldown: 0.2 s.",
     "reference_id": 24,
     "elite": {},
     "constants": {
@@ -550,7 +550,7 @@
     "interval": 0,
     "behavior": "seek",
     "color": "#b391d5",
-    "description": "Seeks viruses and Tag Protein. Consumes 3 tags to split in two. Extra copies last for this battle.",
+    "description": "Consumes 3 tags to replace itself with two fresh normal Splitters for this battle. Its original form returns in preparation.",
     "reference_id": 33,
     "elite": {
       "range": 40
@@ -630,7 +630,7 @@
     "interval": 0.1,
     "behavior": "wall",
     "color": "#efbca1",
-    "description": "Gains Electric Charge when immune cells or viruses touch it.",
+    "description": "Gains charge from immune-cell or virus contact. The same body must leave for 0.25 s before it can trigger again.",
     "experimental": true,
     "reference_id": 48,
     "elite": {},
@@ -651,7 +651,7 @@
     "interval": 0,
     "behavior": "magnet",
     "color": "#e9a4c1",
-    "description": "Draws nearby charge when no virus is in reach. Its magnetic field grows with stored charge.",
+    "description": "Draws charge through nearby conductors. Field radius is 5 per stored charge (10 when elite); no charge means no field.",
     "experimental": true,
     "reference_id": 50,
     "elite": {},
@@ -733,7 +733,7 @@
     "interval": 2,
     "behavior": "shoot",
     "color": "#8bc6df",
-    "description": "Shoots nearby viruses. Each kill reduces its firing interval by 0.25 seconds for this battle.",
+    "description": "Each virus killed by its own bullets reduces the firing interval by 0.25 s, down to 0.2 s. Resets each battle.",
     "experimental": true,
     "reference_id": 12,
     "elite": {
@@ -754,7 +754,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#bea7d8",
-    "description": "Connected cells gain health as they move. Distance per health point is experimental.",
+    "description": "Each 20 units traveled by this Bond grants +1 HP to its connected network, including itself (+2 when elite).",
     "experimental": true,
     "reference_id": 25,
     "elite": {},
