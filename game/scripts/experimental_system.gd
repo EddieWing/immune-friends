@@ -42,17 +42,6 @@ func tick(s,c,delta):
 					break
 		for v in s.viruses:
 			if v.alive and v.p.distance_to(c.p)<s.range_of(c): s.physics.accelerate(s,v,v.p.direction_to(c.p)*60*float(s.rules.movement_multiplier),delta)
-	if c.key in ["seeker_factory","hungry_bomb"]:
-		if c.key=="hungry_bomb" and c.food>0:
-			c["radius_growth"]=float(c.get("radius_growth",0))+c.food*s.constant_of(c,"blastIncrement",1)
-			c.food=0
-		while c.key=="seeker_factory" and c.food>=1 and c.get("bullet_food",0)>=2:
-			c.food-=1
-			c.bullet_food-=2
-			var baby=s.make_cell("seeker",c.p+Vector2.RIGHT.rotated(c.angle)*40)
-			baby["temporary"]=true
-			s.pending_cells.append(baby)
-			s.record("produced",{"id":c.id,"p":c.p,"key":"seeker"})
 
 func feed_target(s,c):
 	if not s.experimental: return {}

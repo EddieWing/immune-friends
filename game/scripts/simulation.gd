@@ -758,12 +758,6 @@ func update(delta: float):
 		if c.key=="magnet":
 			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)
-		if c.key=="generator":
-			if c.food>=constant_of(c,"proteinAmount",8):
-				c.food-=int(constant_of(c,"proteinAmount",8))
-				var increment=int(constant_of(c,"increment",8))
-				c.charge+=increment
-				record("generator_charged",{"id":c.id,"p":c.p,"amount":increment})
 		if c.charge>0 and c.key!="electromagnet":
 			conduct(c)
 	for c: Dictionary in pending_cells:
@@ -958,6 +952,7 @@ func resolve_bullet(p,from,to):
 	else:
 		if target.key=="mortar":target.food+=1
 		else:target["bullet_food"]=int(target.get("bullet_food",0))+1
+		proteins.consumed(self,target)
 		record("protein_eaten",{"id":target.id,"p":target.p,"from":p.p,"kind":"bullet"})
 
 func update_swarm_attraction(v,delta):
