@@ -459,7 +459,7 @@
     "interval": 0,
     "behavior": "wild",
     "color": "#d9bce6",
-    "description": "Merges with any non-elite cell.",
+    "description": "Combines with any non-elite cell as an extra copy. Keeps the other cell's type and permanent bonuses. Cannot combine with elite cells.",
     "reference_id": 26,
     "elite": {},
     "constants": {},

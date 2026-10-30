@@ -188,11 +188,14 @@ func compatible(a, b):
 func merge(a, b):
 	if phase != "shop" or not cells.has(a) or not cells.has(b) or not compatible(a,b):
 		return false
+	# The ordinary participant survives regardless of drag direction.
+	if a.key=="wildcard":
+		var donor=a
+		a=b
+		b=donor
 	var copies=int(a.get("copies",a.rank))+int(b.get("copies",b.rank))
 	var permanent_radius=float(a.get("radius_growth",0)) if a.key=="survivor_bomb" else 0.0
 	permanent_radius+=float(b.get("radius_growth",0)) if b.key=="survivor_bomb" else 0.0
-	if a.key == "wildcard":
-		a.key = b.key
 	a.sale+=int(b.get("sale",1))-1
 	a.max_hp += b.max_hp
 	a.hp = a.max_hp

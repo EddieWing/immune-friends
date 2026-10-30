@@ -1327,7 +1327,9 @@ func _unhandled_input(event):
 				if dragging and not selected.is_empty() and not gym_mode:
 					for c in sim.cells.duplicate():
 						if c.id!=selected.id and c.p.distance_to(selected.p)<35 and sim.compatible(c,selected):
-							if sim.merge(c,selected): selected=c; break
+							if sim.merge(c,selected):
+								if sim.cells.has(c): selected=c
+								break
 					changed()
 				if rotating or dragging_blood>=0: changed()
 				dragging=false
