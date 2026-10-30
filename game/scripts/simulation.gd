@@ -449,6 +449,7 @@ func begin_battle():
 	spawn_queue.clear()
 	rebuild_links()
 	for c in cells:
+		c["participated_round"]=round_no
 		c.start=c.p
 		c.start_angle=c.angle
 		c.cool=0.1
@@ -1008,10 +1009,10 @@ func next_round():
 	cells=cells.filter(func(c):return not c.get("temporary",false))
 	links=links.filter(func(l):return not endpoint_by_id(l.a).is_empty() and not endpoint_by_id(l.b).is_empty())
 	for c in cells:
-		if c.key=="bank" and c.alive: c.sale+=int(constant_of(c,"incomeIncrement",1))
-		if c.key=="survivor_bomb" and c.alive:
+		if c.key=="bank" and c.alive and c.get("participated_round",-1)==round_no: c.sale+=int(constant_of(c,"incomeIncrement",1))
+		if c.key=="survivor_bomb" and c.alive and c.get("participated_round",-1)==round_no:
 			c["radius_growth"]=float(c.get("radius_growth",0))+constant_of(c,"blastIncrement",8)
-			record("permanent_growth",{"id":c.id,"p":c.p,"amount":8})
+			record("permanent_growth",{"id":c.id,"p":c.p,"amount":constant_of(c,"blastIncrement",8)})
 		c.p=c.start
 		c.angle=c.start_angle
 		c.range_buff=1.0
