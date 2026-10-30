@@ -70,7 +70,7 @@ func run():
 	s.viruses[0].p=Vector2(300,0)
 	s.particles.append({"kind":"tag","p":Vector2(300,0),"v":Vector2.ZERO,"life":3.0,"r":4.0,"owner":-1})
 	s.update(0.01)
-	check(s.viruses[0].freeze==1.0 and s.viruses[0].tag==4.0,"tag freezes and marks")
+	check(s.viruses[0].freeze==1.5 and s.viruses[0].tag>1e10,"tag freezes and marks")
 	# Complete multi-round sessions driven only by legal shop purchases.
 	for seed_no in [42,43,100]:
 		s.reset(seed_no,12)

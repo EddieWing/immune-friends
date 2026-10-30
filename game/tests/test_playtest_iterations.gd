@@ -71,7 +71,7 @@ func _initialize():
 	s.update(0.016)
 	s.update(0.016)
 	check(s.cells.any(func(c):return c.key=="bomb" and c.get("temporary",false)),"Mortar consumes bullets and creates Bomb")
-	check(s.cells.filter(func(c):return c.key=="tag_splitter").size()==2,"Three tags produce a second Splitter")
+	check(s.cells.filter(func(c):return c.key=="tag_splitter" and c.alive).size()==2,"Three tags replace the parent with two live Splitters")
 	check(s.battle_income==1,"Mint earns tracked battle income")
 	s.phase="recap"
 	s.next_round()

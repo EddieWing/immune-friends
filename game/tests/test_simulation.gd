@@ -46,6 +46,7 @@ func run():
 	check(s.tier==2 and s.capacity()==7 and s.money==0,"XP and capacity")
 	s.reset()
 	var bank=add(s,"bank",Vector2(300,200))
+	s.begin_battle()
 	s.phase="recap"
 	s.next_round()
 	check(bank.sale==2,"bank sale growth")

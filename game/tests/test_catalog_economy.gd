@@ -71,7 +71,7 @@ func run():
 	s.apply_tuning("turret",{"interval":4.0})
 	check(s.interval_of(turret)==4,"Explicit tuner remains authoritative")
 	s.reset()
-	var bank=s.make_cell("bank",Vector2.ZERO);bank.rank=3;s.cells=[bank]
+	var bank=s.make_cell("bank",Vector2.ZERO);bank.rank=3;s.cells=[bank];s.begin_battle()
 	s.phase="recap";s.next_round()
 	check(bank.sale==3,"Elite Bank adds2 to ordinary sale value")
 	var second_bank=s.make_cell("bank",Vector2(100,0));second_bank.sale=4

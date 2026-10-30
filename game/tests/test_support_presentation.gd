@@ -35,6 +35,7 @@ func _initialize():
  check(layer.buffs[wall.id].range==1,"Lost provider removes the range badge")
  var swapper=sim.make_cell("swapper",Vector2.ZERO)
  wall.max_hp=9
+ sim.blood.clear();wall.p=Vector2(40,0);wall.start=wall.p
  sim.cells=[swapper,wall]
  sim.links=[{"a":swapper.id,"b":wall.id,"rest":40,"owner":swapper.id}]
  var original=swapper.max_hp

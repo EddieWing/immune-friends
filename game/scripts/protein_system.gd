@@ -82,7 +82,7 @@ func route_food(s,delta):
 		if distance>s.physics.radius(chosen):
 			p.p=p.p.move_toward(chosen.p,0.75*60.0*(26.0/3.5)*delta)
 			continue
-			p.life=0
+		p.life=0
 		if chosen.has("type"):
 			chosen.hp+=1;chosen.peak_hp=maxf(chosen.get("peak_hp",chosen.hp),chosen.hp)
 			s.record("virus_fed",{"id":chosen.id,"p":chosen.p,"from":p.p,"hp":chosen.hp})

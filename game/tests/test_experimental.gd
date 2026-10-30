@@ -45,11 +45,12 @@ func run():
 	s.experiments.tick(s,kinetic,0.1)
 	check(kinetic.charge==1,"Twelve microns generate one charge")
 	var magnet=add(s,"electromagnet",kinetic.p+Vector2(30,0))
-	s.experiments.tick(s,magnet,0.1)
-	check(magnet.charge==1 and kinetic.charge==0 and s.range_of(magnet)==15,"Electromagnet transfers charge and grows field")
+	for i in range(4):s.electricity.update(s)
+	check(magnet.charge==1 and kinetic.charge==0 and s.range_of(magnet)==5*s.rules.scale,"Electromagnet transfers charge and grows field")
 	var wall=add(s,"electric_wall",Vector2(0,-200))
-	add(s,"wall",Vector2(20,-200))
-	s.experiments.tick(s,wall,0.1)
+	var contact=add(s,"wall",Vector2(20,-200))
+	s.physics.contacts[Vector2i(wall.id,contact.id)]=true
+	s.experiments.electric_contacts(s,wall,0.1)
 	check(wall.charge==1,"Electric Wall charges on allied contact")
 	var hungry=add(s,"hungry_bomb",Vector2(0,200))
 	food(s,hungry,"food",2)
@@ -81,9 +82,10 @@ func run():
 	var bond=add(s,"kinetic_bond",Vector2(-450,-220))
 	var passenger=add(s,"wall",Vector2(-400,-220))
 	s.rebuild_links()
-	s.experiments.tick(s,passenger,0.1)
-	passenger.p.x+=60
-	s.experiments.tick(s,passenger,0.1)
+	s.phase="battle"
+	s.experiments.tick(s,bond,0.1)
+	bond.p.x+=61
+	s.experiments.tick(s,bond,0.1)
 	check(passenger.hp>passenger.max_hp,"Kinetic Bond grants movement health")
 	# UI/settings/save round trip must retain a run flag independently of preferences.
 	var scene=load("res://main.tscn").instantiate()

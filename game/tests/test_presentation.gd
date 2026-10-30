@@ -44,7 +44,7 @@ func _initialize():
  var bridge=sim.make_cell("wall",Vector2(40,0))
  sim.cells=[zapper,bridge]
  sim.viruses=[{"id":999,"p":Vector2(85,0),"alive":true,"jump":false,"hp":1,"type":"basic"}]
- sim.conduct(zapper)
+ for i in range(4):sim.conduct(zapper)
  view.update(sim,0.01)
  check(view.signals.any(func(p): return p.kind=="discharge" and p.path==[Vector2.ZERO,Vector2(40,0),Vector2(85,0)]),"electric pulse follows the successful conduction route")
  print("RESULT: presentation checks, %d failures" % failures)
