@@ -186,14 +186,19 @@ func compatible(a, b):
 	return a.key == b.key or a.key == "wildcard" or b.key == "wildcard"
 
 func merge(a, b):
-	if phase != "shop" or not compatible(a,b) or a.rank+b.rank > 3:
+	if phase != "shop" or not cells.has(a) or not cells.has(b) or not compatible(a,b):
 		return false
+	var copies=int(a.get("copies",a.rank))+int(b.get("copies",b.rank))
+	var permanent_radius=float(a.get("radius_growth",0)) if a.key=="survivor_bomb" else 0.0
+	permanent_radius+=float(b.get("radius_growth",0)) if b.key=="survivor_bomb" else 0.0
 	if a.key == "wildcard":
 		a.key = b.key
 	a.sale+=int(b.get("sale",1))-1
 	a.max_hp += b.max_hp
 	a.hp = a.max_hp
-	a.rank += b.rank
+	a.rank = mini(3,int(a.rank)+int(b.rank))
+	a["copies"]=copies
+	if a.key=="survivor_bomb":a["radius_growth"]=permanent_radius
 	cells.erase(b)
 	if a.rank == 3:
 		queue_reward()
