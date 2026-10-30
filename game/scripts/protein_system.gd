@@ -23,7 +23,7 @@ func tick(s,c,delta):
 		# Original factory omits promoted even for an elite parent.
 		produce(s,c,"seeker",false)
 	if c.key not in ["mortar","mint","tag_splitter"]: return
-	var cost=4 if c.key=="mortar" else (3 if c.key=="tag_splitter" else int(s.constant_of(c,"proteinAmount",5)))
+	var cost=int(s.constant_of(c,"consume",4)) if c.key=="mortar" else (int(s.constant_of(c,"tagAmount",3)) if c.key=="tag_splitter" else int(s.constant_of(c,"proteinAmount",5)))
 	if c.food>=cost:
 		c.food-=cost
 		c.recipe_cool=0.2 if c.key=="mortar" else 0.0
@@ -35,10 +35,7 @@ func tick(s,c,delta):
 		elif c.key=="mortar":
 			produce(s,c,"bomb",c.rank>=3)
 		else:
-			var clone=s.make_cell("tag_splitter",c.p+Vector2(0,38))
-			clone["temporary"]=true
-			s.pending_cells.append(clone)
-			s.record("produced",{"id":c.id,"p":c.p,"key":"tag_splitter"})
+			split(s,c)
 
 func pickup(s,c):
 	if c.key!="tag_drag" or s.phase!="shop": return
@@ -125,7 +122,7 @@ func accelerate_cooldown(c):
 	var used=minf(reserve,maxf(0,float(c.cool)-0.2))
 	c.cool-=used;c["cool_reserve"]=reserve-used
 
-func produce(s,parent,key,elite=false):
+func produce(s,parent,key,elite=false,launch_force=500.0):
 	var child=s.make_cell(key,parent.p)
 	child.rank=3 if elite else 1
 	child.hp=s.stat_of(child,"hp");child.max_hp=child.hp
@@ -134,7 +131,18 @@ func produce(s,parent,key,elite=false):
 	child.start=child.p;child.angle=parent.angle;child.start_angle=parent.angle
 	child["temporary"]=true;child["creator"]=parent.id
 	# One launch impulse, not a forced velocity over successive frames.
-	s.physics.impulse(s,child,direction*500.0*(26.0/3.5)/60.0)
+	s.physics.impulse(s,child,direction*launch_force*(26.0/3.5)/60.0)
 	s.pending_cells.append(child)
 	s.record("produced",{"id":parent.id,"p":parent.p,"key":key,"child":child.id,"elite":elite})
 	return child
+
+func split(s,parent):
+	# Original qt removes the parent and constructs two fresh unpromoted bodies.
+	parent.alive=false
+	s.links=s.links.filter(func(link):return link.a!=parent.id and link.b!=parent.id)
+	var sideways=Vector2.RIGHT.rotated(parent.angle).orthogonal()
+	for side in [-1,1]:
+		var child=produce(s,parent,"tag_splitter",false,250.0)
+		child.p=parent.p+sideways*(s.physics.radius(child)+1)*side
+		child.start=child.p
+	s.record("cell_split",{"id":parent.id,"p":parent.p})

@@ -687,6 +687,7 @@ func update(delta: float):
 			var provider=cell_by_id(id)
 			if provider.get("key","")=="radar" and ability_reaches(provider,c.id): apply_radar(c,provider)
 		proteins.tick(self,c,delta)
+		if not c.alive:continue
 		experiments.tick(self,c,delta)
 		if interval_of(c)>0:proteins.accelerate_cooldown(c)
 		c.cool-=delta
