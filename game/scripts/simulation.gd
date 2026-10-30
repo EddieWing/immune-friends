@@ -236,7 +236,8 @@ func purchase(index: int, p: Vector2, reward = false):
 	if not reward and money < int(shop_rules.buy_price):
 		last_message = "You need 2 coins"
 		return false
-	var item = make_cell(key,p)
+	# Validate placement before allocating an ID: a refused purchase is inert.
+	var item = {"id":-1,"key":key,"rank":1}
 	var recipient = {}
 	for c in cells:
 		if compatible(c,item) and c.rank+item.rank<=3:
@@ -246,6 +247,7 @@ func purchase(index: int, p: Vector2, reward = false):
 	if cells.size()>=capacity() and not direct:
 		last_message = "No room. Merge cells or level up."
 		return false
+	item = make_cell(key,p)
 	if not reward:
 		money-=int(shop_rules.buy_price)
 	if catalog[key].category=="B":
