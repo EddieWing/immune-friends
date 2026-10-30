@@ -1347,39 +1347,55 @@ func _unhandled_input(event):
 			sim.move_blood(dragging_blood,world)
 
 func save_run():
-	if gym_mode: return
-	if sim.phase!="shop": return
-	var cell_data=[]
-	for c in sim.cells:
-		var item=c.duplicate()
-		item.p=[c.p.x,c.p.y]
-		item.start=[c.p.x,c.p.y]
-		cell_data.append(item)
-	var blood_data=[]
-	for b in sim.blood: blood_data.append({"p":[b.p.x,b.p.y],"alive":b.alive,"id":b.id})
-	var hp_bases={}
-	for key in sim.catalog: hp_bases[key]=sim.catalog[key].hp
-	var data={"tuning_hp_bases":hp_bases,"version":1,"seed":sim.seed_value,"round":sim.round_no,"rounds":sim.target_rounds,
-		"economy_version":1,"max_funds":sim.max_funds,"selected_rewards":sim.selected_rewards,
-		"training_mode":sim.training_mode,"experimental":sim.experimental,"money":sim.money,"tier":sim.tier,"xp":sim.xp,"frozen":sim.frozen,"next_id":sim.next_id,
-		"cells":cell_data,"blood":blood_data,"blood_links":sim.blood_links,"offers":sim.offers,"rewards":sim.rewards,
-		"choices":sim.reward_choices,"rng_state":str(sim.rng.state),
-		"setup_particles":sim.particles.filter(func(p):return p.get("setup",false)).map(func(p):return {"p":[p.p.x,p.p.y],"owner":p.owner}),
-		"infection_layout":2,
-		"infection_sources":sim.infection_sources.map(func(p): return [p.x,p.y]),
-		"source_center":[sim.source_center.x,sim.source_center.y]}
+	if gym_mode or sim.phase!="shop": return
+	var data=preload("res://scripts/preparation_save.gd").capture(sim)
 	var file=FileAccess.open(save_path,FileAccess.WRITE)
-	if file: file.store_string(JSON.stringify(data))
+	if file: file.store_string(JSON.stringify(data,"",true,true))
+
+func show_save_error(message):
+	var col=clear_modal("Preparation could not be loaded",message+" Your saved file has not been changed.")
+	button(col,"Keep current game",func(): modal.hide(),Vector2(420,44))
+	button(col,"Choose a new run",show_run_setup,Vector2(420,44))
 
 func load_run():
+	var data=JSON.parse_string(FileAccess.get_file_as_string(save_path))
+	if data is Dictionary and data.get("version",0)==2:
+		var codec=preload("res://scripts/preparation_save.gd")
+		var checked=codec.inspect(data,sim)
+		if checked.has("error"):
+			show_save_error(checked.error)
+			return
+		codec.restore(sim,checked)
+		launch_remaining=0.0
+		results_pending=false
+		results_stage=""
+		results_delay=0.0
+		view.staging=""
+		view.warning_wave=[]
+		view.warning_sources=[]
+		lab_tools.refresh_available()
+		center_preparation_camera()
+		selected={}
+		modal.hide()
+		menu_open=false
+		last_phase=""
+		refresh()
+		return
+	if not data is Dictionary or data.get("version",0)!=1:
+		show_save_error("Unsupported or unreadable save version.")
+		return
+	for field in ["seed","rounds","round","money","tier","xp","frozen","next_id","cells","blood","offers","rewards","choices","rng_state"]:
+		if not data.has(field):
+			show_save_error("The legacy preparation is incomplete.")
+			return
+	for c in data.cells:
+		if not c is Dictionary or not sim.catalog.has(c.get("key","")):
+			show_save_error("The legacy save contains an unknown cell.")
+			return
 	launch_remaining=0.0
 	view.staging=""
 	view.warning_wave=[]
 	view.warning_sources=[]
-	var data=JSON.parse_string(FileAccess.get_file_as_string(save_path))
-	if not data is Dictionary or data.get("version",0)!=1:
-		sim.last_message="Could not read the saved game."
-		return
 	results_pending=false
 	results_stage=""
 	results_delay=0.0
@@ -1400,7 +1416,7 @@ func load_run():
 		c.p=Vector2(c.p[0],c.p[1])
 		c.start=c.p
 		var previous=float(data.get("tuning_hp_bases",{}).get(c.key,sim.base_catalog[c.key].hp))
-		var change=(float(sim.catalog[c.key].hp)-previous)*c.rank
+		var change=(float(sim.catalog[c.key].hp)-previous)*int(c.get("copies",c.rank))
 		c.max_hp=maxf(1,c.max_hp+change)
 		c.hp=maxf(0.1,c.hp+change)
 	sim.blood=data.blood
