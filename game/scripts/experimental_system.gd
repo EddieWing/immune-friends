@@ -32,14 +32,6 @@ func tick(s,c,delta):
 				c.charge+=int(s.constant_of(c,"chargeIncrement",1))
 				c.electric_cool=s.interval_of(c)
 	if c.key=="electromagnet":
-		c["magnet_cool"]=maxf(0,float(c.get("magnet_cool",0))-delta)
-		if s.nearest_virus(c.p,s.range_of(c)).is_empty() and c.magnet_cool<=0:
-			for other in s.cells:
-				if other.id!=c.id and other.alive and other.charge>0 and other.p.distance_to(c.p)<float(s.rules.charge_range):
-					other.charge-=1
-					c.charge+=1
-					c.magnet_cool=0.1
-					break
 		for v in s.viruses:
 			if v.alive and v.p.distance_to(c.p)<s.range_of(c): s.physics.accelerate(s,v,v.p.direction_to(c.p)*60*float(s.rules.movement_multiplier),delta)
 

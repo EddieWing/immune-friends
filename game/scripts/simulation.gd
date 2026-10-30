@@ -405,7 +405,7 @@ func range_of(c):
 	var r=stat_of(c,"range")*float(rules.scale)
 	if c.key=="survivor_bomb": r+=float(c.get("radius_growth",0))*float(rules.scale)
 	if c.key=="hungry_bomb": r+=float(c.get("radius_growth",0))*float(rules.scale)
-	if c.key=="electromagnet": r+=float(c.charge)*constant_of(c,"conversionRate",2)*float(rules.scale)
+	if c.key=="electromagnet": r=float(c.charge)*constant_of(c,"conversionRate",5)*float(rules.scale)
 	return r+float(c.get("range_bonus",0))
 
 func speed_of(c):
