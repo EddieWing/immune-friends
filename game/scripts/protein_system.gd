@@ -5,6 +5,13 @@ func tick(s,c,delta):
 	if not c.get("recipe_pending",false):return
 	c.recipe_pending=false
 	if c.recipe_cool>0:return
+	if c.key=="accelerator" and c.food>=s.constant_of(c,"consume",2):
+		c.food-=int(s.constant_of(c,"consume",2))
+		for id in s.ability_targets(c):
+			var partner=s.cell_by_id(id)
+			if partner.is_empty():continue
+			partner["cool_reserve"]=float(partner.get("cool_reserve",0))+s.constant_of(c,"seconds",2)
+			s.record("accelerated",{"id":c.id,"target":id,"p":c.p,"q":partner.p})
 	if c.key=="generator" and c.food>=s.constant_of(c,"proteinAmount",8):
 		c.food-=int(s.constant_of(c,"proteinAmount",8))
 		var increment=int(s.constant_of(c,"increment",8));c.charge+=increment
@@ -118,3 +125,8 @@ func resolve_tag(s,p,from,to):
 func consumed(s,c):
 	c["recipe_pending"]=true
 	tick(s,c,0.0)
+
+func accelerate_cooldown(c):
+	var reserve=float(c.get("cool_reserve",0))
+	var used=minf(reserve,maxf(0,float(c.cool)-0.2))
+	c.cool-=used;c["cool_reserve"]=reserve-used

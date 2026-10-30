@@ -22,7 +22,7 @@ func update(sim,delta):
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
-  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split"] and event.data.has("p"):
+  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated"] and event.data.has("p"):
    var e=event.data.duplicate()
    e.kind=event.event
    e.age=0.0
@@ -84,6 +84,10 @@ func draw(canvas):
    for side in [-1,1]:
     var end=e.p+e.direction.rotated(side*0.35)*(20+t*12)
     canvas.draw_polyline(PackedVector2Array([start,e.p,end]),Color(0.7,0.91,1,1-t),2,true)
+  elif e.kind=="accelerated":
+   canvas.draw_line(e.p,e.q,Color(0.97,0.82,0.46,(1-t)*0.4),1.5,true)
+   canvas.draw_circle(e.p.lerp(e.q,t),3,Color(0.97,0.82,0.46,1-t))
+   canvas.draw_arc(e.q,21,0,TAU*t,20,Color(0.97,0.82,0.46,1-t),2,true)
   elif e.kind=="swap":
    var normal=e.p.direction_to(e.q).orthogonal()*4
    canvas.draw_line(e.p+normal,e.q+normal,Color(0.72,0.66,0.94,(1-t)*0.6),1.5,true)

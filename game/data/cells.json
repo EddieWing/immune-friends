@@ -439,7 +439,7 @@
     "interval": 0,
     "behavior": "bond",
     "color": "#f0c199",
-    "description": "Accelerates directly bonded neighbours; does not reach through other bonds.",
+    "description": "Consumes 2 food particles to give directly bonded neighbours 2 seconds of ability cooldown reduction. Does not increase movement speed.",
     "reference_id": 23,
     "elite": {},
     "constants": {

@@ -460,6 +460,9 @@ func begin_battle():
 		c.hp=c.max_hp
 		c.food=0
 		c["bullet_food"]=0
+		c["recipe_cool"]=0.0
+		c["recipe_pending"]=false
+		c["cool_reserve"]=0.0
 		c["kills"]=0
 		c["distance_charge"]=0.0
 		c["distance_health"]=0.0
@@ -472,7 +475,6 @@ func begin_battle():
 		for id in network(c.id):
 			var n=cell_by_id(id)
 			if n.get("key","")=="radar" and ability_reaches(n,c.id): apply_radar(c,n)
-			if n.get("key","")=="accelerator" and ability_reaches(n,c.id): c.speed_buff=float(rules.accelerator_multiplier)
 	spawn_queue=infection_plan.schedule(wave,source_emitters,rng)
 
 	record("battle_start")
@@ -684,9 +686,9 @@ func update(delta: float):
 		for id in (network(c.id) if has_network_buffs else []):
 			var provider=cell_by_id(id)
 			if provider.get("key","")=="radar" and ability_reaches(provider,c.id): apply_radar(c,provider)
-			if provider.get("key","")=="accelerator" and ability_reaches(provider,c.id): c.speed_buff=float(rules.accelerator_multiplier)
 		proteins.tick(self,c,delta)
 		experiments.tick(self,c,delta)
+		if interval_of(c)>0:proteins.accelerate_cooldown(c)
 		c.cool-=delta
 		c.contact=maxf(0,c.contact-delta)
 		c["friendly_stun"]=maxf(0,float(c.get("friendly_stun",0))-delta)
