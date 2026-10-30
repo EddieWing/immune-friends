@@ -1,25 +1,25 @@
 extends RefCounted
 # This entire extension is gated per run. Numerical gaps are explicit assumptions.
 func tick(s,c,delta):
-	if not s.experimental: return
 	var previous=Vector2(float(c.get("travel_x",c.p.x)),float(c.get("travel_y",c.p.y)))
 	var travelled=previous.distance_to(c.p)
 	c["travel_x"]=c.p.x
 	c["travel_y"]=c.p.y
+	if s.phase!="battle":return
+	if c.key=="kinetic_bond":
+		c["distance_health"]=float(c.get("distance_health",0))+travelled
+		var threshold=s.constant_of(c,"distance",20)*float(s.rules.scale)
+		if c.distance_health>threshold:
+			c.distance_health-=threshold
+			for id in s.ability_targets(c):
+				var recipient=s.cell_by_id(id)
+				if not recipient.is_empty():s.heal(recipient,s.constant_of(c,"healthIncrement",1),c)
+	if not s.experimental:return
 	if c.key=="kinetic_generator":
 		c["distance_charge"]=float(c.get("distance_charge",0))+travelled
 		var count=floori(c.distance_charge/(s.constant_of(c,"distance",12)*s.rules.scale))
 		c.charge+=count*int(s.constant_of(c,"kineticIncrement",1))
 		c.distance_charge-=count*s.constant_of(c,"distance",12)*s.rules.scale
-	if travelled>0:
-		for id in s.network(c.id):
-			var provider=s.cell_by_id(id)
-			if provider.get("key","")=="kinetic_bond" and provider.alive:
-				c["distance_health"]=float(c.get("distance_health",0))+travelled
-				var count=floori(c.distance_health/(s.constant_of(provider,"distance",20)*float(s.rules.scale)))
-				if count>0: s.heal(c,count*s.constant_of(provider,"healthIncrement",1),provider)
-				c.distance_health-=count*s.constant_of(provider,"distance",20)*float(s.rules.scale)
-				break
 	if c.key=="electric_wall":
 		c["electric_cool"]=maxf(0,float(c.get("electric_cool",0))-delta)
 		if c.electric_cool<=0:
