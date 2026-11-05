@@ -1751,7 +1751,7 @@ func show_cell_card(key,c={}):
 		sell_button.text="Sell · "+str(c.sale)
 		if key=="tag_drag": detail.text+="\nTags left: "+str(c.get("tags",15))+" / 15"
 		if c.get("temporary",false): detail.text+="\nThis battle only"
-		if key=="greed_wall": detail.text+="\nBase HP: "+str(c.max_hp)+" · next battle bonus: +"+str(2*sim.money)
+		if key=="greed_wall": detail.text+="\nPermanent HP: "+str(c.max_hp)+" · next battle bonus: +"+str(sim.preparation_health_bonus(c))
 		if key=="survivor_bomb": detail.text+="\nCurrent radius: "+str(sim.range_of(c)/float(sim.rules.scale))+" · growth: +"+str(c.get("radius_growth",0))+" this run"
 	var behavior=sim.catalog[key].behavior
 	term_panel.show()

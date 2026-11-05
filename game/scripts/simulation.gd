@@ -335,6 +335,9 @@ func constant_of(c, field, fallback=0):
 	if int(c.rank)>=3 and data.get("elite_constants",{}).has(field): return float(data.elite_constants[field])
 	return float(data.get("constants",{}).get(field,fallback))
 
+func preparation_health_bonus(c):
+	return constant_of(c,"conversionRate",2)*money if c.key=="greed_wall" else 0.0
+
 func cell_by_id(id):
 	for c in cells:
 		if c.id==id:
@@ -485,7 +488,7 @@ func begin_battle():
 		c["travel_x"]=c.p.x
 		c["travel_y"]=c.p.y
 		if c.key=="hungry_bomb": c["radius_growth"]=0.0
-		if c.key=="greed_wall": c.hp+=constant_of(c,"conversionRate",2)*money
+		c.hp+=preparation_health_bonus(c)
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	for c in cells:
 		for id in network(c.id):
