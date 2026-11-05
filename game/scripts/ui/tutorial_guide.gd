@@ -13,14 +13,14 @@ var cooldown=0.0
 
 func _ready():
 	name="TutorialGuide"
-	position=Vector2(470,90)
-	custom_minimum_size=Vector2(500,0)
+	position=Vector2(370,76)
+	custom_minimum_size=Vector2(700,0)
 	add_theme_stylebox_override("panel",game.style(Color("#f1ecdb"),6,Color("#ac873e")))
 	var column=VBoxContainer.new()
 	add_child(column)
 	body=Label.new()
 	body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size.x=476
+	body.custom_minimum_size.x=676
 	body.add_theme_font_size_override("font_size",15)
 	column.add_child(body)
 	var row=HBoxContainer.new()
