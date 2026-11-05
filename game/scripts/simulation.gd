@@ -488,7 +488,8 @@ func begin_battle():
 		c["travel_x"]=c.p.x
 		c["travel_y"]=c.p.y
 		if c.key=="hungry_bomb": c["radius_growth"]=0.0
-		c.hp+=preparation_health_bonus(c)
+		c["initial_health_bonus"]=preparation_health_bonus(c)
+		c.hp+=c.initial_health_bonus
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	for c in cells:
 		for id in network(c.id):
@@ -1032,6 +1033,7 @@ func next_round():
 		c["range_bonus"]=0.0
 		c.hp=c.max_hp
 		c.alive=true
+		c.erase("initial_health_bonus")
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	rebuild_links()
 	# Original TradeHealth processes exchanges sequentially after restoration.
@@ -1048,6 +1050,8 @@ func next_round():
 			var before=c.max_hp
 			c.max_hp=other.max_hp;c.hp=c.max_hp
 			other.max_hp=before;other.hp=before
+			c["last_hp_swap"]={"round":round_no+1,"before":before,"after":c.hp,"partner_key":other.key,"partner_before":c.hp,"partner_after":before}
+			other["last_hp_swap"]={"round":round_no+1,"before":c.hp,"after":before,"partner_key":c.key,"partner_before":before,"partner_after":c.hp}
 			record("swap",{"a":c.id,"b":other.id,"p":c.p,"q":other.p,"before_a":before,"after_a":c.hp,"before_b":c.hp,"after_b":before})
 			break
 	round_no+=1

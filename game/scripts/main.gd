@@ -72,6 +72,7 @@ var catalogue_text: RichTextLabel
 var volumes=[0.45,0.3,0.6,0.3]
 var settings=ConfigFile.new()
 var tutorial_guide: PanelContainer
+var card_refresh_delay=0.0
 var save_path="user://run.json"
 var battle_replay=preload("res://scripts/battle_replay.gd").new()
 var detail_panel: PanelContainer
@@ -1006,7 +1007,7 @@ func description(key, elite=false):
 	if r>0: txt+="Range  [b]"+str(r)+"[/b]\n"
 	if speed>0: txt+="Speed  [b]"+str(speed)+"[/b]\n"
 	if interval>0: txt+="Interval  [b]"+str(interval)+" s[/b]\n"
-	txt+="\n"+d.description
+	txt+="\n"+preload("res://scripts/ui/cell_facts.gd").ability(sim,key,3 if elite else 1)
 	if key=="accelerator": txt+="\n[color=#975535]Provisional ability: the original effect is not yet known.[/color]"
 	return txt
 
@@ -1032,7 +1033,7 @@ func refresh():
 	animate_dock(shopping_in_focus() and not shop_collapsed)
 	shop_toggle.hide()
 	update_transport()
-	if not is_shop:
+	if sim.phase not in ["shop","battle"]:
 		detail_panel.hide()
 		term_panel.hide()
 	elif not selected.is_empty() and sim.cells.has(selected) and selected.id==inspected_cell:
@@ -1192,6 +1193,10 @@ func _process(delta):
 		hud_opacity=1.0
 		apply_menu_visibility()
 	position_scanner()
+	card_refresh_delay-=delta
+	if card_refresh_delay<=0:
+		card_refresh_delay=0.2
+		if detail_panel.visible and not card_cell.is_empty() and sim.cells.has(card_cell):show_cell_card(card_cell.key,card_cell)
 	advance_manual_camera(delta)
 	advance_camera(delta)
 	if not entering_game: advance_simulation(delta,SIMULATION_FRAME_BUDGET_US)
@@ -1755,11 +1760,14 @@ func advance_simulation(delta,budget_us=0):
 		# Debt is retained; slower devices must not freeze trying to catch up.
 		if budget_us>0 and Time.get_ticks_usec()-started>=budget_us: break
 
+func cell_fact_lines(c):
+	return preload("res://scripts/ui/cell_facts.gd").lines(sim,c)
+
 func show_cell_card(key,c={}):
 	if ui_new and not gym_mode and hud_a: hud_a.select_cell(key,c)
 	detail_icon.show()
 	detail_virus.hide()
-	if sim.phase!="shop": return
+	if sim.phase not in ["shop","battle"]: return
 	detail_key=key
 	card_cell=c
 	card_anchor=get_viewport().get_mouse_position()
@@ -1768,14 +1776,11 @@ func show_cell_card(key,c={}):
 	detail_panel.size.y=0
 	term_panel.size.y=0
 	detail.text=description(key,c.get("rank",1)==3)
-	sell_button.visible=not c.is_empty()
+	sell_button.visible=not c.is_empty() and sim.phase=="shop"
 	if not c.is_empty():
-		detail.text+="\n[b]Current: "+str(snappedf(c.hp,0.1))+" HP  ·  "+str(c.rank)+"/3[/b]"
+		detail.text+="\n[b]Rank: "+str(c.rank)+"/3[/b]"
 		sell_button.text="Sell · "+str(c.sale)
-		if key=="tag_drag": detail.text+="\nTags left: "+str(c.get("tags",15))+" / 15"
-		if c.get("temporary",false): detail.text+="\nThis battle only"
-		if key=="greed_wall": detail.text+="\nPermanent HP: "+str(c.max_hp)+" · next battle bonus: +"+str(sim.preparation_health_bonus(c))
-		if key=="survivor_bomb": detail.text+="\nCurrent radius: "+str(sim.range_of(c)/float(sim.rules.scale))+" · growth: +"+str(c.get("radius_growth",0))+" this run"
+		detail.text+="\n"+"\n".join(cell_fact_lines(c))
 	var behavior=sim.catalog[key].behavior
 	term_panel.show()
 	var term="B-Cell" if sim.catalog[key].category=="B" else "T-Cell"
