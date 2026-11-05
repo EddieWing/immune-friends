@@ -71,6 +71,7 @@ var catalogue_key=""
 var catalogue_text: RichTextLabel
 var volumes=[0.45,0.3,0.6,0.3]
 var settings=ConfigFile.new()
+var tutorial_guide: PanelContainer
 var save_path="user://run.json"
 var battle_replay=preload("res://scripts/battle_replay.gd").new()
 var detail_panel: PanelContainer
@@ -155,6 +156,9 @@ func _ready():
 	hud_a.game=self
 	hud_a.process_priority=10
 	ui.add_child(hud_a)
+	tutorial_guide=preload("res://scripts/ui/tutorial_guide.gd").new()
+	tutorial_guide.game=self
+	ui.add_child(tutorial_guide)
 	ui.move_child(modal,ui.get_child_count()-1)
 	apply_appearance()
 	cell_tuner.initialize(self)
@@ -602,9 +606,17 @@ func new_run(rounds,mode=3):
 	modal.hide()
 	last_phase=""
 	changed()
-	if not settings.get_value("tutorial","disabled",false): show_help()
+	if not settings.get_value("tutorial","disabled",false): tutorial_guide.begin()
+	else: tutorial_guide.active=false
+	save_run()
 
 func show_help():
+	if not browsing_from_main_menu() and not gym_mode:
+		modal.hide()
+		settings.set_value("tutorial","disabled",false)
+		tutorial_guide.begin()
+		save_run()
+		return
 	var col=clear_modal("Take your time","Protect the red blood cells. Your team fights automatically.")
 	var t=Label.new()
 	t.text="1. Drag a cell from the shop onto the field for 2 Carbons.\n2. Or select an offer, then click on the field to place it.\n3. Hold and drag the round arrow to rotate a cell.\n4. Merge matching cells: the third creates an elite.\n5. Bonds automatically hold hands with nearby cells.\n6. Unspent Carbons disappear between waves.\n\nBomb hurts friendly cells too. Keep your team safe!"
@@ -726,7 +738,7 @@ func show_settings():
 	var tutorials=HBoxContainer.new()
 	col.add_child(tutorials)
 	button(tutorials,"Reset tutorial",func(): settings.set_value("tutorial","disabled",false); settings.save(settings_path); show_help(),Vector2(272,40))
-	button(tutorials,"Skip tutorial",func(): modal.hide(); menu_open=false,Vector2(272,38))
+	button(tutorials,"Skip tutorial",func(): tutorial_guide.skip(); modal.hide(); menu_open=false; save_run(),Vector2(272,38))
 	var atlases=HBoxContainer.new()
 	col.add_child(atlases)
 	button(atlases,"Cell atlas",show_catalog,Vector2(272,40))
@@ -1163,6 +1175,7 @@ func xp_purchase_tooltip():
 func changed():
 	if sim.phase=="shop": sim.ensure_infection_sources_clear()
 	sim.rebuild_links()
+	if tutorial_guide: tutorial_guide.observe()
 	refresh()
 	save_run()
 
@@ -1218,6 +1231,7 @@ func advance_manual_camera(delta,direction=Vector2.INF):
 		cancel_camera_transition()
 		auto_camera=false
 		view.position+=direction.limit_length(1.0)*delta*280
+		if delta>0 and tutorial_guide: tutorial_guide.complete("pan")
 
 func _notification(what):
 	if what==NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -1231,6 +1245,7 @@ func _input(event):
 		panning=false
 	if event is InputEventMouseMotion and panning:
 		if can_pan_camera():
+			if event.position.distance_to(pan_previous)>1 and tutorial_guide:tutorial_guide.complete("pan")
 			view.position+=event.position-pan_previous
 			pan_previous=event.position
 			get_viewport().set_input_as_handled()
@@ -1353,6 +1368,9 @@ func _unhandled_input(event):
 func save_run():
 	if gym_mode or sim.phase!="shop": return
 	var data=preload("res://scripts/preparation_save.gd").capture(sim)
+	if tutorial_guide:
+		tutorial_guide.observe()
+		data["tutorial"]=tutorial_guide.capture()
 	var file=FileAccess.open(save_path,FileAccess.WRITE)
 	if file: file.store_string(JSON.stringify(data,"",true,true))
 
@@ -1370,6 +1388,10 @@ func load_run():
 			show_save_error(checked.error)
 			return
 		codec.restore(sim,checked)
+		if tutorial_guide:
+			var progress=data.get("tutorial",{})
+			if int(settings.get_value("tutorial","seed",-1))==sim.seed_value:progress=settings.get_value("tutorial","progress",progress)
+			tutorial_guide.restore(progress)
 		launch_remaining=0.0
 		results_pending=false
 		results_stage=""
@@ -1531,6 +1553,7 @@ func set_automatic_zoom(level: int) -> bool:
 
 func set_zoom(value):
 	if browsing_from_main_menu() or entering_game: return
+	if tutorial_guide and not is_equal_approx(camera_requested,clampf(value,0.45,1.5)):tutorial_guide.complete("zoom")
 	cancel_camera_transition()
 	camera_phase="warning" if view.staging=="warning" else sim.phase
 	camera_requested=clampf(value,0.45,1.5)
