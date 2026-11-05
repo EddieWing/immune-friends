@@ -91,6 +91,7 @@ func _ready():
  facts_text.fit_content=true
  facts_text.scroll_active=false
  facts_text.custom_minimum_size.x=242
+ facts_text.add_theme_font_override("normal_font",game.symbol_font)
  facts_text.add_theme_color_override("default_color",INK)
  facts_text.add_theme_font_size_override("normal_font_size",13)
  facts_scroll.add_child(facts_text)

@@ -376,6 +376,7 @@ func build_ui():
 	column.add_child(detail_virus)
 	detail_virus.hide()
 	detail=RichTextLabel.new()
+	detail.add_theme_font_override("normal_font",symbol_font)
 	detail.bbcode_enabled=true
 	detail.custom_minimum_size=Vector2(310,0)
 	detail.fit_content=true
@@ -1776,6 +1777,8 @@ func show_cell_card(key,c={}):
 	detail_panel.size.y=0
 	term_panel.size.y=0
 	detail.text=description(key,c.get("rank",1)==3)
+	if not c.is_empty():
+		detail.text=detail.text.replace("Health  [b]","Base HP  [b]").replace("Range  [b]","Base range  [b]")
 	sell_button.visible=not c.is_empty() and sim.phase=="shop"
 	if not c.is_empty():
 		detail.text+="\n[b]Rank: "+str(c.rank)+"/3[/b]"
