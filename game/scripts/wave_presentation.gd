@@ -33,8 +33,10 @@ func update(sim,delta):
  if ripples.size()>24:ripples=ripples.slice(ripples.size()-24)
  if heals.size()>12:heals=heals.slice(heals.size()-12)
  fronts.clear()
- for blast in sim.blasts:
+ for blast in (sim.blasts if sim.phase=="battle" else []):
   fronts.append({"p":blast.p,"radius":blast.radius,"damage":blast.damage})
+func has_transients():
+ return not ripples.is_empty() or not heals.is_empty()
 func draw(canvas):
  # Solid boundary tracks the real front exactly. Trailing water is faint/dashed.
  for front in fronts:

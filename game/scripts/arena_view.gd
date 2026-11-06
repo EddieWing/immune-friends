@@ -367,4 +367,4 @@ func draw_blood_cluster():
 	blood_faces.finish_draw(self)
 
 func has_transient_effects():
-	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty()
+	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty() or support.waves.has_transients() or not microscope_effects.bursts.is_empty() or not microscope_effects.merges.is_empty() or not microscope_effects.trails.is_empty()

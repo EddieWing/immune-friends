@@ -1,0 +1,23 @@
+extends SceneTree
+func _initialize():call_deferred("run")
+func run():
+ var s=load("res://scripts/simulation.gd").new();s.reset(42,12)
+ var view=load("res://scripts/arena_view.gd").new()
+ var wave=view.support.waves
+ wave.update(s,0);view.microscope_effects.update(s,0)
+ assert(not view.has_transient_effects())
+ s.phase="battle";s.start_blast(Vector2.ZERO,70,1,0.3,-1)
+ wave.update(s,0)
+ assert(view.has_transient_effects() and not wave.fronts.is_empty())
+ s.phase="recap";wave.update(s,0.1)
+ assert(wave.fronts.is_empty() and view.has_transient_effects())
+ wave.update(s,1)
+ assert(not view.has_transient_effects())
+ s.record("blood_lost",{"id":0,"p":Vector2.ZERO})
+ view.microscope_effects.update(s,0)
+ assert(view.has_transient_effects())
+ view.microscope_effects.update(s,0.8)
+ assert(not view.has_transient_effects())
+ view.free()
+ print("PASS: result waits for waves/death echoes; frozen mechanical front disappears after battle")
+ quit()
