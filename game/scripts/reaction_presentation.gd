@@ -9,6 +9,8 @@ var cursor=0
 var reactions={}
 var bursts=[]
 var contact_holds={}
+var previous_cells={}
+const CONTACT_ANGLE_LIMIT=PI/36.0
 func update(sim,delta):
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
@@ -16,6 +18,7 @@ func update(sim,delta):
   reactions.clear()
   bursts.clear()
   contact_holds.clear()
+  previous_cells.clear()
   cursor=sim.event_sequence if fresh else cursor
   elapsed=sim.elapsed
  observed_sim=sim
@@ -31,6 +34,10 @@ func update(sim,delta):
   if reactions[key].age>=0.38: reactions.erase(key)
  for burst in bursts: burst.age+=dt
  bursts=bursts.filter(func(b): return b.age<0.5)
+ var cell_bodies={}
+ for cell in sim.cells:
+  if cell.alive:cell_bodies["cell:"+str(cell.id)]=cell
+ var contacts_this_frame={}
  for e in sim.events_since(cursor):
   var d=e.data
   if e.event in ["damage","virus_hit","pushed"]:
@@ -38,8 +45,14 @@ func update(sim,delta):
    var key=kind+":"+str(d.id)
    reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("direction",d.get("from",d.p).direction_to(d.p)).normalized()}
    var contact=(e.event=="virus_hit" and d.get("cause","")=="contact") or (e.event=="damage" and d.get("source_kind","")=="virus")
-   if contact and float(d.get("amount",0))>0 and not contact_holds.has(key):
-    contact_holds[key]={"anchor":d.p,"age":0.0,"offset":Vector2.ZERO}
+   if contact and kind=="cell" and float(d.get("amount",0))>0 and cell_bodies.has(key):
+    var cell=cell_bodies[key]
+    var current={"p":cell.p,"angle":cell.get("angle",0.0)}
+    # A second impact releases the drawing on this frame, then holds the new pose.
+    var repeated=contact_holds.has(key) or contacts_this_frame.has(key)
+    var anchor=current if repeated else previous_cells.get(key,current)
+    contact_holds[key]={"anchor":anchor.p,"angle":anchor.angle,"age":0.0,"offset":Vector2.ZERO,"angle_offset":0.0,"released":repeated}
+    contacts_this_frame[key]=true
   if e.event in ["virus_hit","pushed","tagged","thawed","tag_ended"]:
    bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("from",d.p).direction_to(d.p)})
  cursor=sim.event_sequence
@@ -51,9 +64,16 @@ func update(sim,delta):
    alive[key]=true
    if contact_holds.has(key):
     var hold=contact_holds[key]
-    hold.offset=(hold.anchor-body.p).limit_length(2)*(1-smoothstep(0.025,0.10,hold.age))
+    var weight=1-smoothstep(0.025,0.10,hold.age)
+    hold.offset=(hold.anchor-body.p).limit_length(2)*weight
+    hold.angle_offset=clampf(angle_difference(body.get("angle",0.0),hold.angle),-CONTACT_ANGLE_LIMIT,CONTACT_ANGLE_LIMIT)*weight
+    if not contacts_this_frame.has(key):hold.released=false
  for key in contact_holds.keys():
   if not alive.has(key):contact_holds.erase(key)
+ previous_cells.clear()
+ for key in cell_bodies:
+  var cell=cell_bodies[key]
+  previous_cells[key]={"p":cell.p+pose("cell",cell.id).offset,"angle":cell.get("angle",0.0)+contact_holds.get(key,{}).get("angle_offset",0.0)}
  if bursts.size()>48: bursts=bursts.slice(bursts.size()-48)
 func pose(kind,id):
  var r=reactions.get(kind+":"+str(id),{})
@@ -61,10 +81,20 @@ func pose(kind,id):
  var weight=1-smoothstep(0,0.38,r.age)
  # Keep the silhouette close to its collider: real momentum carries the impact.
  var recoil=r.direction*weight*2
- var lag=contact_holds.get(kind+":"+str(id),{}).get("offset",Vector2.ZERO)
- return {"squash":1+weight*(0.03 if r.push else -0.05),"offset":(recoil+lag).limit_length(2),"hurt":not r.push and weight>0.25}
+ var hold=contact_holds.get(kind+":"+str(id),{})
+ var offset=recoil
+ if not hold.is_empty():
+  var hold_weight=1-smoothstep(0.025,0.10,hold.age)
+  offset=Vector2.ZERO if hold.released else hold.offset+recoil*(1-hold_weight)
+ return {"squash":1+weight*(0.03 if r.push else -0.05),"offset":offset.limit_length(2),"hurt":not r.push and weight>0.25}
 func deform_transform(kind,id,body:Transform2D):
  var reaction=reactions.get(kind+":"+str(id),{})
+ var hold=contact_holds.get(kind+":"+str(id),{})
+ if not hold.is_empty():
+  var held_origin=body.origin
+  body.origin=Vector2.ZERO
+  body=Transform2D(hold.angle_offset,Vector2.ZERO)*body
+  body.origin=held_origin
  if reaction.is_empty() or reaction.direction.is_zero_approx():return body
  var squash=pose(kind,id).squash
  var axis=Transform2D(reaction.direction.angle(),Vector2.ZERO)
