@@ -36,7 +36,13 @@ func update(sim):
    var radius=26.0 if body.has("key") else 18.0
    # Walls keep their physical long axis; the pressure ring must clear the end.
    if body.has("key") and sim.catalog[body.key].behavior=="wall": radius=46.0
-   wakes.append({"id":id,"p":body.p,"direction":velocity.normalized(),"strength":strength,"mode":mode,"radius":radius})
+   var wake={"id":id,"p":body.p,"direction":velocity.normalized(),"strength":strength,"mode":mode,"radius":radius}
+   if body.get("type","")=="wave":
+    var forward=body.get("wave_direction",body.get("visual_heading",Vector2.RIGHT)).normalized()
+    var lateral=velocity.dot(forward.orthogonal())
+    wake.wave_side=forward.orthogonal()*signf(lateral)
+    wake.wave_strength=clampf(absf(lateral)/100.0,0,1)
+   wakes.append(wake)
  for id in samples.keys():
   if not alive.has(id): samples.erase(id)
 func draw(canvas):
@@ -51,3 +57,8 @@ func draw(canvas):
   elif wake.mode=="brake":
    tint.a*=0.7
    canvas.draw_arc(wake.p,wake.radius,angle+PI-0.3,angle+PI+0.3,8,tint,1.0,true)
+  if wake.get("wave_strength",0)>0.03:
+   # The visible side follows lateral velocity, not the phase of the drive force.
+   # Inertia can keep the body moving sideways after its drive has reversed.
+   var side_angle=wake.wave_side.angle()
+   canvas.draw_arc(wake.p,21,side_angle-0.6,side_angle+0.6,12,Color(0.58,0.43,0.75,0.15+wake.wave_strength*0.3),1.5,true)
