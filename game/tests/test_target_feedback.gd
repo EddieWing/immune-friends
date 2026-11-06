@@ -12,6 +12,10 @@ func _initialize():
  assert(cues.size()==1 and cues[0].target_id==v.id)
  s.update(0.01);view.update(s,0.01)
  assert(view.effects.filter(func(e):return e.kind=="cell_target").size()==1)
+ s.spawn_virus({"type":"basic","lane":0,"p":c.p+Vector2(100,0)})
+ s.update(0.01);view.update(s,0.01)
+ assert(view.effects.filter(func(e):return e.kind=="cell_target").size()==1,"Switch A to B without target loss is not a new acquisition")
+ s.viruses.back().alive=false
  v.alive=false;s.update(0.01);view.update(s,0.01)
  cues=view.effects.filter(func(e):return e.kind=="cell_target")
  assert(cues.size()==2 and cues.back().target_id==-1)
