@@ -1011,6 +1011,7 @@ func update_swarm_attraction(v,delta):
 	for link in links:
 		if not link.get("swarm",false):continue
 		var other=link.b if link.a==v.id else (link.a if link.b==v.id else -1)
+		if other==-1:continue
 		var body=endpoint_by_id(other)
 		if not body.is_empty() and body.alive:attached.append(body)
 	var host=-1 if attached.is_empty() else attached[0].id
@@ -1028,8 +1029,8 @@ func join_swarm_contacts():
 		if not v.alive or v.type!="swarmer" or v.jump or v.get("host",-1)>=0:continue
 		for other in viruses:
 			if not other.alive or other==v or other.jump:continue
-			if links.any(func(l):return (l.a==v.id and l.b==other.id) or (l.b==v.id and l.a==other.id)):continue
 			if v.p.distance_to(other.p)>physics.radius(v)+physics.radius(other)+0.02:continue
+			if links.any(func(l):return (l.a==v.id and l.b==other.id) or (l.b==v.id and l.a==other.id)):continue
 			links.append({"a":v.id,"b":other.id,"owner":v.id,"rest":v.p.distance_to(other.p),"offset":(other.p-v.p).rotated(-float(v.get("angle",0))),"relative_angle":float(other.get("angle",0))-float(v.get("angle",0)),"locked":true,"swarm":true})
 			record("virus_attachment",{"id":v.id,"p":v.p,"old_host":-1,"host":other.id})
 			v.host=other.id
