@@ -22,8 +22,9 @@ func update(sim,delta):
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
-  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated"] and event.data.has("p"):
+  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired"] and event.data.has("p"):
    if event.event=="heal" and float(event.data.get("amount",0))<=0: continue
+   if event.event=="attack_fired" and event.data.get("direction",Vector2.ZERO).length_squared()<0.001: continue
    var e=event.data.duplicate()
    e.kind=event.event
    e.age=0.0
@@ -94,6 +95,12 @@ func draw(canvas):
    for side in [-1,1]:
     var end=e.p+e.direction.rotated(side*0.35)*(20+t*12)
     canvas.draw_polyline(PackedVector2Array([start,e.p,end]),Color(0.7,0.91,1,1-t),2,true)
+  elif e.kind=="attack_fired":
+   var d=e.direction.normalized()
+   # Short bubbles mark the observed firing direction, not a predicted hit.
+   for i in range(3):
+    var p=e.p+d*(7+i*6+t*10)+d.orthogonal()*sin(i*2.2)*2
+    canvas.draw_arc(p,(3-i*0.6)*(1-t*0.5),0,TAU,10,Color(0.83,0.97,1,(1-t)*0.65),1.2,true)
   elif e.kind=="accelerated":
    canvas.draw_line(e.p,e.q,Color(0.97,0.82,0.46,(1-t)*0.4),1.5,true)
    canvas.draw_circle(e.p.lerp(e.q,t),3,Color(0.97,0.82,0.46,1-t))

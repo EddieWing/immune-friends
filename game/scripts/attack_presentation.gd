@@ -38,7 +38,7 @@ func update(sim,delta):
   if recoil[id].age>=RECOVERY: recoil.erase(id)
  for event in sim.events_since(cursor):
   var data=event.data
-  if event.event=="attack_fired" and data.key in ["cannon","sniper","pusher"]:
+  if event.event=="attack_fired":
    recoil[data.id]={"age":0.0,"direction":data.direction}
   elif event.event=="virus_defeated" and data.get("key_threat",false) and focus_cooldown<=0:
    focus={"p":data.p,"age":0.0}
@@ -61,7 +61,7 @@ func update(sim,delta):
  for id in jumps.keys():
   if not jump_alive.has(id): jumps.erase(id)
  for c in sim.cells:
-  if not c.alive or c.key not in ["cannon","sniper","pusher"]: continue
+  if not c.alive or (c.key not in ["cannon","sniper","pusher"] and not recoil.has(c.id)): continue
   var pose={"windup":0.0,"kick":0.0,"look":Vector2.ZERO,"direction":Vector2.RIGHT.rotated(c.angle),"radial":c.key=="pusher"}
   var target=aim_target(sim,c)
   var ready=c.key=="pusher" or not target.is_empty()
