@@ -50,16 +50,23 @@ func update(sim,delta,faces):
     if not current_links.has(key):
      candidates.append({"priority":2,"kind":"link","p":links[key],"text":"BOND BROKEN"})
      break
-  var nearest=float(sim.rules.blood_faces.danger_radius)
-  var threatened={}
-  for core in sim.blood:
-   if not core.alive: continue
+  # Danger cannot replace an active danger/loss, or outrank this frame's loss.
+  # Visibility is read-only; omit a query whose result would be discarded.
+  if losses.is_empty() and (active.is_empty() or active.priority<3):
+   var nearest=float(sim.rules.blood_faces.danger_radius)
+   var threatened={}
+   var positions=PackedVector2Array()
    for v in sim.viruses:
-    var distance=core.p.distance_to(v.p)
-    if v.alive and distance<nearest and faces.visible(sim,core.p,v.p):
-     nearest=distance
-     threatened=core
-  if not threatened.is_empty(): candidates.append({"priority":3,"kind":"danger","p":threatened.p,"text":"CORE AT RISK"})
+    if v.alive:positions.append(v.p)
+   for core in sim.blood:
+    if not core.alive: continue
+    var origin: Vector2=core.p
+    for position in positions:
+     var distance=origin.distance_to(position)
+     if distance<nearest and faces.visible(sim,origin,position):
+      nearest=distance
+      threatened=core
+   if not threatened.is_empty(): candidates.append({"priority":3,"kind":"danger","p":threatened.p,"text":"CORE AT RISK"})
  links=current_links
  phase_seen=sim.phase
  candidates.sort_custom(func(a,b): return a.priority>b.priority)
