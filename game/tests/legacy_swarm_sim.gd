@@ -1,5 +1,5 @@
 extends "res://scripts/simulation.gd"
-func update_swarm_attraction(v,delta):
+func update_swarm_attraction(v,delta,_prepared={}):
 	var attached=[]
 	for link in links:
 		if not link.get("swarm",false):continue

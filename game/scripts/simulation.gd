@@ -824,6 +824,7 @@ func update(delta: float):
 	pending_cells.clear()
 	var core_positions: PackedVector2Array=[]
 	for b: Dictionary in blood:core_positions.append(b.p)
+	var motion_contexts={}
 	for v: Dictionary in viruses:
 		if not v.alive: continue
 		v["lived"]=float(v.get("lived",0))+delta
@@ -862,9 +863,9 @@ func update(delta: float):
 			record("virus_target",{"id":v.id,"p":v.p,"target":target_pos})
 		v.visual_target=target_key
 		var dir: Vector2=v.p.direction_to(target_pos)
-		var speed: float=float(rules.virus_speed)
-		speed*=float(rules.get("virus_movement_multiplier",1.0))
-		speed*=float(tuning.get("virus:"+v.type,{}).get("speed_multiplier",1.0))
+		if not motion_contexts.has(v.type):motion_contexts[v.type]=virus_motion.context(self,v)
+		var motion_context: Dictionary=motion_contexts[v.type]
+		var speed: float=motion_context.speed
 		v.visual_avoiding=false
 		if v.type=="avoider":
 			var avoid={};var distance=15.0*26.0/3.5
@@ -872,14 +873,14 @@ func update(delta: float):
 				var d=v.p.distance_to(c.p)
 				if c.alive and d<distance:avoid=c;distance=d
 			if not avoid.is_empty() and v.freeze<=0:
-				var force=avoid.p.direction_to(v.p)*150.0*virus_motion.multiplier(self,v)/(PI*1.75*1.75)*physics.mass(self,v)
-				physics.accelerate(self,v,force,delta)
+				var force=avoid.p.direction_to(v.p)*150.0*motion_context.scale/(PI*1.75*1.75)*motion_context.mass
+				virus_motion.apply_impulse(self,v,force*delta,motion_context.mass)
 				v.visual_avoiding=true
 			speed*=20.0/15.0
 		if v.type=="seeker":speed*=25.0/15.0
-		if v.type=="swarmer":update_swarm_attraction(v,delta)
+		if v.type=="swarmer":update_swarm_attraction(v,delta,motion_context)
 		v.visual_heading=dir
-		if not virus_motion.tick(self,v,dir,delta):
+		if not virus_motion.tick(self,v,dir,delta,motion_context):
 			physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
 	physics.step(self,delta)
 	join_swarm_contacts()
@@ -1053,7 +1054,7 @@ func resolve_bullet(p,from,to):
 		proteins.consumed(self,target)
 		record("protein_eaten",{"id":target.id,"p":target.p,"from":p.p,"kind":"bullet"})
 
-func update_swarm_attraction(v,delta):
+func update_swarm_attraction(v,delta,prepared={}):
 	var attached=[]
 	for link in links:
 		if not link.get("swarm",false):continue
@@ -1091,8 +1092,8 @@ func update_swarm_attraction(v,delta):
 	if nearby.is_empty():return
 	# All nine attractions use the same material and movement tuning. Preserve
 	# each Vector2 multiply/divide and impulse order, but resolve them once.
-	var movement_scale=virus_motion.multiplier(self,v)
-	var body_mass=physics.mass(self,v)
+	var movement_scale=virus_motion.multiplier(self,v) if prepared.is_empty() else prepared.scale
+	var body_mass=physics.mass(self,v) if prepared.is_empty() else prepared.mass
 	var body_state=physics.state(v)
 	for entry in nearby.slice(0,9):
 		var other: Dictionary=entry[1]

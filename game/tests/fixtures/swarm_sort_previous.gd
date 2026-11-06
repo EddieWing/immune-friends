@@ -1,7 +1,7 @@
 extends "res://scripts/simulation.gd"
 # Regression oracle: the attraction loop before packed sorting, commit 6c5da42.
 # Keep its full comparator sort: equal-distance force order is intentional.
-func update_swarm_attraction(v,delta):
+func update_swarm_attraction(v,delta,_prepared={}):
 	var attached=[]
 	for link in links:
 		if not link.get("swarm",false):continue
