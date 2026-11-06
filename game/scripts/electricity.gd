@@ -45,6 +45,11 @@ func update(s):
 		buckets[bucket].append(id)
 	for id in currents.keys():
 		if not nodes.has(id) or not nodes.has(currents[id].source):currents.erase(id)
+	for id in sources:
+		if not currents.has(id) and nodes[id].body.charge>0:currents[id]={"source":id,"path":[id]}
+	# The graph is rebuilt each step and has no state without a travelling current.
+	# Preserve the step counter and pruning above, but avoid empty graph traversals.
+	if currents.is_empty():return
 	for id in nodes:
 		var body=nodes[id].body
 		var bucket=Vector2i(floori(body.p.x/reach),floori(body.p.y/reach))
@@ -53,8 +58,6 @@ func update(s):
 				for other in buckets.get(bucket+Vector2i(x,y),[]):
 					if other!=id and body.p.distance_squared_to(nodes[other].body.p)<reach*reach:nodes[id].targets.append(other)
 		nodes[id].targets.sort()
-	for id in sources:
-		if not currents.has(id) and nodes[id].body.charge>0:currents[id]={"source":id,"path":[id]}
 	var queue=sources.duplicate();var seen={};var active=[];var cursor=0
 	while cursor<queue.size():
 		var id=queue[cursor];cursor+=1
