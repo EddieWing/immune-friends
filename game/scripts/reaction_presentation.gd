@@ -42,6 +42,18 @@ func pose(kind,id):
  var weight=1-smoothstep(0,0.38,r.age)
  # Keep the silhouette close to its collider: real momentum carries the impact.
  return {"squash":1+weight*(0.03 if r.push else -0.05),"offset":r.direction*weight*2,"hurt":not r.push and weight>0.25}
+func deform_transform(kind,id,body:Transform2D):
+ var reaction=reactions.get(kind+":"+str(id),{})
+ if reaction.is_empty() or reaction.direction.is_zero_approx():return body
+ var squash=pose(kind,id).squash
+ var axis=Transform2D(reaction.direction.angle(),Vector2.ZERO)
+ # Symmetric +/- delta keeps BOTH axes within the accepted 5% / 3% limit.
+ var deformation=axis*Transform2D(0,Vector2(squash,2-squash),0,Vector2.ZERO)*axis.affine_inverse()
+ var origin=body.origin
+ body.origin=Vector2.ZERO
+ body=deformation*body
+ body.origin=origin
+ return body
 func draw(canvas):
  for b in bursts.slice(maxi(0,bursts.size()-16)):
   var t=b.age/0.5
