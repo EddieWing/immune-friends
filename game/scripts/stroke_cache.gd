@@ -1,10 +1,11 @@
 extends RefCounted
-# Arc topology and unit normals are immutable; only radius-dependent vertices
-# change per frame. Same-age effects share one GPU mesh without dropping draws.
+# Arc topology is immutable. The arena shader changes radius on the GPU while
+# retaining local stroke width; other canvases keep the ordinary mesh path.
 var meshes: Array[ArrayMesh]=[]
 var current={}
 var topology={}
 var cursor=0
+var static_meshes={}
 func begin():
  current.clear();cursor=0
 func basis(span: float,count: int) -> Dictionary:
@@ -33,6 +34,9 @@ func basis(span: float,count: int) -> Dictionary:
  topology[key]=data
  return data
 func arc(canvas,p: Vector2,radius: float,angle: float,span: float,count: int,color: Color,width: float):
+ if radius>=1.0 and canvas.has_meta("static_stroke_geometry"):
+  canvas.draw_mesh(gpu_mesh(span,count,width),null,Transform2D(angle,Vector2.ONE*radius,0,p),color)
+  return
  var key=Vector4(radius,span,count,width)
  if not current.has(key):
   if cursor>=meshes.size():meshes.append(ArrayMesh.new())
@@ -51,3 +55,25 @@ func arc(canvas,p: Vector2,radius: float,angle: float,span: float,count: int,col
   mesh.clear_surfaces();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
   current[key]=mesh
  canvas.draw_mesh(current[key],null,Transform2D(angle,p),color)
+
+func gpu_mesh(span: float,count: int,width: float):
+ var key=Vector3(span,count,width)
+ if static_meshes.has(key):return static_meshes[key]
+ var data=basis(span,count)
+ var vertices=PackedVector3Array();var uv=PackedVector2Array()
+ var distances=[-width*0.5-1,-width*0.5,width*0.5,width*0.5+1]
+ for i in range(count):
+  for edge in range(4):
+   vertices.append(Vector3(data.points[i].x,data.points[i].y,0))
+   uv.append(Vector2(1000,1000)+data.normals[i]*distances[edge])
+ var arrays=[];arrays.resize(Mesh.ARRAY_MAX)
+ arrays[Mesh.ARRAY_VERTEX]=vertices;arrays[Mesh.ARRAY_TEX_UV]=uv
+ arrays[Mesh.ARRAY_COLOR]=data.colors;arrays[Mesh.ARRAY_INDEX]=data.indices
+ var mesh=ArrayMesh.new();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+ # The vertex shader expands the unit path. Cover the stroke at radius >= 1
+ # so a membrane touching the viewport edge is never culled prematurely.
+ var extent=1.0
+ for normal: Vector2 in data.normals:extent=maxf(extent,1.0+normal.length()*(width*0.5+1.0))
+ mesh.custom_aabb=AABB(Vector3(-extent,-extent,-1),Vector3(extent*2,extent*2,2))
+ static_meshes[key]=mesh
+ return mesh

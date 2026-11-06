@@ -12,6 +12,9 @@ var hair_roots=PackedVector2Array()
 var hair_tips=PackedVector2Array()
 var hair_tangents=PackedVector2Array()
 func _init():
+	material=ShaderMaterial.new()
+	material.shader=preload("res://shaders/stroke_geometry.gdshader")
+	set_meta("static_stroke_geometry",true)
 	for i in range(30):
 		var normal=Vector2.from_angle(i*TAU/30.0)
 		hair_roots.append(normal*10.7)
@@ -102,6 +105,7 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 	draw_string(font,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,color)
 
 func _draw():
+	material.set_shader_parameter("arena_scale",maxf(absf(get_global_transform().get_scale().x),0.00001))
 	if sim==null: return
 	microscope_effects.draw_under(self)
 	for lane in sources.states:
