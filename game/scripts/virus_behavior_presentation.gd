@@ -44,7 +44,7 @@ func update(sim,delta):
  var alive={}
  suspended.clear()
  tagged.clear()
- for v in sim.viruses:
+ for v: Dictionary in sim.viruses:
   if v.alive:
    alive[v.id]=v
    if float(v.get("freeze",0))>0:
@@ -53,10 +53,12 @@ func update(sim,delta):
  for id in looks.keys():
   if not alive.has(id): looks.erase(id)
  attachments=[]
- for v in alive.values():
-  var goal=v.get("visual_heading",Vector2.ZERO)
+ var look_blend: float=1-exp(-dt/0.14)
+ for v: Dictionary in alive.values():
+  var goal: Vector2=v.get("visual_heading",Vector2.ZERO)
   if v.get("emerging",false): goal=v.p.direction_to(v.exit)
-  looks[v.id]=looks.get(v.id,Vector2.ZERO).lerp(goal,1-exp(-dt/0.14))
+  var previous_look: Vector2=looks.get(v.id,Vector2.ZERO)
+  looks[v.id]=previous_look.lerp(goal,look_blend)
  for link in sim.links:
   if link.get("swarm",false) and alive.has(link.a) and alive.has(link.b):
    attachments.append({"a":alive[link.a].p,"b":alive[link.b].p})

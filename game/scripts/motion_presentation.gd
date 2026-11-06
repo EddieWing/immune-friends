@@ -9,22 +9,23 @@ var wakes=[]
 var cilia={}
 var arcs=preload("res://scripts/arc_batch.gd").new()
 func update(sim,delta=0.0):
- var fresh=observed_sim!=sim or revision!=sim.presentation_revision or sim.elapsed<previous_time
+ var fresh: bool=observed_sim!=sim or revision!=sim.presentation_revision or sim.elapsed<previous_time
  if fresh:
   samples.clear()
   modes.clear()
   cilia.clear()
  observed_sim=sim
  revision=sim.presentation_revision
- var dt=maxf(0,sim.elapsed-previous_time) if not fresh else 0.0
+ var dt: float=maxf(0,sim.elapsed-previous_time) if not fresh else 0.0
  previous_time=sim.elapsed
  var living_core={}
- for b in sim.blood:
+ var blend: float=1-exp(-(dt if sim.phase=="battle" else delta)/0.18)
+ for b: Dictionary in sim.blood:
   if not b.alive:continue
   living_core[b.id]=true
-  var speed=sim.physics.states.get(sim.physics.id_of(b),{}).get("v",Vector2.ZERO).length()
-  var strength=clampf(speed/70.0,0,1)
-  var blend=1-exp(-(dt if sim.phase=="battle" else delta)/0.18)
+  var velocity: Vector2=sim.physics.states.get(sim.physics.id_of(b),{}).get("v",Vector2.ZERO)
+  var speed: float=velocity.length()
+  var strength: float=clampf(speed/70.0,0,1)
   cilia[b.id]=lerpf(cilia.get(b.id,0.0),strength,blend)
  for id in cilia.keys():
   if not living_core.has(id):cilia.erase(id)
@@ -34,32 +35,34 @@ func update(sim,delta=0.0):
   modes.clear()
   return
  var alive={}
- for bodies in [sim.cells,sim.viruses]:
-  for body in bodies:
+ for bodies: Array in [sim.cells,sim.viruses]:
+  for body: Dictionary in bodies:
    if not body.alive: continue
-   var id=sim.physics.id_of(body)
+   var id: int=sim.physics.id_of(body)
    alive[id]=true
    # state()/velocity() would create missing physical state as a side effect.
-   var velocity=sim.physics.states.get(id,{}).get("v",Vector2.ZERO)
-   var previous=samples.get(id,velocity)
-   var acceleration=(velocity-previous)/dt if dt>0 else Vector2.ZERO
+   var velocity: Vector2=sim.physics.states.get(id,{}).get("v",Vector2.ZERO)
+   var previous: Vector2=samples.get(id,velocity)
+   var acceleration: Vector2=(velocity-previous)/dt if dt>0 else Vector2.ZERO
    if dt>0 or not samples.has(id): samples[id]=velocity
-   if velocity.length()<3 or body.get("freeze",0)>0 or body.get("emerging",false): continue
-   var speed=velocity.length()
-   var strength=clampf(speed/140.0,0.0,1.0)
-   var mode=modes.get(id,"glide")
+   var speed: float=velocity.length()
+   if speed<3 or body.get("freeze",0)>0 or body.get("emerging",false): continue
+   var direction: Vector2=velocity.normalized()
+   var strength: float=clampf(speed/140.0,0.0,1.0)
+   var mode: String=modes.get(id,"glide")
    if dt>0:
     mode="glide"
-    if acceleration.dot(velocity.normalized())>12: mode="accelerate"
-    elif acceleration.dot(velocity.normalized())< -12: mode="brake"
+    var forward_acceleration: float=acceleration.dot(direction)
+    if forward_acceleration>12: mode="accelerate"
+    elif forward_acceleration< -12: mode="brake"
     modes[id]=mode
-   var radius=26.0 if body.has("key") else 18.0
+   var radius: float=26.0 if body.has("key") else 18.0
    # Walls keep their physical long axis; the pressure ring must clear the end.
    if body.has("key") and sim.catalog[body.key].behavior=="wall": radius=46.0
-   var wake={"id":id,"p":body.p,"direction":velocity.normalized(),"strength":strength,"mode":mode,"radius":radius}
+   var wake={"id":id,"p":body.p,"direction":direction,"strength":strength,"mode":mode,"radius":radius}
    if body.get("type","")=="wave":
-    var forward=body.get("wave_direction",body.get("visual_heading",Vector2.RIGHT)).normalized()
-    var lateral=velocity.dot(forward.orthogonal())
+    var forward: Vector2=body.get("wave_direction",body.get("visual_heading",Vector2.RIGHT)).normalized()
+    var lateral: float=velocity.dot(forward.orthogonal())
     wake.wave_side=forward.orthogonal()*signf(lateral)
     wake.wave_strength=clampf(absf(lateral)/100.0,0,1)
    wakes.append(wake)
