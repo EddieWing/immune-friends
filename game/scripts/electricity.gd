@@ -50,20 +50,22 @@ func update(s):
 	# The graph is rebuilt each step and has no state without a travelling current.
 	# Preserve the step counter and pruning above, but avoid empty graph traversals.
 	if currents.is_empty():return
-	for id in nodes:
-		var body=nodes[id].body
-		var bucket=Vector2i(floori(body.p.x/reach),floori(body.p.y/reach))
-		for x in range(-1,2):
-			for y in range(-1,2):
-				for other in buckets.get(bucket+Vector2i(x,y),[]):
-					if other!=id and body.p.distance_squared_to(nodes[other].body.p)<reach*reach:nodes[id].targets.append(other)
-		nodes[id].targets.sort()
 	var queue=sources.duplicate();var seen={};var active=[];var cursor=0
 	while cursor<queue.size():
 		var id=queue[cursor];cursor+=1
 		if seen.has(id):continue
 		seen[id]=true
 		if currents.has(id):active.append(id)
+		# Only reached nodes consume their neighbour list. Disconnected bodies
+		# still exist for current pruning and sink handling, with empty edges.
+		var body: Dictionary=nodes[id].body
+		var position: Vector2=body.p
+		var bucket=Vector2i(floori(position.x/reach),floori(position.y/reach))
+		for x in range(-1,2):
+			for y in range(-1,2):
+				for other in buckets.get(bucket+Vector2i(x,y),[]):
+					if other!=id and position.distance_squared_to(nodes[other].body.p)<reach*reach:nodes[id].targets.append(other)
+		nodes[id].targets.sort()
 		for other in nodes[id].targets:
 			if nodes[id].incoming.has(other) or nodes[id].outgoing.has(other):continue
 			var outgoing=false
