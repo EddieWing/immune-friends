@@ -27,7 +27,8 @@ void fragment() {
   float boundary=1.0-smoothstep(0.0008,0.0025,abs(d-r));
   float angle=atan(lens.y,lens.x);
   float ticks=(1.0-smoothstep(0.05,0.14,abs(sin(angle*60.0))))*step(r-0.020,d)*step(d,r-0.004)*preparation;
-  float opacity=mix(0.16,0.97,preparation);
+  // The closed visor is opaque: world objects must not leak through its casing.
+  float opacity=mix(0.16,1.0,preparation);
   float hatch=0.008*sin(UV.x*2400.0+UV.y*100.0);
   vec3 exterior=vec3(0.035,0.048,0.050)+vec3(hatch);
   composite=mix(exterior,vec3(0.72,0.55,0.25),boundary);
