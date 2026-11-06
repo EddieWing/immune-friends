@@ -137,7 +137,17 @@ func draw_events(canvas):
    if amount<=0: break
    var end=path[i].lerp(path[i+1],amount/maxf(0.001,lengths[i]))
    canvas.draw_line(path[i],end,Color(color, color.a*0.45),3,true)
-   if remaining<=lengths[i]: canvas.draw_circle(end,4,color)
+   if remaining<=lengths[i]:
+    canvas.draw_circle(end,3,color)
+    if pulse.kind=="discharge":
+     # Sparks decorate only the already traversed mechanical path.
+     var direction=path[i].direction_to(path[i+1])
+     var normal=direction.orthogonal()
+     var extent=2.5+sin(pulse.age*24)*0.7
+     canvas.draw_line(end-normal*extent,end+normal*extent,color,1.2,true)
+     canvas.draw_line(end-direction*extent,end+direction*extent,color,1.2,true)
+   if pulse.kind=="discharge" and amount>=lengths[i] and lengths[i]>0:
+    canvas.draw_arc(path[i+1],3,0,TAU,8,Color(color,color.a*0.5),1,true)
    remaining-=lengths[i]
  var labels=0
  for hit in hits.slice(maxi(0,hits.size()-16)):
