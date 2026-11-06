@@ -1021,8 +1021,15 @@ func update_swarm_attraction(v,delta):
 	if host!=-1 or v.freeze>0:return
 	var nearby=viruses.filter(func(other):return other.alive and other.id!=v.id and not other.jump and v.p.distance_to(other.p)<60.0*26.0/3.5)
 	nearby.sort_custom(func(a,b):return v.p.distance_squared_to(a.p)<v.p.distance_squared_to(b.p))
+	if nearby.is_empty():return
+	# All nine attractions use the same material and movement tuning. Preserve
+	# each Vector2 multiply/divide and impulse order, but resolve them once.
+	var movement_scale=virus_motion.multiplier(self,v)
+	var body_mass=physics.mass(self,v)
+	var body_state=physics.state(v)
 	for other in nearby.slice(0,9):
-		physics.accelerate(self,v,v.p.direction_to(other.p)*25.0*virus_motion.multiplier(self,v)/(PI*1.75*1.75)*physics.mass(self,v),delta)
+		var force: Vector2=v.p.direction_to(other.p)*25.0*movement_scale/(PI*1.75*1.75)*body_mass
+		body_state.v+=force*delta/body_mass
 
 func join_swarm_contacts():
 	for v in viruses:
