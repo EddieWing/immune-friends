@@ -1,6 +1,11 @@
 extends RefCounted
 # Demo 1.0.0 electricity: persistent current, directed conductor graph,
 # stable branch order and simultaneous one-edge advancement per simulation step.
+var web_kernel
+func _init():
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval(preload("res://scripts/web_electricity.gd").SOURCE,true)
+		web_kernel=JavaScriptBridge.get_interface("microcosmElectricity")
 var currents={}
 var step=0
 const SOURCES=["zapper","generator","electric_wall","kinetic_generator","electromagnet"]
@@ -50,6 +55,36 @@ func update(s):
 	# The graph is rebuilt each step and has no state without a travelling current.
 	# Preserve the step counter and pruning above, but avoid empty graph traversals.
 	if currents.is_empty():return
+	var active=build_web_graph(nodes,reach) if web_kernel!=null else build_graph(nodes,sources,buckets,reach)
+	var transfers=[]
+	for id in active:
+		var outgoing=nodes[id].outgoing
+		if not outgoing.is_empty():
+			outgoing.sort();transfers.append([outgoing[0],currents[id]])
+		currents.erase(id)
+	for transfer in transfers:
+		currents[transfer[0]]=transfer[1]
+		transfer[1].path.push_front(transfer[0])
+	for id in nodes:
+		var node=nodes[id]
+		if not currents.has(id):continue
+		var virus=node.body.has("type")
+		var sink=(virus and (node.outgoing.is_empty() or step%2==id%2)) or (node.magnet and node.outgoing.is_empty())
+		if not sink:continue
+		var current=currents[id];var source=nodes[current.source].body
+		if source.charge<=0:currents.erase(id);continue
+		source.charge-=1
+		var path=[]
+		for point in current.path:
+			if nodes.has(point):path.push_front(nodes[point].body.p)
+		if virus:
+			s.damage_virus(node.body,1,{"p":source.p,"cause":"electric","owner":source.id})
+			if not node.body.alive:s.record("charge_kill",{"source":source.id})
+		else:node.body.charge+=1
+		s.record("discharge",{"path":path,"source":source.id,"target":id})
+		for i in range(1,path.size()):s.effects.append({"p":path[i-1],"end":path[i],"color":Color("#fff3a9"),"text":"","r":0,"life":0.15,"max":0.15})
+
+func build_graph(nodes,sources,buckets,reach):
 	var queue=sources.duplicate();var seen={};var active=[];var cursor=0
 	while cursor<queue.size():
 		var id=queue[cursor];cursor+=1
@@ -79,30 +114,18 @@ func update(s):
 		if nodes[id].magnet:draw_toward(id,nodes)
 	for id in nodes:
 		if nodes[id].body.has("type"):draw_toward(id,nodes)
-	var transfers=[]
-	for id in active:
-		var outgoing=nodes[id].outgoing
-		if not outgoing.is_empty():
-			outgoing.sort();transfers.append([outgoing[0],currents[id]])
-		currents.erase(id)
-	for transfer in transfers:
-		currents[transfer[0]]=transfer[1]
-		transfer[1].path.push_front(transfer[0])
+	return active
+
+func build_web_graph(nodes,reach):
+	var rows=[]
 	for id in nodes:
-		var node=nodes[id]
-		if not currents.has(id):continue
-		var virus=node.body.has("type")
-		var sink=(virus and (node.outgoing.is_empty() or step%2==id%2)) or (node.magnet and node.outgoing.is_empty())
-		if not sink:continue
-		var current=currents[id];var source=nodes[current.source].body
-		if source.charge<=0:currents.erase(id);continue
-		source.charge-=1
-		var path=[]
-		for point in current.path:
-			if nodes.has(point):path.push_front(nodes[point].body.p)
-		if virus:
-			s.damage_virus(node.body,1,{"p":source.p,"cause":"electric","owner":source.id})
-			if not node.body.alive:s.record("charge_kill",{"source":source.id})
-		else:node.body.charge+=1
-		s.record("discharge",{"path":path,"source":source.id,"target":id})
-		for i in range(1,path.size()):s.effects.append({"p":path[i-1],"end":path[i],"color":Color("#fff3a9"),"text":"","r":0,"life":0.15,"max":0.15})
+		var node=nodes[id];var body=node.body
+		rows.append([id,body.p.x,body.p.y,node.source,node.magnet,body.get("charge",0)>0,body.has("type")])
+	var result=JSON.parse_string(web_kernel.graph(JSON.stringify([rows,reach,currents.keys()],"",true,true)))
+	var index=0
+	for id in nodes:
+		var next=int(result[1][index]);index+=1
+		if next>=0:nodes[id].outgoing.append(next)
+	var active=[]
+	for id in result[0]:active.append(int(id))
+	return active
