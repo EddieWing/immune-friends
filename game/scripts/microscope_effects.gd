@@ -72,13 +72,24 @@ func draw_under(canvas):
  if not points.is_empty():canvas.draw_multiline_colors(points,colors,4,true)
  for b in bursts:
   var t=b.age/0.7
-  var core=b.kind=="blood_lost"
   draw_departure(canvas,b,t)
-  var color=Color(0.9,0.3,0.46,(1-t)*0.45*intensity) if core else Color(0.64,0.46,0.72,(1-t)*0.6*intensity)
-  for i in range(8 if core else 5):
-   var a=i*TAU/(8 if core else 5)
-   var p=b.p+Vector2.from_angle(a)*(12+t*(85 if core else 25))
-   strokes.arc(canvas,p,(9 if core else 4)*(1-t)+1,a,1.3,8,color,2)
+  var preset=death_particles(b.kind)
+  var color=Color(preset.color,(1-t)*preset.alpha*intensity)
+  for i in range(preset.count):
+   var a=i*TAU/preset.count
+   var p=b.p+Vector2.from_angle(a)*(12+t*preset.spread)
+   if b.kind=="virus_defeated":
+    canvas.draw_circle(p,(3-t*2)*intensity,color)
+   elif b.kind=="cell_rest":
+    p.y-=t*12
+    var d=Vector2.from_angle(a)*(4*(1-t))
+    canvas.draw_line(p-d,p+d,color,1.5,true)
+   else:
+    strokes.arc(canvas,p,9*(1-t)+1,a,1.3,8,color,2)
+func death_particles(kind):
+ if kind=="blood_lost": return {"count":8,"spread":85.0,"color":Color("#e64d75"),"alpha":0.45}
+ if kind=="cell_rest": return {"count":6,"spread":32.0,"color":Color("#62a49c"),"alpha":0.6}
+ return {"count":5,"spread":25.0,"color":Color("#a375b8"),"alpha":0.6}
 func draw_departure(canvas,b,t):
  # Non-gameplay echoes disappear within the existing aftermath interval.
  var alpha=(1-t)*intensity
