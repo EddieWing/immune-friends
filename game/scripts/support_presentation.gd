@@ -5,6 +5,7 @@ var elapsed=0.0
 var cursor=0
 var effects=[]
 var buffs={}
+var readiness={}
 func update(sim,delta):
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
@@ -39,9 +40,13 @@ func update(sim,delta):
   else: e.p=recipient.p
  effects=effects.filter(func(e): return e.age<e.life)
  var active={}
+ readiness.clear()
  for c in sim.cells:
   if not c.alive: continue
   active[c.id]=true
+  if sim.phase=="battle":
+   var progress=readiness_of(sim,c)
+   if not progress.is_empty(): readiness[c.id]=progress
   var current={"range":c.range_buff if sim.phase=="battle" else 1.0,"speed":c.speed_buff if sim.phase=="battle" else 1.0}
   var previous=buffs.get(c.id,{"range":1.0,"speed":1.0})
   for key in ["range","speed"]:
@@ -58,7 +63,32 @@ func update(sim,delta):
  for id in buffs.keys():
   if not active.has(id): buffs.erase(id)
  if effects.size()>48: effects=effects.slice(effects.size()-48)
+func readiness_of(sim,c):
+ var cost=0.0
+ match c.key:
+  "generator":cost=sim.constant_of(c,"proteinAmount",8)
+  "mint":cost=sim.constant_of(c,"proteinAmount",5)
+  "mortar":cost=sim.constant_of(c,"consume",4)
+  "tag_splitter":cost=sim.constant_of(c,"tagAmount",3)
+  "accelerator":cost=sim.constant_of(c,"consume",2)
+ if cost>0:
+  return {"kind":"recipe","fraction":clampf(float(c.food)/cost,0,1)}
+ if c.key=="seeker_factory" and sim.experimental:
+  var capsid=float(c.food)/maxf(1,sim.constant_of(c,"capsid",1))
+  var bullet=float(c.get("bullet_food",0))/maxf(1,sim.constant_of(c,"bullet",2))
+  return {"kind":"recipe","fraction":clampf(minf(capsid,bullet),0,1)}
+ var interval=sim.interval_of(c)
+ if interval>0 and sim.catalog[c.key].behavior in ["shoot","sniper","heal","push","spray","drop"]:
+  if c.key=="tag_sprayer" and int(c.get("tags",0))<=0:return {}
+  return {"kind":"cooldown","fraction":1-clampf(c.cool/interval,0,1)}
+ return {}
 func draw_cell(canvas,c):
+ if readiness.has(c.id):
+  var state=readiness[c.id]
+  var color=Color("#e4c36f") if state.kind=="recipe" else Color("#6f969c")
+  canvas.draw_arc(c.p,29,PI*0.2,PI*0.8,18,Color(color,0.22),2,true)
+  if state.fraction>0:
+   canvas.draw_arc(c.p,29,PI*0.2,PI*(0.2+0.6*state.fraction),18,color,2,true)
  if c.key=="tag_sprayer" and c.has("tags"):
   canvas.draw_string(ThemeDB.fallback_font,c.p+Vector2(-18,-29),"EMPTY" if c.tags==0 else str(c.tags)+" tags",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("#644c7d"))
  if c.key=="generator":
