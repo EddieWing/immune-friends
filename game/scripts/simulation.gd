@@ -737,14 +737,17 @@ func update(delta: float):
 		var d: Dictionary=catalog[c.key]
 		var velocity: Vector2=Vector2.ZERO
 		var reach: float=range_of(c)
-		var target: Dictionary=nearest_virus(c.p,reach)
-		if c.key=="tag_splitter":
+		# Only pursuit and a ready aimed shot consume this query. Other abilities
+		# use their own area/directional checks; cooldown does not acquire a target.
+		var needs_target: bool=d.behavior=="seek" or (d.behavior=="shoot" and c.cool<=0)
+		var target: Dictionary=nearest_virus(c.p,reach) if needs_target else {}
+		if needs_target and c.key=="tag_splitter":
 			var distance=reach if target.is_empty() else c.p.distance_to(target.p)
 			for p: Dictionary in particles:
 				if p.life>0 and p.kind=="tag" and p.p.distance_to(c.p)<distance:
 					target={"p":p.p}
 					distance=p.p.distance_to(c.p)
-		if target.is_empty() and d.category=="T" and reach>0:
+		if needs_target and target.is_empty() and d.category=="T" and reach>0:
 			for candidate: Dictionary in viruses:
 				if candidate.alive and candidate.tag>0 and c.p.distance_to(candidate.p)<reach*2:
 					target=candidate
