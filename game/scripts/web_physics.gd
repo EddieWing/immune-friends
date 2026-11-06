@@ -68,7 +68,7 @@ globalThis.microcosmContacts = (() => {
  }
  function run(rows,scale){const bodies=rows.map(shape),found=contacts(bodies,scale);return [bodies.map(b=>[...b.p,...b.v,b.w]),[...found.values()]];}
  const limit=(v,max)=>{max=f(max);const l=len(v);return l>0&&max<l?mul(div(v,l),max):v};
- function advance(rows,delta,steps,scale,links=[],stiffness=0,damping=0,groups={}){
+ function advance(rows,delta,steps,scale,links=[],stiffness=0,damping=0,groups={},bounded=true){
   const bodies=rows.map(shape),found=new Map(),dt=delta/steps;
 
   bodies.forEach((b,i)=>b.angle=rows[i][16]);
@@ -91,8 +91,8 @@ globalThis.microcosmContacts = (() => {
     b.p=add(b.p,mul(b.v,dt));
     if(b.cell){const range=Math.PI*2,value=b.angle+b.w*dt;b.angle=value-range*Math.floor((value+Math.PI)/range);if(Math.abs(b.angle-Math.PI)<Math.max(1e-5,1e-5*Math.abs(b.angle)))b.angle=-Math.PI;r[16]=b.angle;
      b.c=cosf(b.angle);b.s=sinf(b.angle);b.axes=[[b.c,b.s],[-b.s,b.c]];
-     const ex=extent(b,[1,0]),ey=extent(b,[0,1]),x=Math.max(f(-620+ex),Math.min(f(620-ex),b.p[0])),y=Math.max(f(-365+ey),Math.min(f(350-ey),b.p[1]));
-     if(x!==b.p[0])b.v[0]=f(-b.v[0]*b.bounce);if(y!==b.p[1])b.v[1]=f(-b.v[1]*b.bounce);b.p=[x,y];
+     if(bounded){const ex=extent(b,[1,0]),ey=extent(b,[0,1]),x=Math.max(f(-620+ex),Math.min(f(620-ex),b.p[0])),y=Math.max(f(-365+ey),Math.min(f(350-ey),b.p[1]));
+     if(x!==b.p[0])b.v[0]=f(-b.v[0]*b.bounce);if(y!==b.p[1])b.v[1]=f(-b.v[1]*b.bounce);b.p=[x,y];}
     }
    });
    for(const [k,v] of contacts(bodies,scale,groups))found.set(k,v);
@@ -165,8 +165,8 @@ globalThis.microcosmContacts = (() => {
  let materials=[];
  function advanceCompact(text,config,links){
   const p=JSON.parse(config),rows=unpack(text,13).map(d=>{const r=materials[d[12]].slice();r[0]=d[0];r[1]=d[1];r[2]=d[2];r[3]=d[3];r[4]=d[4];r[12]=d[5];r[16]=d[6];r[17]=d[7];r[18]=d[8];r[15]=d[9];r[19]=d[10];r[20]=d[11];if(r[6]){r[13]=cosf(r[16]);r[14]=sinf(r[16])}return r});
-  return advance(rows,p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5]);
+  return advance(rows,p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5],p[6]);
  }
- return {advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5])}};
+ return {advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5],p[6])}};
 })();
 """

@@ -44,7 +44,7 @@ func icon(key,data):
 
 func body_svg(kind,color):
  var shapes=[
-  '<rect x="10" y="44" width="108" height="40" rx="19"/>',
+  '<rect x="10" y="47.7" width="108" height="32.6" rx="16.3"/>',
   '<path d="M108 64 C78 43 63 19 42 30 C10 46 22 101 57 102 C78 101 97 84 108 64 Z"/>',
   '<path d="M88 25 C23 5 3 94 57 107 C72 111 88 103 99 91 C49 89 46 47 88 25 Z"/>',
   '<path d="M43 20 Q64 12 84 25 L108 53 Q115 65 104 85 L83 105 Q64 115 43 102 L21 81 Q13 65 23 45 Z"/>',

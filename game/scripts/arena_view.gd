@@ -201,34 +201,17 @@ func draw_cell(c):
 	var p=c.p-pose.get("direction",Vector2.ZERO)*(windup*1.5+kick*3)+reaction.offset
 	attacks.draw_intent(self,c)
 	var wall=d.behavior=="wall"
-	if new_field:
-		draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p)))
-		if wall:
-			if not wall_skins.has(color):
-				var skin=StyleBoxFlat.new()
-				skin.bg_color=color
-				skin.border_color=color.darkened(0.4)
-				skin.set_border_width_all(2)
-				skin.set_corner_radius_all(13)
-				wall_skins[color]=skin
-			draw_style_box(wall_skins[color],Rect2(-43,-13,86,26))
-		else:
-			draw_circle(Vector2.ZERO,23,color)
-			draw_arc(Vector2.ZERO,23,0,TAU,48,color.darkened(0.45),2,true)
-		draw_set_transform(Vector2.ZERO)
-	else:
-		var texture=visuals.body(c.key,d)
-		var extent=Vector2(106,80) if wall else Vector2(58,58)
-		draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p+Vector2(2,4))))
-		draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
-		if optical_intensity>0:
-			draw_set_transform(p,c.angle)
-			draw_texture_rect(texture,Rect2(-extent*0.54,extent*1.08),false,Color(0.78,0.94,1,0.14*optical_intensity))
-		draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p)))
-		draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
-		draw_set_transform(Vector2.ZERO)
-	if not new_field and not wall and optical_intensity>0:
-		draw_arc(p,25,PI*1.05,PI*1.48,18,Color(0.88,0.98,1,0.5*optical_intensity),1.3,true)
+	# Shared silhouette for shop and both field themes.
+	var texture=visuals.body(c.key,d)
+	var extent=Vector2(102,102) if wall else Vector2(58,58)
+	draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p+Vector2(2,4))))
+	draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
+	if not new_field and optical_intensity>0:
+		draw_set_transform(p,c.angle)
+		draw_texture_rect(texture,Rect2(-extent*0.54,extent*1.08),false,Color(0.78,0.94,1,0.14*optical_intensity))
+	draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p)))
+	draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
+	draw_set_transform(Vector2.ZERO)
 	var look=pose.get("look",Vector2.ZERO)
 	if sim.phase=="shop":
 		var nearest={}

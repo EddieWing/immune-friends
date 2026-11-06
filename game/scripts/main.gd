@@ -1312,7 +1312,7 @@ func _unhandled_input(event):
 					if c.alive and sim.contains_cell(c,world,6):
 						selected=c
 				if not selected.is_empty():
-					if event.double_click or (ui_new and not gym_mode): inspected_cell=selected.id
+					if event.double_click: inspected_cell=selected.id
 					dragging=sim.phase=="shop"
 					if dragging: sim.proteins.pickup(sim,selected)
 					mouse_offset=selected.p-world
