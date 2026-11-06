@@ -39,6 +39,7 @@ var visual_elapsed=0.0
 var visual_revision=-1
 var visual_sim
 var playback_speed=1
+var water_paused=null
 var staging=""
 var debug_geometry=false
 var debug_paths=false
@@ -69,7 +70,7 @@ func _process(delta):
 		visual_revision=sim.presentation_revision
 	if sim!=null: diagnostics.update(sim,delta)
 	if sim!=null:
-		microscope_effects.update(sim,delta)
+		microscope_effects.update(sim,delta,-1.0 if water_paused==null else (0.0 if water_paused else delta))
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)
 		reactions.update(sim,delta)
@@ -363,4 +364,5 @@ func draw_blood_cluster():
 	blood_faces.finish_draw(self)
 
 func has_transient_effects():
-	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty()
+	# Persistent water memory is ambient scenery, not an unresolved hit/death.
+	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty() or not microscope_effects.bursts.is_empty() or not microscope_effects.merges.is_empty()

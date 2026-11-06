@@ -1629,6 +1629,7 @@ func advance_camera(delta):
 	background_material.set_shader_parameter("camera_zoom",value)
 	background_material.set_shader_parameter("flow_time",water_time)
 	var feedback_paused=(paused and sim.phase=="battle") or (modal.visible and is_instance_valid(modal_panel) and modal_panel.get_meta("pause_for_settings",false))
+	view.water_paused=feedback_paused or browsing_from_main_menu() or entering_game
 	core_feedback.update(sim,0.0 if feedback_paused else delta)
 	var feedback_visible=not browsing_from_main_menu() and not entering_game and sim.phase!="shop"
 	if feedback_visible:

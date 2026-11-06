@@ -10,8 +10,14 @@ var previous={}
 var bursts=[]
 var merges=[]
 var intensity=1.0
-func update(sim,delta):
+var friendly_trail_seconds=0.6
+var virus_trail_seconds=12.0
+func update(sim,delta,water_delta=-1.0):
  var fresh=observed_sim!=sim or revision!=sim.presentation_revision
+ if fresh:
+  var profile=sim.rules.get("water_trails",{})
+  friendly_trail_seconds=maxf(0.05,float(profile.get("friendly_seconds",0.6)))
+  virus_trail_seconds=maxf(0.05,float(profile.get("virus_seconds",12.0)))
  if fresh or sim.elapsed<elapsed or (sim.phase=="battle" and phase!="battle"):
   trails.clear()
   previous.clear()
@@ -24,9 +30,13 @@ func update(sim,delta):
  revision=sim.presentation_revision
  elapsed=sim.elapsed
  phase=sim.phase
- var density=clampf(trails.size()/280.0,1.0,2.5)
- for segment in trails: segment.age+=dt*density
- trails=trails.filter(func(s): return s.age<1.8)
+ # Water remembers rendered motion, not accelerated simulation time. Freeze
+ # during battle pause; death/merge effects below keep their existing clock.
+ # The scene supplies its pause-aware render clock: an idle fixed-step frame
+ # at 120/240 Hz is not a pause. Standalone callers can infer from sim time.
+ var water_dt=water_delta if water_delta>=0 else (maxf(0,delta) if sim.phase!="battle" or dt>0 else 0.0)
+ for segment in trails: segment.age+=water_dt
+ trails=trails.filter(func(s): return s.age<s.life)
  var alive={}
  if sim.phase=="battle":
   for bodies in [sim.viruses,sim.cells,sim.blood]:
@@ -37,7 +47,8 @@ func update(sim,delta):
     if previous.has(id):
      var distance=previous[id].distance_to(body.p)
      if distance>=5 and distance<100:
-      trails.append({"a":previous[id],"b":body.p,"age":0.0,"virus":body.has("type")})
+      var is_virus=body.has("type")
+      trails.append({"a":previous[id],"b":body.p,"age":0.0,"virus":is_virus,"life":virus_trail_seconds if is_virus else friendly_trail_seconds})
       previous[id]=body.p
      elif distance>=100: previous[id]=body.p
     else: previous[id]=body.p
@@ -62,7 +73,7 @@ func draw_under(canvas):
  var points=PackedVector2Array()
  var colors=PackedColorArray()
  for s in trails:
-  var alpha=(1-s.age/1.8)*0.26*density*intensity
+  var alpha=(1-s.age/s.life)*0.26*density*intensity
   points.append(s.a);points.append(s.b)
   colors.append(Color(0.56,0.35,0.70,alpha) if s.virus else Color(0.74,0.94,0.97,alpha))
  if not points.is_empty():canvas.draw_multiline_colors(points,colors,4,true)
