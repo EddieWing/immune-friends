@@ -31,9 +31,9 @@ func update(sim,delta):
   if e.event in ["damage","virus_hit","pushed"]:
    var kind=d.get("kind","cell" if e.event=="damage" else "virus")
    var key=kind+":"+str(d.id)
-   reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("direction",d.get("from",d.p).direction_to(d.p))}
+   reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("direction",d.get("from",d.p).direction_to(d.p)).normalized()}
   if e.event in ["virus_hit","pushed","tagged","thawed","tag_ended"]:
-   bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("from",d.p).direction_to(d.p)})
+   bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("direction",d.get("from",d.p).direction_to(d.p)).normalized()})
  cursor=sim.event_sequence
  if bursts.size()>48: bursts=bursts.slice(bursts.size()-48)
 func pose(kind,id):
