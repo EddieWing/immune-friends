@@ -8,8 +8,8 @@ static func lines(sim,cell):
 	var result=["Current HP: "+number(cell.hp),"Permanent HP: "+number(cell.max_hp)]
 	if cell.get("temporary",false):result.append("Temporary cell · this infection only")
 	if cell.key=="greed_wall":
-		if sim.phase=="shop":result.append("Next infection bonus: +"+number(sim.preparation_health_bonus(cell))+" HP (temporary)")
-		elif cell.has("initial_health_bonus"):result.append("Bonus at infection start: +"+number(cell.initial_health_bonus)+" HP (temporary)")
+		if sim.phase=="shop":result.append("Next infection starts at: "+number(sim.preparation_start_health(cell))+" HP (temporary replacement)")
+		elif cell.has("initial_conversion_health"):result.append("HP set at infection start: "+number(cell.initial_conversion_health)+" (temporary)")
 	if cell.key=="survivor_bomb":
 		result.append("Current radius: "+number(sim.range_of(cell)/float(sim.rules.scale)))
 		result.append("Permanent radius growth: +"+number(cell.get("radius_growth",0)))
@@ -25,5 +25,5 @@ static func lines(sim,cell):
 static func ability(sim,key,rank=1):
 	if key=="greed_wall":
 		var coefficient=sim.constant_of({"key":key,"rank":rank},"conversionRate",2)
-		return "At infection start gains %s HP for each leftover Carbon. Bonus lasts for this infection only." % number(coefficient)
+		return "At infection start HP becomes %s × leftover Carbons (minimum 1). Replaces current HP; permanent HP returns in preparation." % number(coefficient)
 	return sim.catalog[key].description

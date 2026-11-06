@@ -349,8 +349,10 @@ func constant_of(c, field, fallback=0):
 	if int(c.rank)>=3 and data.get("elite_constants",{}).has(field): return float(data.elite_constants[field])
 	return float(data.get("constants",{}).get(field,fallback))
 
-func preparation_health_bonus(c):
-	return constant_of(c,"conversionRate",2)*money if c.key=="greed_wall" else 0.0
+func preparation_start_health(c):
+	# Greed replaces runtime HP; permanent HP survives in the composition.
+	# Conversion happens once, before subsequent battle damage/healing.
+	return maxf(1.0,constant_of(c,"conversionRate",2)*money) if c.key=="greed_wall" else float(c.max_hp)
 
 func cell_by_id(id):
 	for c in cells:
@@ -503,8 +505,11 @@ func begin_battle():
 		c["travel_x"]=c.p.x
 		c["travel_y"]=c.p.y
 		if c.key=="hungry_bomb": c["radius_growth"]=0.0
-		c["initial_health_bonus"]=preparation_health_bonus(c)
-		c.hp+=c.initial_health_bonus
+		c.erase("initial_health_bonus")
+		c.erase("initial_conversion_health")
+		if c.key=="greed_wall":
+			c.hp=preparation_start_health(c)
+			c["initial_conversion_health"]=c.hp
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	for c in cells:
 		for id in network(c.id):
@@ -1073,6 +1078,7 @@ func next_round():
 		c.hp=c.max_hp
 		c.alive=true
 		c.erase("initial_health_bonus")
+		c.erase("initial_conversion_health")
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	rebuild_links()
 	# Original TradeHealth processes exchanges sequentially after restoration.
