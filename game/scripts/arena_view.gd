@@ -8,18 +8,11 @@ var virus_health=[]
 var effect_strokes=preload("res://scripts/stroke_cache.gd").new()
 const CELL_FACE_PARTS=preload("res://assets/ui/cell-face-parts.svg")
 var wall_skins={}
-var hair_roots=PackedVector2Array()
-var hair_tips=PackedVector2Array()
-var hair_tangents=PackedVector2Array()
+var core_cilia=preload("res://scripts/core_cilia.gd").new()
 func _init():
 	material=ShaderMaterial.new()
 	material.shader=preload("res://shaders/stroke_geometry.gdshader")
 	set_meta("static_stroke_geometry",true)
-	for i in range(30):
-		var normal=Vector2.from_angle(i*TAU/30.0)
-		hair_roots.append(normal*10.7)
-		hair_tips.append(normal*13.0)
-		hair_tangents.append(normal.orthogonal())
 var new_field=false
 var new_hud=false
 var sim
@@ -343,21 +336,13 @@ func draw_blood_cluster():
 		if occupied.has(key_a) or occupied.has(key_b): continue
 		occupied[key_a]=true
 		occupied[key_b]=true
-	# Keep each visual layer contiguous so the renderer can batch it. The hair
-	# tips still mark radius 13; root sway and phase are unchanged.
-	var hairs=PackedVector2Array()
-	var hair_colors=PackedColorArray()
+	# Preserve shadows -> hairs -> bodies -> bonds -> faces layer ordering.
 	for b in sim.blood:
 		if not b.alive:continue
 		var p: Vector2=b.p
 		draw_texture_rect_region(CORE_FACE_PARTS,Rect2(p+Vector2(1,2)-Vector2(16,16),Vector2(32,32)),Rect2(1280,256,256,256),Color(1,1,1,0.22))
-		var tints=virus_behavior.motion.cilia_tints(b.id,hair_tips,time)
-		for i in range(30):
-			var tangent: Vector2=hair_tangents[i]*sin(time*1.8+b.id+i)*0.22
-			hairs.append(p+hair_roots[i]+tangent)
-			hairs.append(p+hair_tips[i])
-			hair_colors.append(tints[i])
-	if not hairs.is_empty():draw_multiline_colors(hairs,hair_colors,0.75,true)
+	material.set_shader_parameter("cilia_time",time)
+	core_cilia.draw(self,sim.blood,virus_behavior.motion.cilia)
 	for b in sim.blood:
 		if not b.alive:continue
 		var mask=0
