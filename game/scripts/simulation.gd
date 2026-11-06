@@ -357,13 +357,46 @@ func preparation_start_health(c):
 	# Conversion happens once, before subsequent battle damage/healing.
 	return maxf(1.0,constant_of(c,"conversionRate",2)*money) if c.key=="greed_wall" else float(c.max_hp)
 
+var step_lookups_active=false
+var lookup_sizes=Vector3i(-1,-1,-1)
+var cell_lookup={}
+var virus_lookup={}
+var core_lookup={}
+func prepare_step_lookups():
+	# Synchronous update owns array membership. New spawns/offspring change
+	# sizes; death only changes the referenced Dictionary, which stays live.
+	var sizes=Vector3i(cells.size(),viruses.size(),blood.size())
+	if sizes==lookup_sizes:return
+	cell_lookup.clear();virus_lookup.clear();core_lookup.clear()
+	for c: Dictionary in cells:
+		var id=c.id
+		# Older numeric checkpoints may contain 1.0; linear equality matches 1.
+		if id is float and id==int(id):id=int(id)
+		if not cell_lookup.has(id):cell_lookup[id]=c
+	for v: Dictionary in viruses:
+		var id=v.id
+		if id is float and id==int(id):id=int(id)
+		if not virus_lookup.has(id):virus_lookup[id]=v
+	for b: Dictionary in blood:
+		var id=-2-int(b.id)
+		if not core_lookup.has(id):core_lookup[id]=b
+	lookup_sizes=sizes
+
 func cell_by_id(id):
+	if step_lookups_active and id is int:
+		prepare_step_lookups()
+		return cell_lookup.get(id,{})
 	for c in cells:
 		if c.id==id:
 			return c
 	return {}
 
 func endpoint_by_id(id):
+	if step_lookups_active and id is int:
+		prepare_step_lookups()
+		if id < -1:return core_lookup.get(id,{})
+		if cell_lookup.has(id):return cell_lookup[id]
+		return virus_lookup.get(id,{})
 	if id < -1:
 		for b in blood:
 			if -2-int(b.id)==id: return b
@@ -707,6 +740,15 @@ func contains_cell(c, p, extra=0.0):
 	return local.length()<18+extra
 
 func update(delta: float):
+	# Keep lookups scoped to this call. Editor/debug changes between ticks
+	# (including same-size replacement/reordering) always see fresh membership.
+	step_lookups_active=true
+	lookup_sizes=Vector3i(-1,-1,-1)
+	update_step(delta)
+	step_lookups_active=false
+	cell_lookup.clear();virus_lookup.clear();core_lookup.clear()
+
+func update_step(delta: float):
 	var movement_delta: float=delta*float(rules.get("movement_multiplier",1.0))
 	for e: Dictionary in effects: e.life-=delta
 	effects=effects.filter(func(e): return e.life>0)
