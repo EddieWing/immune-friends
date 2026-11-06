@@ -285,9 +285,10 @@ func draw_virus(v):
 	rendered.hurt=reaction.hurt
 	rendered.look=virus_behavior.looks.get(v.id,Vector2.ZERO)
 	rendered.feeding=virus_behavior.feeding.has(v.id)
+	rendered.spawn_alpha=virus_behavior.spawn_alpha(v)
 	if new_field:
-		draw_texture_rect(SIMPLE_VIRUS_BODY,Rect2(-16,-16,32,32),false)
-		draw_texture_rect(SIMPLE_VIRUS_EYES,Rect2(rendered.look-Vector2(16,16),Vector2(32,32)),false)
+		draw_texture_rect(SIMPLE_VIRUS_BODY,Rect2(-16,-16,32,32),false,Color(1,1,1,rendered.spawn_alpha))
+		draw_texture_rect(SIMPLE_VIRUS_EYES,Rect2(rendered.look-Vector2(16,16),Vector2(32,32)),false,Color(1,1,1,rendered.spawn_alpha))
 	else: preload("res://scripts/virus_visuals.gd").draw(self,rendered)
 	draw_set_transform(Vector2.ZERO)
 	if v.get("visual_avoiding",false) and v.get("freeze",0)<=0:

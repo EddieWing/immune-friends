@@ -62,6 +62,12 @@ func update(sim,delta):
    attachments.append({"a":alive[link.a].p,"b":alive[link.b].p})
 func scale_of(id):
  return 1+sin((1-feeding.get(id,0.0)/0.55)*PI)*0.13 if feeding.has(id) else 1.0
+func spawn_alpha(v):
+ # Appearance follows the actor's real lifetime, never delays its collision/motion.
+ if v.get("emerging",false):
+  var distance=v.get("spawn_position",v.p).distance_to(v.get("exit",v.p))
+  return lerpf(0.25,1.0,clampf(v.get("spawn_position",v.p).distance_to(v.p)/maxf(1,distance),0,1))
+ return lerpf(0.25,1.0,smoothstep(0,0.35,float(v.get("age",1.0))))
 func draw_links(canvas):
  for link in attachments:
   var d=link.a.direction_to(link.b)
