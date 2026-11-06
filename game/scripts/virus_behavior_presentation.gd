@@ -9,7 +9,9 @@ var feeding={}
 var looks={}
 var effects=[]
 var attachments=[]
+var motion=preload("res://scripts/motion_presentation.gd").new()
 func update(sim,delta):
+ motion.update(sim)
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
  if fresh or round_seen!=sim.round_no or cursor>sim.event_sequence or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
@@ -61,6 +63,7 @@ func draw_links(canvas):
    var p=middle+d.orthogonal()*side*3
    canvas.draw_polyline(PackedVector2Array([p-d*3,p,p+d*3+d.orthogonal()*side*2]),Color("#d5a4d4"),1.5,true)
 func draw_effects(canvas):
+ motion.draw(canvas)
  for e in effects.slice(maxi(0,effects.size()-10)):
   var t=e.age/0.65
   var color=Color(0.92,0.7,0.91,1-t)
