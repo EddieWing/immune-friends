@@ -13,6 +13,9 @@ var virus_motion=preload("res://scripts/virus_motion.gd").new()
 var electricity=preload("res://scripts/electricity.gd").new()
 var proteins=preload("res://scripts/protein_system.gd").new()
 var pending_cells=[]
+var _projectile_grid_active=false
+var _projectile_grid={}
+var _projectile_bodies=[]
 var battle_income=0
 var catalog: Dictionary
 var base_catalog: Dictionary
@@ -890,6 +893,7 @@ func update(delta: float):
 		if c.key=="electric_wall":experiments.electric_contacts(self,c,delta)
 	resolve_cell_contacts()
 	advance_blasts(delta)
+	if not particles.is_empty():_prepare_projectile_grid()
 	for p: Dictionary in particles:
 		if p.life<=0: continue
 		p.life-=delta
@@ -900,6 +904,7 @@ func update(delta: float):
 			resolve_bullet(p,previous,p.p)
 		elif p.kind=="tag":
 			proteins.resolve_tag(self,p,previous,p.p)
+	_clear_projectile_grid()
 	particles=particles.filter(func(p): return p.life>0)
 	viruses=viruses.filter(func(v): return v.alive)
 	if gym_mode: return
@@ -989,9 +994,42 @@ func projectile_fraction(body,from,to,radius):
 	var t=(-b-sqrt(discriminant))/a
 	return t if t>=0 and t<=1 else INF
 
+# Bodies do not translate during projectile resolution. Keep array order so
+# equal-time hits retain the original cells-before-viruses tie break.
+func _prepare_projectile_grid():
+	_projectile_grid.clear()
+	_projectile_bodies=cells+viruses
+	for i in range(_projectile_bodies.size()):
+		var p: Vector2=_projectile_bodies[i].p
+		var tile=Vector2i(floori(p.x/96.0),floori(p.y/96.0))
+		if not _projectile_grid.has(tile):_projectile_grid[tile]=[]
+		_projectile_grid[tile].append(i)
+	_projectile_grid_active=true
+
+func _clear_projectile_grid():
+	_projectile_grid_active=false
+	_projectile_grid.clear();_projectile_bodies.clear()
+
+func projectile_candidates(from: Vector2,to: Vector2,radius: float) -> Array:
+	if not _projectile_grid_active:return cells+viruses
+	# Expanded rotated Wall has half extents (43+r,13+r). This bound
+	# includes its corner for every angle, with margin for Float32 rounding.
+	var padding=46.0+2.0*absf(radius)
+	var lo=Vector2i(floori((minf(from.x,to.x)-padding)/96.0),floori((minf(from.y,to.y)-padding)/96.0))
+	var hi=Vector2i(floori((maxf(from.x,to.x)+padding)/96.0),floori((maxf(from.y,to.y)+padding)/96.0))
+	if (hi.x-lo.x+1)*(hi.y-lo.y+1)>128:return _projectile_bodies
+	var indices=[]
+	for y in range(lo.y,hi.y+1):
+		for x in range(lo.x,hi.x+1):
+			indices.append_array(_projectile_grid.get(Vector2i(x,y),[]))
+	indices.sort()
+	var found=[]
+	for i in indices:found.append(_projectile_bodies[i])
+	return found
+
 func resolve_bullet(p,from,to):
 	var target={};var nearest=INF
-	for body in cells+viruses:
+	for body in projectile_candidates(from,to,float(p.r)):
 		if not body.alive or body.id==p.owner:continue
 		if body.has("type"):
 			if body.jump:continue

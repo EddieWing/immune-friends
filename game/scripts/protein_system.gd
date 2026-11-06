@@ -95,7 +95,7 @@ func route_food(s,delta):
 # Steering is separate from consumption: only the first body crossed consumes a tag.
 func resolve_tag(s,p,from,to):
 	var target={};var nearest=INF
-	for body in s.cells+s.viruses:
+	for body in s.projectile_candidates(from,to,float(p.r)):
 		if not body.alive or body.id==p.owner:continue
 		if body.has("type"):
 			if body.get("jump",false):continue
