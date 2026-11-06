@@ -518,11 +518,20 @@ func show_menu():
 	main_menu.size=Vector2(1440,900)
 	main_menu.mouse_filter=Control.MOUSE_FILTER_STOP
 	ui.add_child(main_menu)
-	var menu_background=ColorRect.new()
+	var menu_background=TextureRect.new()
+	menu_background.name="MenuWater"
 	menu_background.size=Vector2(1440,900)
-	menu_background.color=Color("#102832")
+	menu_background.texture=ui.get_child(0).texture
+	menu_background.material=background_material
+	menu_background.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	menu_background.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	menu_background.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	main_menu.add_child(menu_background)
+	var menu_shade=ColorRect.new()
+	menu_shade.size=Vector2(1440,900)
+	menu_shade.color=Color(0.035,0.10,0.13,0.62)
+	menu_shade.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	main_menu.add_child(menu_shade)
 	ui.move_child(modal,ui.get_child_count()-1)
 	var title=label(main_menu,"MICROCOSM",Vector2(700,320),72,Color("#e0f0ea"))
 	title.size=Vector2(680,100)
