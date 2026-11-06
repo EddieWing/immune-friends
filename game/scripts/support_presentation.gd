@@ -6,7 +6,9 @@ var cursor=0
 var effects=[]
 var buffs={}
 var readiness={}
+var waves=preload("res://scripts/wave_presentation.gd").new()
 func update(sim,delta):
+ waves.update(sim,delta)
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
  if fresh or cursor>sim.event_sequence:
@@ -104,6 +106,7 @@ func draw_cell(canvas,c):
    var p=c.p+Vector2(-21+i*4,-20)
    canvas.draw_polyline(PackedVector2Array([p+Vector2(-2,-3),p,p+Vector2(-2,3)]),Color("#ead792"),1.5,true)
 func draw(canvas):
+ waves.draw(canvas)
  for e in effects.slice(maxi(0,effects.size()-12)):
   var t=e.age/e.life
   var color=Color(0.62,0.9,0.72,1-t)

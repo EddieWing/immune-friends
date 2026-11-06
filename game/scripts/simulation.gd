@@ -907,6 +907,7 @@ func start_blast(position,reach,damage=1.0,force=600.0,owner=-1,immune_only=fals
 	var visual={"p":position,"color":Color("#f9b8d1") if damage>0 else Color("#a5e2f0"),"text":"","r":0.0,"front":true,"life":duration,"max":duration}
 	effects.append(visual)
 	blasts.append({"p":position,"reach":reach,"radius":0.0,"duration":duration,"age":0.0,"hit":{},"immune_only":immune_only,"damage":damage,"force":force,"owner":owner,"visual":visual})
+	record("blast_started",{"p":position,"reach":reach,"damage":damage,"duration":duration,"owner":owner})
 
 func advance_blasts(delta):
 	# Iterate a snapshot: a killed bomb starts a distinct front next step.
