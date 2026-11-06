@@ -59,10 +59,23 @@ globalThis.microcosmContacts = (() => {
   const depth=f(Math.max(0,h.depth-.02)),denom=f(a.im+b.im),cx=f(f(f(nx*depth)*f(.65))/denom),cy=f(f(f(ny*depth)*f(.65))/denom);
   a.p=[f(a.p[0]-f(cx*aim)),f(a.p[1]-f(cy*aim))];b.p=[f(b.p[0]+f(cx*bim)),f(b.p[1]+f(cy*bim))];
  }
+ // Candidate pairs depend on grid tiles, eligibility, type and rigid group only.
+ // Reuse indices while those inputs match; exact contacts still run every pass.
+ let pairInputs=[],cachedPairs=[];
  function contacts(bodies,scale,groups={}){
-  const grid=new Map(),cells=new Map(),tiles=[],pairs=[],found=new Map();
-  bodies.forEach((b,i)=>{const tile=[Math.floor(b.p[0]/96),Math.floor(b.p[1]/96)];tiles.push(tile);if(!b.eligible)return;const key=tile.join(',');if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(!b.virus){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
-  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=!b.virus?grid:cells,t=tiles[i];for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i&&(b.cell||b.virus||bodies[j].cell||bodies[j].virus)&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))pairs.push(i,j)});
+  let unchanged=pairInputs.length===bodies.length*6;
+  for(let i=0;i<bodies.length;i++){
+   const b=bodies[i],k=i*6,x=Math.floor(b.p[0]/96),y=Math.floor(b.p[1]/96),eligible=!!b.eligible,cell=!!b.cell,virus=!!b.virus,group=groups[b.id];
+   if(pairInputs[k]!==x||pairInputs[k+1]!==y||pairInputs[k+2]!==eligible||pairInputs[k+3]!==cell||pairInputs[k+4]!==virus||pairInputs[k+5]!==group)unchanged=false;
+   pairInputs[k]=x;pairInputs[k+1]=y;pairInputs[k+2]=eligible;pairInputs[k+3]=cell;pairInputs[k+4]=virus;pairInputs[k+5]=group;
+  }
+  pairInputs.length=bodies.length*6;
+  if(!unchanged){
+   const grid=new Map(),cells=new Map();cachedPairs=[];
+   bodies.forEach((b,i)=>{if(!b.eligible)return;const key=pairInputs[i*6]+','+pairInputs[i*6+1];if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(!b.virus){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
+   bodies.forEach((b,i)=>{if(!b.eligible)return;const map=!b.virus?grid:cells,tx=pairInputs[i*6],ty=pairInputs[i*6+1];for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)for(const j of map.get((tx+x)+','+(ty+y))||[])if(j>i&&(b.cell||b.virus||bodies[j].cell||bodies[j].virus)&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))cachedPairs.push(i,j)});
+  }
+  const pairs=cachedPairs,found=new Map();
   for(let pass=0;pass<3;pass++)for(let k=0;k<pairs.length;k+=2){const a=bodies[pairs[k]],b=bodies[pairs[k+1]],h=hit(a,b);if(!h)continue;const ids=[Math.min(a.id,b.id),Math.max(a.id,b.id)];found.set(ids.join(','),ids);resolve(a,b,h,scale)}
   return found;
  }
@@ -165,10 +178,13 @@ globalThis.microcosmContacts = (() => {
   for(let i=0;i<120;i++){advance(rows.map(r=>r.slice()),1/60,2,1,[],30,2);coreStep(coreInput)}
  }
  warm();
+ // Decode directly to bytes on supporting browsers; retain the portable path.
+ const decode64=typeof Uint8Array.fromBase64==='function'
+  ? text=>Uint8Array.fromBase64(text)
+  : text=>{const raw=atob(text),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return bytes};
  let materials=[];
  function advanceCompact(text,config,links){
-  const p=JSON.parse(config),raw=atob(text),bytes=new Uint8Array(raw.length);
-  for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+  const p=JSON.parse(config),bytes=decode64(text);
   const data=new Float64Array(bytes.buffer),rows=[];
   for(let i=0;i<data.length;i+=13){const r=materials[data[i+12]].slice();r[0]=data[i];r[1]=data[i+1];r[2]=data[i+2];r[3]=data[i+3];r[4]=data[i+4];r[12]=data[i+5];r[16]=data[i+6];r[17]=data[i+7];r[18]=data[i+8];r[15]=data[i+9];r[19]=data[i+10];r[20]=data[i+11];if(r[6]){r[13]=cosf(r[16]);r[14]=sinf(r[16])}rows.push(r);}
   return advance(rows,p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5]);
