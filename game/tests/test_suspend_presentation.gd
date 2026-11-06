@@ -16,10 +16,12 @@ func _initialize():
   view.update(sim,0)
   check(view.suspended.is_empty(),"Stationary body is not marked suspended")
   v.freeze=0.6
+  v.tag=100.0
   var before=var_to_bytes(v)
   var physics_before=var_to_bytes(sim.physics.states)
   view.update(sim,0.1)
   check(view.suspended.has(v.id),"Suspend appears from active timer x"+str(speed))
+  check(view.tagged.has(v.id),"Tag and suspend are represented separately")
   check(var_to_bytes(v)==before and var_to_bytes(sim.physics.states)==physics_before,"Presentation leaves body and physics unchanged")
   var snapshot=view.suspended.duplicate(true)
   view.update(sim,1.0)
@@ -31,6 +33,10 @@ func _initialize():
   v.freeze=0
   view.update(sim,0)
   check(view.suspended.is_empty(),"Indicator ends on exact state removal")
+  check(view.tagged.has(v.id),"Tag remains after suspend expires")
+  v.tag=0
+  view.update(sim,0)
+  check(view.tagged.is_empty(),"Tag disappears on actual state removal")
   v.freeze=1
   v.alive=false
   view.update(sim,0)

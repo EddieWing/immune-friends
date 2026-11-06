@@ -10,6 +10,7 @@ var looks={}
 var effects=[]
 var attachments=[]
 var suspended={}
+var tagged={}
 var motion=preload("res://scripts/motion_presentation.gd").new()
 func update(sim,delta):
  motion.update(sim)
@@ -42,11 +43,13 @@ func update(sim,delta):
  if effects.size()>32: effects=effects.slice(effects.size()-32)
  var alive={}
  suspended.clear()
+ tagged.clear()
  for v in sim.viruses:
   if v.alive:
    alive[v.id]=v
    if float(v.get("freeze",0))>0:
     suspended[v.id]={"p":v.p,"remaining":float(v.freeze)}
+   if float(v.get("tag",0))>0: tagged[v.id]=v.p
  for id in looks.keys():
   if not alive.has(id): looks.erase(id)
  attachments=[]
@@ -69,6 +72,10 @@ func draw_links(canvas):
    canvas.draw_polyline(PackedVector2Array([p-d*3,p,p+d*3+d.orthogonal()*side*2]),Color("#d5a4d4"),1.5,true)
 func draw_effects(canvas):
  motion.draw(canvas)
+ # Tag persists after suspend ends; show it in either graphics theme.
+ for p in tagged.values():
+  canvas.draw_arc(p,17,0,TAU,24,Color("#f4c5d9"),1.5,true)
+  canvas.draw_colored_polygon(PackedVector2Array([p+Vector2(0,-25),p+Vector2(3,-21),p+Vector2(0,-17),p+Vector2(-3,-21)]),Color("#e894c1"))
  # This is a status indicator, not a speed test: blocked collisions are not suspend.
  # Shared by both field styles and driven directly by the mechanical timer.
  for status in suspended.values():
