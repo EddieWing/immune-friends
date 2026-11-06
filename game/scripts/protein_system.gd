@@ -103,6 +103,9 @@ func resolve_tag(s,p,from,to):
 		var fraction=s.projectile_fraction(body,from,to,float(p.r))
 		if fraction<nearest:nearest=fraction;target=body
 	if target.is_empty():return
+	apply_tag_hit(s,p,from,to,target,nearest)
+
+func apply_tag_hit(s,p,from,to,target,nearest):
 	p.p=from.lerp(to,nearest);p.life=0
 	if target.has("type"):
 		if target.tag<=0:

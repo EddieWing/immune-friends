@@ -189,6 +189,63 @@ globalThis.microcosmContacts = (() => {
   for(let i=0;i<data.length;i+=13){const r=materials[data[i+12]].slice();r[0]=data[i];r[1]=data[i+1];r[2]=data[i+2];r[3]=data[i+3];r[4]=data[i+4];r[12]=data[i+5];r[16]=data[i+6];r[17]=data[i+7];r[18]=data[i+8];r[15]=data[i+9];r[19]=data[i+10];r[20]=data[i+11];if(r[6]){r[13]=cosf(r[16]);r[14]=sinf(r[16])}rows.push(r);}
   return advance(rows,p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5]);
  }
- return {advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5])}};
+// Geometry/motion only. Stop at every hit; GDScript owns effects/recipes.
+// Bodies: x,y,id,alive,jump,tag,kind,box,angle,radius.
+// Particles: kind,x,y,vx,vy,life,radius,owner,split. Results use ten Float64 slots:
+// particle index,to.x,to.y,vx,vy,life,from.x,from.y,body index,hit fraction.
+let projectileBodies=[],projectileItems=[],projectileCursor=0,projectileDelta=0,projectileMovement=0,projectileExperimental=false;
+const projectileDecode=text=>{const bytes=decode64(text);return new Float64Array(bytes.buffer,bytes.byteOffset,bytes.byteLength/8)};
+function projectileAppend(text){if(!text)return;const values=projectileDecode(text);for(let i=0;i<values.length;i+=9)projectileItems.push(Array.from(values.subarray(i,i+9)));}
+function projectileStart(bodyText,itemText,config){
+ const [delta,movement,experimental]=JSON.parse(config);
+ const values=projectileDecode(bodyText);projectileBodies=[];
+ for(let i=0;i<values.length;i+=10)projectileBodies.push(Array.from(values.subarray(i,i+10)));
+ projectileItems=[];projectileCursor=0;projectileDelta=delta;projectileMovement=movement;projectileExperimental=experimental;projectileAppend(itemText);
+}
+function projectileFraction(body,from,to,radius){
+ let start=sub(from,body),motion=sub(to,from);
+ if(body[7]){
+  const c=cosf(-body[8]),s=sinf(-body[8]);start=rotate(start,c,s);motion=rotate(motion,c,s);
+  const half=[f(43+f(radius)),f(13+f(radius))];let entry=0,leave=1;
+  for(let axis=0;axis<2;axis++){
+   if(Math.abs(motion[axis])<0.000001){if(Math.abs(start[axis])>half[axis])return Infinity;}
+   else{const a=(-half[axis]-start[axis])/motion[axis],b=(half[axis]-start[axis])/motion[axis];entry=Math.max(entry,Math.min(a,b));leave=Math.min(leave,Math.max(a,b));if(entry>leave)return Infinity;}
+  }return entry;
+ }
+ const reach=body[9]+radius,c=dot(start,start)-reach*reach;if(c<=0)return 0;
+ const a=dot(motion,motion);if(a<0.000001)return Infinity;
+ const b=dot(start,motion),disc=b*b-a*c;if(disc<0)return Infinity;
+ const t=(-b-Math.sqrt(disc))/a;return t>=0&&t<=1?t:Infinity;
+}
+function projectileNext(changed,alive,tag,added){
+ if(changed>=0){projectileBodies[changed][3]=alive;projectileBodies[changed][5]=tag;}
+ projectileAppend(added);const output=[];
+ while(projectileCursor<projectileItems.length){
+  const index=projectileCursor++,p=projectileItems[index];if(p[5]<=0)continue;
+  const from=p.slice(1,3);let velocity=p.slice(3,5);
+  if(p[0]===2){
+   let target=null,nearest=15*26/3.5;
+   for(const b of projectileBodies){if(b[6]!==0||!b[3]||b[5]>0||b[4])continue;const distance=len(sub(from,b));if(distance<nearest){nearest=distance;target=b;}}
+   if(!target)for(const b of projectileBodies){if(b[6]!==5||!b[3])continue;const distance=len(sub(from,b));if(distance<nearest){nearest=distance;target=b;}}
+   let desired=[0,0];if(target){const direction=sub(target,from),length=len(direction);desired=div(mul(mul(length===0?[0,0]:div(direction,length),25),26),3.5);}
+   const v=sub(desired,velocity),length=len(v),step=f(125*26/3.5*projectileDelta);
+   velocity=length<=step||length<0.00001?desired:add(velocity,mul(div(v,length),step));
+  }
+  const to=add(from,mul(velocity,projectileMovement));let target=-1,nearest=Infinity;
+  if(p[0]===1||p[0]===2)for(let i=0;i<projectileBodies.length;i++){
+   const b=projectileBodies[i];if(!b[3]||b[2]===p[7])continue;
+   if(b[6]===0){if(b[4])continue;}
+   else if(p[0]===2){if(b[6]!==5)continue;}
+   else if(b[6]!==2&&b[6]!==3&&b[6]!==4)continue;
+   else if(b[6]===2&&p[8]||b[6]===4&&!projectileExperimental)continue;
+   const fraction=projectileFraction(b,from,to,p[6]);if(fraction<nearest){nearest=fraction;target=i;}
+  }
+  output.push(index,to[0],to[1],velocity[0],velocity[1],p[5]-projectileDelta,from[0],from[1],target,nearest);
+  if(target>=0)break;
+ }
+ return new Float64Array(output);
+}
+
+ return {projectileStart,projectileNext,advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5])}};
 })();
 """

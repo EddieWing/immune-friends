@@ -936,18 +936,7 @@ func update_step(delta: float):
 		if c.key=="electric_wall":experiments.electric_contacts(self,c,delta)
 	resolve_cell_contacts()
 	advance_blasts(delta)
-	if not particles.is_empty():_prepare_projectile_grid()
-	for p: Dictionary in particles:
-		if p.life<=0: continue
-		p.life-=delta
-		var previous=p.p
-		if p.kind=="tag":proteins.steer_tag(self,p,delta)
-		p.p+=p.v*movement_delta
-		if p.kind=="bullet":
-			resolve_bullet(p,previous,p.p)
-		elif p.kind=="tag":
-			proteins.resolve_tag(self,p,previous,p.p)
-	_clear_projectile_grid()
+	advance_projectiles(delta,movement_delta)
 	particles=particles.filter(func(p): return p.life>0)
 	viruses=viruses.filter(func(v): return v.alive)
 	if gym_mode: return
@@ -1082,6 +1071,9 @@ func resolve_bullet(p,from,to):
 		var t=projectile_fraction(body,from,to,float(p.r))
 		if t<nearest:nearest=t;target=body
 	if target.is_empty():return
+	apply_bullet_hit(p,from,to,target,nearest)
+
+func apply_bullet_hit(p,from,to,target,nearest):
 	p.p=from.lerp(to,nearest);p.life=0
 	if target.has("type"):
 		damage_virus(target,1,{"p":from,"cause":"bullet","owner":p.owner})
@@ -1404,3 +1396,72 @@ func nearest_blood_at(p: Vector2,positions: PackedVector2Array) -> Dictionary:
 			distance=candidate
 			best=blood[i]
 	return best
+
+# Batch only dense tag queries: packing is slower for bullets and sparse fields.
+# This selects equivalent implementations, never changes a timestep or event.
+func dense_projectile_queries() -> bool:
+	var budget=(cells.size()+viruses.size()+particles.size())*8
+	var work=0
+	for p: Dictionary in particles:
+		if p.kind=="tag" and p.life>0:
+			work+=viruses.size()
+			if work>budget:return true
+	return false
+
+func advance_projectiles(delta,movement_delta):
+	if particles.is_empty():return
+	if physics.web_kernel!=null and dense_projectile_queries() and physics.web_angles_supported(cells):
+		advance_projectiles_web(delta,movement_delta)
+	else:
+		advance_projectiles_native(delta,movement_delta)
+
+func advance_projectiles_native(delta,movement_delta):
+	if not particles.is_empty():_prepare_projectile_grid()
+	for p: Dictionary in particles:
+		if p.life<=0: continue
+		p.life-=delta
+		var previous=p.p
+		if p.kind=="tag":proteins.steer_tag(self,p,delta)
+		p.p+=p.v*movement_delta
+		if p.kind=="bullet":
+			resolve_bullet(p,previous,p.p)
+		elif p.kind=="tag":
+			proteins.resolve_tag(self,p,previous,p.p)
+	_clear_projectile_grid()
+
+func pack_projectile_items(first):
+	var packed=PackedFloat64Array()
+	for i in range(first,particles.size()):
+		var p: Dictionary=particles[i]
+		var position: Vector2=p.p;var velocity: Vector2=p.v
+		packed.append_array(PackedFloat64Array([1 if p.kind=="bullet" else (2 if p.kind=="tag" else 0),position.x,position.y,velocity.x,velocity.y,p.life,p.r,p.owner,float(p.get("split",false))]))
+	return Marshalls.raw_to_base64(packed.to_byte_array())
+
+const PROJECTILE_BODY_KIND={"bullet_wall":2,"mortar":3,"seeker_factory":4,"tag_splitter":5}
+func advance_projectiles_web(delta,movement_delta):
+	var bodies=[];var packed=PackedFloat64Array()
+	for body: Dictionary in cells+viruses:
+		var kind=0 if body.has("type") else PROJECTILE_BODY_KIND.get(body.key,-1)
+		if kind<0:continue
+		bodies.append(body)
+		var position: Vector2=body.p
+		packed.append_array(PackedFloat64Array([position.x,position.y,body.id,float(body.alive),float(body.get("jump",false)),float(body.get("tag",0)),kind,float(physics.is_box(self,body)),float(body.get("angle",0)),physics.radius(body)]))
+	var kernel=physics.web_kernel
+	kernel.projectileStart(Marshalls.raw_to_base64(packed.to_byte_array()),pack_projectile_items(0),JSON.stringify([delta,movement_delta,experimental],"",true,true))
+	var sent=particles.size();var changed=-1;var alive=0;var tag=0
+	while true:
+		var extra=pack_projectile_items(sent) if sent<particles.size() else ""
+		sent=particles.size()
+		var values=JavaScriptBridge.js_buffer_to_packed_byte_array(kernel.projectileNext(changed,alive,tag,extra)).to_float64_array()
+		if values.is_empty():break
+		changed=-1
+		for offset in range(0,values.size(),10):
+			var p: Dictionary=particles[int(values[offset])]
+			p.p=Vector2(values[offset+1],values[offset+2]);p.v=Vector2(values[offset+3],values[offset+4]);p.life=values[offset+5]
+			var target_index=int(values[offset+8])
+			if target_index<0:continue
+			var target: Dictionary=bodies[target_index]
+			var from=Vector2(values[offset+6],values[offset+7])
+			if p.kind=="bullet":apply_bullet_hit(p,from,p.p,target,values[offset+9])
+			else:proteins.apply_tag_hit(self,p,from,p.p,target,values[offset+9])
+			changed=target_index;alive=int(target.alive);tag=int(float(target.get("tag",0))>0)
