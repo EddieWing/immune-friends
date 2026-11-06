@@ -36,25 +36,31 @@ func update(s):
 	step+=1
 	if not s.cells.any(func(c):return c.alive and c.key in SOURCES):
 		currents.clear();return
-	var nodes={};var sources=[];var buckets={}
+	var bodies={};var eligible=[];var sources=[]
 	var reach=float(s.rules.charge_range)
 	for body in s.cells+s.viruses+s.particles:
 		if not body.get("alive",true) or body.get("life",1)<=0 or body.get("jump",false):continue
 		if not body.has("id"):body.id=s.next_id;s.next_id+=1
 		var id=int(body.id)
 		var source=body.get("key","") in SOURCES
-		nodes[id]={"body":body,"source":source,"magnet":body.get("key","")=="electromagnet","incoming":[],"outgoing":[],"targets":[]}
+		bodies[id]=body;eligible.append(body)
 		if source:sources.append(id)
-		var bucket=Vector2i(floori(body.p.x/reach),floori(body.p.y/reach))
-		if not buckets.has(bucket):buckets[bucket]=[]
-		buckets[bucket].append(id)
 	for id in currents.keys():
-		if not nodes.has(id) or not nodes.has(currents[id].source):currents.erase(id)
+		if not bodies.has(id) or not bodies.has(currents[id].source):currents.erase(id)
 	for id in sources:
-		if not currents.has(id) and nodes[id].body.charge>0:currents[id]={"source":id,"path":[id]}
-	# The graph is rebuilt each step and has no state without a travelling current.
-	# Preserve the step counter and pruning above, but avoid empty graph traversals.
+		if not currents.has(id) and bodies[id].charge>0:currents[id]={"source":id,"path":[id]}
+	# Particle IDs and current pruning still run without charge. Graph storage
+	# and spatial buckets have no persistent state and are only needed with current.
 	if currents.is_empty():return
+	var nodes={};var buckets={}
+	for body in eligible:
+		var id=int(body.id)
+		nodes[id]={"body":body,"source":body.get("key","") in SOURCES,"magnet":body.get("key","")=="electromagnet","outgoing":[]}
+		if web_kernel==null:
+			nodes[id].incoming=[];nodes[id].targets=[]
+			var bucket=Vector2i(floori(body.p.x/reach),floori(body.p.y/reach))
+			if not buckets.has(bucket):buckets[bucket]=[]
+			buckets[bucket].append(id)
 	var active=build_web_graph(nodes,reach) if web_kernel!=null else build_graph(nodes,sources,buckets,reach)
 	var transfers=[]
 	for id in active:
