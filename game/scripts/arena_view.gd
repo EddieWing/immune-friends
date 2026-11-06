@@ -55,6 +55,8 @@ var arrival_sim_seed=-1
 var arrival_round=-1
 var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
+var preview_offer_key=""
+var preview_offer_reward=false
 
 func _process(delta):
 	var visual_delta=delta
@@ -173,6 +175,7 @@ func _draw():
 	if not new_hud: attention.draw(self)
 	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
+		support.draw_purchase_preview(self,sim,preview_offer_key,drag_preview,preview_offer_reward)
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
 
 func face_part(index: int,p: Vector2,factor: float):

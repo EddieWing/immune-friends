@@ -1528,13 +1528,17 @@ func arm_offer(index,reward):
 	var source=sim.rewards if reward else sim.offers
 	if index<0 or index>=source.size(): return
 	pending_offer={"index":index,"reward":reward,"key":source[index]}
+	view.preview_offer_key=source[index]
+	view.preview_offer_reward=reward
 	show_cell_card(source[index])
 	sim.last_message="Drag onto the field or click to place. Esc to cancel."
 	message.text=sim.last_message
 
 func cancel_placement():
 	pending_offer={}
-	if view: view.drag_preview=Vector2.INF
+	if view:
+		view.drag_preview=Vector2.INF
+		view.preview_offer_key=""
 
 func toggle_shop():
 	shop_collapsed=not shop_collapsed

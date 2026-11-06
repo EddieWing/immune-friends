@@ -25,7 +25,7 @@ func update(sim,delta):
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
-  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge"] and event.data.has("p"):
+  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge","purchase_buff"] and event.data.has("p"):
    if event.event=="heal" and float(event.data.get("amount",0))<=0: continue
    if event.event=="attack_fired" and event.data.get("direction",Vector2.ZERO).length_squared()<0.001: continue
    var e=event.data.duplicate()
@@ -167,3 +167,34 @@ func draw(canvas):
   elif e.kind=="merge":
    var recipient=observed_sim.cell_by_id(e.id)
    if not recipient.is_empty() and recipient.alive: draw_pop(canvas,recipient.p,t,true)
+  elif e.kind=="purchase_buff":
+   var recipient=observed_sim.cell_by_id(e.id)
+   if recipient.is_empty() or not recipient.alive:continue
+   var provider=observed_sim.cell_by_id(e.source_id)
+   var origin=provider.get("p",e["from"])
+   var destination=recipient.p
+   var tint=Color(0.67,0.94,0.86,1-t)
+   canvas.draw_arc(origin,24+t*5,0,TAU,24,tint,1.5,true)
+   canvas.draw_dashed_line(origin,destination,Color(tint,0.2*(1-t)),1,7,true)
+   canvas.draw_circle(origin.lerp(destination,minf(1,t*2)),3,tint)
+   draw_pop(canvas,destination,t,false)
+func purchase_preview(sim,key,p,reward=false):
+ if sim.phase!="shop" or p==Vector2.INF or not sim.catalog.has(key):return []
+ if not reward and sim.money<int(sim.shop_rules.buy_price):return []
+ if sim.catalog[key].category!="B":return []
+ var recipient={}
+ for c in sim.cells:
+  if sim.compatible(c,{"id":-1,"key":key,"rank":1}) and c.rank+1<=3:
+   if recipient.is_empty() or c.p.distance_to(p)<recipient.p.distance_to(p):recipient=c
+ var direct=not recipient.is_empty() and (sim.cells.size()>=sim.capacity() or recipient.p.distance_to(p)<44)
+ if sim.cells.size()>=sim.capacity() and not direct:return []
+ var destination=recipient.p if direct else p
+ var routes=[]
+ for c in sim.cells:
+  if c.key=="resonant_buffer":routes.append({"from":c.p,"to":destination})
+  elif c.key=="resonant_wall":routes.append({"from":destination,"to":c.p})
+ return routes
+func draw_purchase_preview(canvas,sim,key,p,reward=false):
+ for route in purchase_preview(sim,key,p,reward):
+  canvas.draw_dashed_line(route["from"],route.to,Color(0.67,0.94,0.86,0.5),1.5,6,true)
+  canvas.draw_arc(route.to,27,0,TAU,24,Color(0.67,0.94,0.86,0.7),1.5,true)

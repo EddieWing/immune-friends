@@ -251,6 +251,7 @@ func purchase(index: int, p: Vector2, reward = false):
 		last_message = "No room. Merge cells or level up."
 		return false
 	item = make_cell(key,p)
+	var purchase_buffs=[]
 	if not reward:
 		money-=int(shop_rules.buy_price)
 	if catalog[key].category=="B":
@@ -258,13 +259,26 @@ func purchase(index: int, p: Vector2, reward = false):
 			if c.key=="resonant_wall":
 				c.max_hp+=constant_of(c,"healthIncrement",1)
 				c.hp+=constant_of(c,"healthIncrement",1)
+				purchase_buffs.append({"source_id":item.id,"id":c.id,"amount":constant_of(c,"healthIncrement",1)})
 			if c.key=="resonant_buffer":
 				item.max_hp+=constant_of(c,"healthIncrement",1)
 				item.hp+=constant_of(c,"healthIncrement",1)
+				purchase_buffs.append({"source_id":c.id,"id":item.id,"amount":constant_of(c,"healthIncrement",1)})
 	source.remove_at(index)
 	cells.append(item)
 	if direct:
 		merge(recipient,item)
+	for bonus in purchase_buffs:
+		# Direct merge may consume either participant (Wildcard swaps the survivor).
+		for field in ["source_id","id"]:
+			if cell_by_id(bonus[field]).is_empty() and direct:
+				bonus[field]=item.id if not cell_by_id(item.id).is_empty() else recipient.id
+		var provider=cell_by_id(bonus.source_id)
+		var receiver=cell_by_id(bonus.id)
+		if bonus.amount>0 and not provider.is_empty() and not receiver.is_empty():
+			bonus["from"]=provider.p
+			bonus["p"]=receiver.p
+			record("purchase_buff",bonus)
 	rebuild_links()
 	record("purchase",{"key":key,"reward":reward})
 	last_message = catalog[key].name + " joined the team"
