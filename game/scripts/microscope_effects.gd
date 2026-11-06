@@ -11,15 +11,27 @@ var bursts=[]
 var merges=[]
 var intensity=1.0
 var friendly_trail_seconds=0.6
-var virus_trail_seconds=12.0
+var virus_trail_seconds=120.0
+var virus_trail_head_seconds=3.0
+var virus_trail_tail_weight=0.45
+var launch_clear_seconds=0.2
 func update(sim,delta,water_delta=-1.0):
  var fresh=observed_sim!=sim or revision!=sim.presentation_revision
+ var starting_battle=sim.phase=="battle" and phase!="battle"
  if fresh:
   var profile=sim.rules.get("water_trails",{})
   friendly_trail_seconds=maxf(0.05,float(profile.get("friendly_seconds",0.6)))
-  virus_trail_seconds=maxf(0.05,float(profile.get("virus_seconds",12.0)))
- if fresh or sim.elapsed<elapsed or (sim.phase=="battle" and phase!="battle"):
+  virus_trail_seconds=maxf(0.05,float(profile.get("virus_seconds",120.0)))
+  virus_trail_head_seconds=maxf(0.05,float(profile.get("virus_head_seconds",3.0)))
+  virus_trail_tail_weight=clampf(float(profile.get("virus_tail_weight",0.45)),0.0,1.0)
+  launch_clear_seconds=maxf(0.01,float(profile.get("launch_clear_seconds",0.2)))
+ if fresh or (sim.elapsed<elapsed and not starting_battle):
   trails.clear()
+ elif starting_battle:
+  # Preserve the old field long enough to dissolve it, without drawing a line
+  # from a restored preparation position to the previous battle's endpoint.
+  for segment in trails: segment["clear_age"]=0.0
+ if fresh or sim.elapsed<elapsed or starting_battle:
   previous.clear()
   bursts.clear()
   merges.clear()
@@ -35,8 +47,10 @@ func update(sim,delta,water_delta=-1.0):
  # The scene supplies its pause-aware render clock: an idle fixed-step frame
  # at 120/240 Hz is not a pause. Standalone callers can infer from sim time.
  var water_dt=water_delta if water_delta>=0 else (maxf(0,delta) if sim.phase!="battle" or dt>0 else 0.0)
- for segment in trails: segment.age+=water_dt
- trails=trails.filter(func(s): return s.age<s.life)
+ for segment in trails:
+  segment.age+=water_dt
+  if segment.has("clear_age"):segment.clear_age+=water_dt
+ trails=trails.filter(func(s): return s.age<s.life and s.get("clear_age",0.0)<launch_clear_seconds)
  var alive={}
  if sim.phase=="battle":
   for bodies in [sim.viruses,sim.cells,sim.blood]:
@@ -67,13 +81,25 @@ func update(sim,delta,water_delta=-1.0):
  cursor=sim.event_sequence
  if bursts.size()>32: bursts=bursts.slice(bursts.size()-32)
  if merges.size()>8: merges=merges.slice(merges.size()-8)
+func trail_strength(segment):
+ var remaining=maxf(0.0,1.0-segment.age/segment.life)
+ var strength=remaining
+ if segment.virus:
+  # Original observations establish a short strong impression and a long weak
+  # residue, not a universal lifetime. These are our provisional visual curves.
+  var head=maxf(0.0,1.0-segment.age/minf(segment.life,virus_trail_head_seconds))
+  var tail=remaining*remaining
+  strength=(1.0-virus_trail_tail_weight)*head*head+virus_trail_tail_weight*tail
+ if segment.has("clear_age"):
+  strength*=maxf(0.0,1.0-segment.clear_age/launch_clear_seconds)
+ return strength
 func draw_under(canvas):
  strokes.begin()
  var density=1.0/maxf(1.0,trails.size()/150.0)
  var points=PackedVector2Array()
  var colors=PackedColorArray()
  for s in trails:
-  var alpha=(1-s.age/s.life)*0.26*density*intensity
+  var alpha=trail_strength(s)*0.26*density*intensity
   points.append(s.a);points.append(s.b)
   colors.append(Color(0.56,0.35,0.70,alpha) if s.virus else Color(0.74,0.94,0.97,alpha))
  if not points.is_empty():canvas.draw_multiline_colors(points,colors,4,true)
