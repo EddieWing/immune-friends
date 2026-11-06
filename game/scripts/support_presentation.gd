@@ -23,12 +23,20 @@ func update(sim,delta):
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
   if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated"] and event.data.has("p"):
+   if event.event=="heal" and float(event.data.get("amount",0))<=0: continue
    var e=event.data.duplicate()
    e.kind=event.event
    e.age=0.0
    e.life=1.1 if e.kind=="swap" else 0.65
    effects.append(e)
  cursor=sim.event_sequence
+ # Keep a healing flash on its recipient while the physical body moves.
+ for e in effects:
+  if e.kind!="heal": continue
+  var recipient=sim.cell_by_id(e.id)
+  if recipient.is_empty() or not recipient.alive: e.age=e.life
+  else: e.p=recipient.p
+ effects=effects.filter(func(e): return e.age<e.life)
  var active={}
  for c in sim.cells:
   if not c.alive: continue
