@@ -78,6 +78,14 @@ func draw(canvas,lane):
    var a=i*2.4+lane
    var p=center+Vector2.from_angle(a+sin(t*3+a)*0.2)*(8+t*45)
    canvas.draw_circle(p,2+3*t,Color(0.53,0.31,0.62,(1-t)*0.22*openness*alpha))
+ draw_growth(canvas,lane)
+
+# Shared by the classic miasma and the simplified field body.
+func draw_growth(canvas,lane):
+ if not states.has(lane): return
+ var s=states[lane]
+ var center=s.p
+ var alpha=s.alpha
  if s.surge>0:
   var progress=1-s.surge
   # Growth draws the surrounding water inward, unlike outward release particles.

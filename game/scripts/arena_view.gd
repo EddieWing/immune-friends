@@ -107,6 +107,7 @@ func _draw():
 		var source=sources.states[lane]
 		if new_field:
 			draw_circle(source.p,60+source.opening*6+sin(sources.clock*0.8+lane)*1.5,Color(0.38,0.34,0.45,0.35+source.opening*0.08))
+			sources.draw_growth(self,lane)
 			if not new_hud and (sim.phase=="shop" or staging=="warning"): draw_range_ring(source.p,66,Color("#be4a68"),true)
 		else: sources.draw(self,lane)
 		sources.draw_emitters(self,lane,warning_emitters if staging=="warning" else sim.source_emitters)
