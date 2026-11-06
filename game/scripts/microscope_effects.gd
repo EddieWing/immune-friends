@@ -10,6 +10,7 @@ var previous={}
 var bursts=[]
 var merges=[]
 var intensity=1.0
+var deaths_seen={}
 func update(sim,delta):
  var fresh=observed_sim!=sim or revision!=sim.presentation_revision
  if fresh or sim.elapsed<elapsed or (sim.phase=="battle" and phase!="battle"):
@@ -17,6 +18,7 @@ func update(sim,delta):
   previous.clear()
   bursts.clear()
   merges.clear()
+  deaths_seen.clear()
   if fresh: cursor=sim.event_sequence
   elapsed=sim.elapsed
  var dt=maxf(0,sim.elapsed-elapsed) if sim.phase=="battle" else delta
@@ -48,7 +50,11 @@ func update(sim,delta):
  merges=merges.filter(func(m): return m.age<1.0)
  for e in sim.events_since(cursor):
   if e.event in ["virus_defeated","cell_rest","blood_lost"]:
-   bursts.append({"p":e.data.p,"kind":e.event,"age":0.0})
+   var identity=e.event+":"+str(e.data.get("id",e.seq))
+   if deaths_seen.has(identity): continue
+   deaths_seen[identity]=true
+   var body=sim.cell_by_id(e.data.get("id",-1)) if e.event=="cell_rest" else {}
+   bursts.append({"p":e.data.p,"kind":e.event,"age":0.0,"angle":body.get("angle",0.0),"wall":body.has("key") and sim.catalog[body.key].behavior=="wall"})
   elif e.event=="merge" and e.data.has("p"):
    merges.append({"p":e.data.p,"rank":e.data.rank,"age":0.0})
  cursor=sim.event_sequence
@@ -67,11 +73,38 @@ func draw_under(canvas):
  for b in bursts:
   var t=b.age/0.7
   var core=b.kind=="blood_lost"
+  draw_departure(canvas,b,t)
   var color=Color(0.9,0.3,0.46,(1-t)*0.45*intensity) if core else Color(0.64,0.46,0.72,(1-t)*0.6*intensity)
   for i in range(8 if core else 5):
    var a=i*TAU/(8 if core else 5)
    var p=b.p+Vector2.from_angle(a)*(12+t*(85 if core else 25))
    strokes.arc(canvas,p,(9 if core else 4)*(1-t)+1,a,1.3,8,color,2)
+func draw_departure(canvas,b,t):
+ # Non-gameplay echoes disappear within the existing aftermath interval.
+ var alpha=(1-t)*intensity
+ if b.kind=="blood_lost":
+  # Six released hand positions and a contracting shell make Core loss distinct.
+  var r=13*(1-t*0.6)
+  canvas.draw_arc(b.p,r,0,TAU,24,Color(0.77,0.24,0.38,alpha),2,true)
+  for i in range(6):
+   var d=Vector2.from_angle(i*TAU/6)
+   canvas.draw_circle(b.p+d*(16+t*8),2*(1-t),Color(0.9,0.43,0.52,alpha))
+ elif b.kind=="cell_rest":
+  # Immune cells leave an upward-opening soft shell, preserving a Wall outline.
+  var p=b.p+Vector2(0,-t*10)
+  if b.wall:
+   var d=Vector2.RIGHT.rotated(b.angle)
+   for side in [-1,1]:
+    var n=d.orthogonal()*side*(12+t*5)
+    canvas.draw_line(p-d*34+n,p+d*34+n,Color(0.38,0.63,0.61,alpha),2,true)
+  else:
+   canvas.draw_arc(p,22*(1-t*0.25),PI*0.1,PI*0.9,20,Color(0.38,0.63,0.61,alpha),2,true)
+   canvas.draw_arc(p,22*(1-t*0.25),PI*1.1,PI*1.9,20,Color(0.38,0.63,0.61,alpha),2,true)
+ else:
+  # Virus membrane breaks outward into short segments rather than a Core echo.
+  for i in range(5):
+   var a=i*TAU/5
+   canvas.draw_arc(b.p,12+t*18,a,a+0.6,5,Color(0.58,0.35,0.68,alpha),1.5,true)
 func draw_over(canvas):
  for m in merges:
   var color=Color("#e6ad39") if m.rank==3 else Color("#f3f9ff")
