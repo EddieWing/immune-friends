@@ -6,6 +6,8 @@ func run():
  var wave=view.support.waves
  wave.update(s,0);view.microscope_effects.update(s,0)
  assert(not view.has_transient_effects())
+ view.microscope_effects.trails.append({"a":Vector2.ZERO,"b":Vector2(40,0),"virus":true,"age":0.0,"life":12.0})
+ assert(not view.has_transient_effects(),"Ambient viral path must not delay the results panel")
  s.phase="battle";s.start_blast(Vector2.ZERO,70,1,0.3,-1)
  wave.update(s,0)
  assert(view.has_transient_effects() and not wave.fronts.is_empty())

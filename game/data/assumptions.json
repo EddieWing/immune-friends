@@ -2,6 +2,11 @@
   "status": "Unverified reconstruction parameters, not measured original rules",
   "scale": 3,
   "movement_multiplier": 1.5,
+  "water_trails": {
+    "status": "Provisional Microcosm presentation times, not measured Auto Immune lifetimes. Reference shows short friendly imprint and persistent viral path. Render-time decay freezes on battle pause; bounded history may evict oldest segments.",
+    "friendly_seconds": 0.6,
+    "virus_seconds": 12.0
+  },
   "blood_drift": {
     "speed": 6,
     "slow_radius": 80

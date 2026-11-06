@@ -157,6 +157,13 @@ func run():
  var settings_time=scene.sim.elapsed
  scene.advance_simulation(0.1)
  check(scene.sim.elapsed==settings_time,"settings inspection pauses battle without changing playback preference")
+ scene.advance_camera(0.01)
+ check(scene.view.water_paused,"Settings pause freezes the render-time water clock")
+ scene.modal.hide();scene.paused=false
+ scene.advance_camera(0.01)
+ check(not scene.view.water_paused,"Playing battle enables water clock between fixed simulation steps")
+ scene.paused=true;scene.advance_camera(0.01)
+ check(scene.view.water_paused,"Transport pause freezes water clock in Run and Gym")
  var slider=scene.modal.find_child("Comfort_optics",true,false)
  slider.value=0.2
  check(is_equal_approx(scene.optical_intensity,0.2),"comfort control changes optical intensity")
