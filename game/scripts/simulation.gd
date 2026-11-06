@@ -1025,14 +1025,28 @@ func update_swarm_attraction(v,delta):
 		record("virus_attachment",{"id":v.id,"p":v.p,"old_host":v.get("host",-1),"host":host})
 	v.host=host
 	if host!=-1 or v.freeze>0:return
-	var nearby=[]
+	# Packed scalar sorting avoids invoking a GDScript comparator per pair.
+	# Equal keys use the original full sort to preserve its unstable tie order.
+	var distances=PackedFloat64Array()
+	var by_distance={}
+	var tied=false
+	var candidates=[]
 	for other: Dictionary in viruses:
 		if not other.alive or other.id==v.id or other.jump:continue
 		var offset: Vector2=v.p-other.p
-		if offset.length()<60.0*26.0/3.5:nearby.append([offset.length_squared(),other])
-	# Keep the same full sort and strict comparison (including equal-distance
-	# ordering), but calculate each distance once instead of in every comparison.
-	nearby.sort_custom(func(a,b):return a[0]<b[0])
+		if not (offset.length()<60.0*26.0/3.5):continue
+		var distance: float=offset.length_squared()
+		if by_distance.has(distance):tied=true
+		by_distance[distance]=other
+		distances.append(distance)
+		candidates.append(other)
+	var nearby=[]
+	if tied:
+		for i in range(candidates.size()):nearby.append([distances[i],candidates[i]])
+		nearby.sort_custom(func(x,y):return x[0]<y[0])
+	else:
+		distances.sort()
+		for i in range(mini(9,distances.size())):nearby.append([distances[i],by_distance[distances[i]]])
 	if nearby.is_empty():return
 	# All nine attractions use the same material and movement tuning. Preserve
 	# each Vector2 multiply/divide and impulse order, but resolve them once.
