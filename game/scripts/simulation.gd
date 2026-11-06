@@ -206,7 +206,7 @@ func merge(a, b):
 	if a.rank == 3:
 		queue_reward()
 	rebuild_links()
-	record("merge",{"key":a.key,"hp":a.hp,"rank":a.rank,"p":a.p})
+	record("merge",{"id":a.id,"key":a.key,"hp":a.hp,"rank":a.rank,"p":a.p})
 	effect(a.p,Color("#f6de8d"),"Hug!",48)
 	return true
 

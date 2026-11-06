@@ -25,7 +25,7 @@ func update(sim,delta):
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
-  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired"] and event.data.has("p"):
+  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge"] and event.data.has("p"):
    if event.event=="heal" and float(event.data.get("amount",0))<=0: continue
    if event.event=="attack_fired" and event.data.get("direction",Vector2.ZERO).length_squared()<0.001: continue
    var e=event.data.duplicate()
@@ -60,11 +60,21 @@ func update(sim,delta):
      if provider.get("key","")==("radar" if key=="range" else "accelerator"):
       route=sim.bond_path(provider.id,c.id)
       break
-   effects.append({"kind":"buff","p":c.p,"buff":key,"gained":current[key]!=1.0,"path":route,"age":0.0,"life":0.65})
+   effects.append({"kind":"buff","id":c.id,"p":c.p,"buff":key,"gained":current[key]!=1.0,"path":route,"age":0.0,"life":0.65})
   buffs[c.id]=current
  for id in buffs.keys():
   if not active.has(id): buffs.erase(id)
  if effects.size()>48: effects=effects.slice(effects.size()-48)
+func draw_pop(canvas,p,t,merge_effect):
+ var tint=Color(1,0.83,0.45,1-t) if merge_effect else Color(0.64,0.92,0.9,1-t)
+ var pop=sin(t*PI)
+ canvas.draw_circle(p,23+pop*3,Color(tint,(1-t)*0.18))
+ for i in range(6 if merge_effect else 4):
+  var d=Vector2.from_angle(i*TAU/(6 if merge_effect else 4)-PI/2)
+  var q=p+d*(27+pop*5)
+  if merge_effect:
+   canvas.draw_colored_polygon(PackedVector2Array([q+d*3,q+d.orthogonal()*2,q-d*3,q-d.orthogonal()*2]),tint)
+  else:canvas.draw_arc(q,2,0,TAU,8,tint,1.5,true)
 func readiness_of(sim,c):
  var cost=0.0
  match c.key:
@@ -147,6 +157,13 @@ func draw(canvas):
    canvas.draw_string(ThemeDB.fallback_font,e.p+Vector2(-15,-28),"%s > %s HP" % [e.before_a,e.after_a],HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(0.36,0.29,0.49,1-t))
    canvas.draw_string(ThemeDB.fallback_font,e.q+Vector2(-15,-28),"%s > %s HP" % [e.before_b,e.after_b],HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(0.36,0.29,0.49,1-t))
   elif e.kind=="buff":
+   var recipient=observed_sim.cell_by_id(e.id)
+   if recipient.is_empty() or not recipient.alive: continue
+   e.p=recipient.p
+   if e.gained: draw_pop(canvas,e.p,t,false)
    var tint=Color(0.61,0.89,0.94,1-t) if e.buff=="range" else Color(0.97,0.82,0.46,1-t)
    if e.path.size()>1: canvas.draw_polyline(PackedVector2Array(e.path),Color(tint,0.4*(1-t)),2,true)
    canvas.draw_arc(e.p,20+(t if e.gained else 1-t)*8,0,PI*1.5,28,tint,1.5,true)
+  elif e.kind=="merge":
+   var recipient=observed_sim.cell_by_id(e.id)
+   if not recipient.is_empty() and recipient.alive: draw_pop(canvas,recipient.p,t,true)
