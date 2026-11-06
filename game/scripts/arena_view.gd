@@ -336,6 +336,7 @@ func draw_blood_cluster():
 	# Keep each visual layer contiguous so the renderer can batch it. The hair
 	# tips still mark radius 13; root sway and phase are unchanged.
 	var hairs=PackedVector2Array()
+	var hair_colors=PackedColorArray()
 	for b in sim.blood:
 		if not b.alive:continue
 		var p: Vector2=b.p
@@ -344,7 +345,9 @@ func draw_blood_cluster():
 			var tangent: Vector2=hair_tangents[i]*sin(time*1.8+b.id+i)*0.22
 			hairs.append(p+hair_roots[i]+tangent)
 			hairs.append(p+hair_tips[i])
-	if not hairs.is_empty():draw_multiline(hairs,Color("#b96b82"),0.75,true)
+			var tint=virus_behavior.motion.cilia_tint(b.id,hair_tips[i]/13.0,time)
+			hair_colors.append(tint)
+	if not hairs.is_empty():draw_multiline_colors(hairs,hair_colors,0.75,true)
 	for b in sim.blood:
 		if not b.alive:continue
 		var mask=0

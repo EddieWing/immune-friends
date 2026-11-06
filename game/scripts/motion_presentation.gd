@@ -5,13 +5,26 @@ var revision=-1
 var previous_time=0.0
 var samples={}
 var wakes=[]
-func update(sim):
+var cilia={}
+func update(sim,delta=0.0):
  var fresh=observed_sim!=sim or revision!=sim.presentation_revision or sim.elapsed<previous_time
- if fresh: samples.clear()
+ if fresh:
+  samples.clear()
+  cilia.clear()
  observed_sim=sim
  revision=sim.presentation_revision
  var dt=maxf(0,sim.elapsed-previous_time) if not fresh else 0.0
  previous_time=sim.elapsed
+ var living_core={}
+ for b in sim.blood:
+  if not b.alive:continue
+  living_core[b.id]=true
+  var speed=sim.physics.states.get(sim.physics.id_of(b),{}).get("v",Vector2.ZERO).length()
+  var strength=clampf(speed/70.0,0,1)
+  var blend=1-exp(-(dt if sim.phase=="battle" else delta)/0.18)
+  cilia[b.id]=lerpf(cilia.get(b.id,0.0),strength,blend)
+ for id in cilia.keys():
+  if not living_core.has(id):cilia.erase(id)
  wakes.clear()
  if sim.phase!="battle":
   samples.clear()
@@ -39,6 +52,11 @@ func update(sim):
    wakes.append({"id":id,"p":body.p,"direction":velocity.normalized(),"strength":strength,"mode":mode,"radius":radius})
  for id in samples.keys():
   if not alive.has(id): samples.erase(id)
+func cilia_tint(id,normal,time):
+ var strength=cilia.get(id,0.0)
+ var light=Vector2.from_angle(time*0.12-PI*0.6)
+ var highlight=maxf(0,normal.dot(light))*0.12
+ return Color("#b96b82").lerp(Color("#e6b6c7"),strength*0.32+highlight)
 func draw(canvas):
  for wake in wakes:
   var angle=wake.direction.angle()+PI

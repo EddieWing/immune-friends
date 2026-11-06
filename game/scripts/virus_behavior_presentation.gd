@@ -11,7 +11,7 @@ var effects=[]
 var attachments=[]
 var motion=preload("res://scripts/motion_presentation.gd").new()
 func update(sim,delta):
- motion.update(sim)
+ motion.update(sim,delta)
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
  if fresh or round_seen!=sim.round_no or cursor>sim.event_sequence or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
