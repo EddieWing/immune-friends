@@ -14,5 +14,9 @@ func _initialize():
  assert(v==before)
  v.p=v.exit
  assert(layer.spawn_alpha(v)==1)
- print("PASS: six spawn opacity/lifetime/immutability checks")
+ var s=load("res://scripts/simulation.gd").new();s.reset(42,12)
+ layer.update(s,0)
+ v.age=0;v.emerging=false
+ assert(layer.spawn_alpha(v)==1,"Gym setup actors remain fully visible before the simulation clock starts")
+ print("PASS: seven spawn opacity/lifetime/immutability/Gym setup checks")
  quit()
