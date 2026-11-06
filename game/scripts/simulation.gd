@@ -796,11 +796,13 @@ func update(delta: float):
 						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*20,"cell",c.p)
 				"drop":
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id})
+					record("interferon_created",{"id":c.id,"p":c.p})
 				"spray":
 					if int(c.get("tags",0))>0:
 						c.tags-=1
 						var angle=c.angle+rng.randf_range(-PI/2,PI/2)
 						particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":1e12,"r":5.0,"owner":c.id})
+						record("interferon_created",{"id":c.id,"p":c.p})
 		if c.key=="magnet":
 			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)

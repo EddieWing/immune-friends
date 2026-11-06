@@ -54,6 +54,7 @@ func drag(s,c,destination):
 		while cursor<=distance and int(c.get("tags",0))>0:
 			var p=old.lerp(destination,cursor/maxf(distance,0.001))
 			s.particles.append({"kind":"tag","p":p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id,"setup":true})
+			s.record("interferon_created",{"id":c.id,"p":p})
 			c.tags-=1
 			cursor+=spacing
 		c["tag_distance"]=fmod(float(c.get("tag_distance",0.0))+distance,spacing)

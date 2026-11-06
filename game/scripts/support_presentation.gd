@@ -25,7 +25,7 @@ func update(sim,delta):
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
-  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge","purchase_buff","cell_target"] and event.data.has("p"):
+  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge","purchase_buff","cell_target","interferon_created"] and event.data.has("p"):
    if event.event=="heal" and float(event.data.get("amount",0))<=0: continue
    if event.event=="attack_fired" and event.data.get("direction",Vector2.ZERO).length_squared()<0.001: continue
    var e=event.data.duplicate()
@@ -189,6 +189,12 @@ func draw(canvas):
    else:
     # Losing a target does not imply returning home: current Seeker only coasts.
     canvas.draw_arc(p,4,PI*0.15,PI*1.7,12,Color(0.48,0.68,0.73,1-t),1.5,true)
+  elif e.kind=="interferon_created":
+   var tint=Color(0.74,0.62,0.91,(1-t)*0.65)
+   for i in range(3):
+    var d=Vector2.from_angle(i*TAU/3-PI/2)
+    var p=e.p+d*(6+t*9)
+    canvas.draw_polyline(PackedVector2Array([p-d*2+d.orthogonal()*2,p,p-d*2-d.orthogonal()*2]),tint,1.3,true)
 func purchase_preview(sim,key,p,reward=false):
  if sim.phase!="shop" or p==Vector2.INF or not sim.catalog.has(key):return []
  if not reward and sim.money<int(sim.shop_rules.buy_price):return []
