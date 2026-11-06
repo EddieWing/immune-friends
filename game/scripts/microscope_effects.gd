@@ -29,16 +29,18 @@ func update(sim,delta):
  trails=trails.filter(func(s): return s.age<1.8)
  var alive={}
  if sim.phase=="battle":
-  for v in sim.viruses:
-   if not v.alive: continue
-   alive[v.id]=true
-   if previous.has(v.id):
-    var distance=previous[v.id].distance_to(v.p)
-    if distance>=5 and distance<100:
-     trails.append({"a":previous[v.id],"b":v.p,"age":0.0})
-     previous[v.id]=v.p
-    elif distance>=100: previous[v.id]=v.p
-   else: previous[v.id]=v.p
+  for bodies in [sim.viruses,sim.cells,sim.blood]:
+   for body in bodies:
+    if not body.alive or body.get("emerging",false): continue
+    var id=sim.physics.id_of(body)
+    alive[id]=true
+    if previous.has(id):
+     var distance=previous[id].distance_to(body.p)
+     if distance>=5 and distance<100:
+      trails.append({"a":previous[id],"b":body.p,"age":0.0,"virus":body.has("type")})
+      previous[id]=body.p
+     elif distance>=100: previous[id]=body.p
+    else: previous[id]=body.p
  for id in previous.keys():
   if not alive.has(id): previous.erase(id)
  if trails.size()>420: trails=trails.slice(trails.size()-420)
@@ -62,7 +64,7 @@ func draw_under(canvas):
  for s in trails:
   var alpha=(1-s.age/1.8)*0.26*density*intensity
   points.append(s.a);points.append(s.b)
-  colors.append(Color(0.56,0.35,0.70,alpha))
+  colors.append(Color(0.56,0.35,0.70,alpha) if s.virus else Color(0.74,0.94,0.97,alpha))
  if not points.is_empty():canvas.draw_multiline_colors(points,colors,4,true)
  for b in bursts:
   var t=b.age/0.7
