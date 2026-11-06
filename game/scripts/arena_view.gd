@@ -346,12 +346,12 @@ func draw_blood_cluster():
 		if not b.alive:continue
 		var p: Vector2=b.p
 		draw_texture_rect_region(CORE_FACE_PARTS,Rect2(p+Vector2(1,2)-Vector2(16,16),Vector2(32,32)),Rect2(1280,256,256,256),Color(1,1,1,0.22))
+		var tints=virus_behavior.motion.cilia_tints(b.id,hair_tips,time)
 		for i in range(30):
 			var tangent: Vector2=hair_tangents[i]*sin(time*1.8+b.id+i)*0.22
 			hairs.append(p+hair_roots[i]+tangent)
 			hairs.append(p+hair_tips[i])
-			var tint=virus_behavior.motion.cilia_tint(b.id,hair_tips[i]/13.0,time)
-			hair_colors.append(tint)
+			hair_colors.append(tints[i])
 	if not hairs.is_empty():draw_multiline_colors(hairs,hair_colors,0.75,true)
 	for b in sim.blood:
 		if not b.alive:continue

@@ -67,6 +67,18 @@ func update(sim,delta=0.0):
   if not alive.has(id):
    samples.erase(id)
    modes.erase(id)
+func cilia_tints(id,tips:PackedVector2Array,time:float)->PackedColorArray:
+ # The light and strength are shared by all hairs on this Core cell.
+ # Keep the original normal division and color interpolation order.
+ var colors=PackedColorArray()
+ var light=Vector2.from_angle(time*0.12-PI*0.6)
+ var strength=cilia.get(id,0.0)*0.32
+ var low=Color("#b96b82");var high=Color("#e6b6c7")
+ for tip in tips:
+  var normal=tip/13.0
+  var highlight=maxf(0,normal.dot(light))*0.12
+  colors.append(low.lerp(high,strength+highlight))
+ return colors
 func cilia_tint(id,normal,time):
  var strength=cilia.get(id,0.0)
  var light=Vector2.from_angle(time*0.12-PI*0.6)
