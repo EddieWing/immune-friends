@@ -25,7 +25,7 @@ func update(sim,delta):
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
-  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge","purchase_buff"] and event.data.has("p"):
+  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge","purchase_buff","cell_target"] and event.data.has("p"):
    if event.event=="heal" and float(event.data.get("amount",0))<=0: continue
    if event.event=="attack_fired" and event.data.get("direction",Vector2.ZERO).length_squared()<0.001: continue
    var e=event.data.duplicate()
@@ -178,6 +178,17 @@ func draw(canvas):
    canvas.draw_dashed_line(origin,destination,Color(tint,0.2*(1-t)),1,7,true)
    canvas.draw_circle(origin.lerp(destination,minf(1,t*2)),3,tint)
    draw_pop(canvas,destination,t,false)
+  elif e.kind=="cell_target":
+   var recipient=observed_sim.cell_by_id(e.id)
+   if recipient.is_empty() or not recipient.alive:continue
+   var p=recipient.p+Vector2(0,-33-t*4)
+   var tint=Color(0.92,0.71,0.33,1-t)
+   if e.target_id>=0:
+    canvas.draw_line(p+Vector2(0,-4),p+Vector2(0,1),tint,2,true)
+    canvas.draw_circle(p+Vector2(0,4),1.3,tint)
+   else:
+    # Losing a target does not imply returning home: current Seeker only coasts.
+    canvas.draw_arc(p,4,PI*0.15,PI*1.7,12,Color(0.48,0.68,0.73,1-t),1.5,true)
 func purchase_preview(sim,key,p,reward=false):
  if sim.phase!="shop" or p==Vector2.INF or not sim.catalog.has(key):return []
  if not reward and sim.money<int(sim.shop_rules.buy_price):return []

@@ -482,6 +482,7 @@ func begin_battle():
 		c.cool=0.1
 		c.contact=0
 		c["friendly_stun"]=0.0
+		c["presentation_target"]=-1
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
 		c.speed_buff=1.0
@@ -752,6 +753,10 @@ func update(delta: float):
 						target=v
 						break
 			if not target.is_empty(): velocity=c.p.direction_to(target.p)*speed_of(c)*3
+			var target_id=int(target.get("id",-1))
+			if target_id!=int(c.get("presentation_target",-1)):
+				c["presentation_target"]=target_id
+				record("cell_target",{"id":c.id,"p":c.p,"target_id":target_id,"target":target.get("p",c.p)})
 		elif d.behavior=="orbit":
 			var radius: float=maxf(100,c.start.length())
 			if c.friendly_stun<=0:c.orbit-=speed_of(c)*3/radius*movement_delta
