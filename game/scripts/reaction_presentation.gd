@@ -8,12 +8,14 @@ var elapsed=0.0
 var cursor=0
 var reactions={}
 var bursts=[]
+var contact_holds={}
 func update(sim,delta):
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
  if fresh or round_seen!=sim.round_no or cursor>sim.event_sequence or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
   reactions.clear()
   bursts.clear()
+  contact_holds.clear()
   cursor=sim.event_sequence if fresh else cursor
   elapsed=sim.elapsed
  observed_sim=sim
@@ -21,6 +23,9 @@ func update(sim,delta):
  var dt=maxf(0,sim.elapsed-elapsed) if sim.phase=="battle" else delta
  elapsed=sim.elapsed
  phase_seen=sim.phase
+ for key in contact_holds.keys():
+  contact_holds[key].age+=dt
+  if contact_holds[key].age>=0.18:contact_holds.erase(key)
  for key in reactions.keys():
   reactions[key].age+=dt
   if reactions[key].age>=0.38: reactions.erase(key)
@@ -31,17 +36,45 @@ func update(sim,delta):
   if e.event in ["damage","virus_hit","pushed"]:
    var kind=d.get("kind","cell" if e.event=="damage" else "virus")
    var key=kind+":"+str(d.id)
-   reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("direction",d.get("from",d.p).direction_to(d.p))}
+   reactions[key]={"age":0.0,"push":e.event=="pushed","direction":d.get("direction",d.get("from",d.p).direction_to(d.p)).normalized()}
+   var contact=(e.event=="virus_hit" and d.get("cause","")=="contact") or (e.event=="damage" and d.get("source_kind","")=="virus")
+   if contact and float(d.get("amount",0))>0 and not contact_holds.has(key):
+    contact_holds[key]={"anchor":d.p,"age":0.0,"offset":Vector2.ZERO}
   if e.event in ["virus_hit","pushed","tagged","thawed","tag_ended"]:
    bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("from",d.p).direction_to(d.p)})
  cursor=sim.event_sequence
+ var alive={}
+ for bodies in [sim.cells,sim.viruses]:
+  for body in bodies:
+   if not body.alive:continue
+   var key=("virus:" if body.has("type") else "cell:")+str(body.id)
+   alive[key]=true
+   if contact_holds.has(key):
+    var hold=contact_holds[key]
+    hold.offset=(hold.anchor-body.p).limit_length(2)*(1-smoothstep(0.025,0.10,hold.age))
+ for key in contact_holds.keys():
+  if not alive.has(key):contact_holds.erase(key)
  if bursts.size()>48: bursts=bursts.slice(bursts.size()-48)
 func pose(kind,id):
  var r=reactions.get(kind+":"+str(id),{})
  if r.is_empty(): return {"squash":1.0,"offset":Vector2.ZERO,"hurt":false}
  var weight=1-smoothstep(0,0.38,r.age)
  # Keep the silhouette close to its collider: real momentum carries the impact.
- return {"squash":1+weight*(0.03 if r.push else -0.05),"offset":r.direction*weight*2,"hurt":not r.push and weight>0.25}
+ var recoil=r.direction*weight*2
+ var lag=contact_holds.get(kind+":"+str(id),{}).get("offset",Vector2.ZERO)
+ return {"squash":1+weight*(0.03 if r.push else -0.05),"offset":(recoil+lag).limit_length(2),"hurt":not r.push and weight>0.25}
+func deform_transform(kind,id,body:Transform2D):
+ var reaction=reactions.get(kind+":"+str(id),{})
+ if reaction.is_empty() or reaction.direction.is_zero_approx():return body
+ var squash=pose(kind,id).squash
+ var axis=Transform2D(reaction.direction.angle(),Vector2.ZERO)
+ # Symmetric +/- delta keeps BOTH axes within the accepted 5% / 3% limit.
+ var deformation=axis*Transform2D(0,Vector2(squash,2-squash),0,Vector2.ZERO)*axis.affine_inverse()
+ var origin=body.origin
+ body.origin=Vector2.ZERO
+ body=deformation*body
+ body.origin=origin
+ return body
 func draw(canvas):
  for b in bursts.slice(maxi(0,bursts.size()-16)):
   var t=b.age/0.5
