@@ -23,6 +23,17 @@ func _initialize():
   check(var_to_bytes(v.ripples)==frozen and v.ripples.size()==2,"Pause freezes water without duplicating blast")
   s.advance_blasts(2);s.elapsed+=2;v.update(s,0)
   check(v.fronts.is_empty() and v.ripples.is_empty(),"Front and water residue finish")
+  var healer=s.make_cell("regen",Vector2.ZERO)
+  var target=s.make_cell("wall",Vector2(20,0))
+  s.cells=[healer,target]
+  s.heal(healer,1,healer);s.heal(target,1,healer)
+  s.start_blast(Vector2(3000,0),100,0,400,-1,true)
+  v.update(s,0)
+  check(v.heals.size()==1 and v.fronts[0].damage==0,"One healing cast echo and distinct force-front state")
+  check(v.heals[0].reach==s.range_of(healer),"Healing echo uses the actual source range")
+  var hp=target.hp
+  v.update(s,0)
+  check(target.hp==hp and v.heals.size()==1,"Visual waves neither repeat healing nor change it")
   s.reset(43,12);v.update(s,0)
-  check(v.fronts.is_empty() and v.ripples.is_empty(),"Reset leaves no blast residue")
+  check(v.fronts.is_empty() and v.ripples.is_empty() and v.heals.is_empty(),"Reset leaves no wave residue")
  quit(errors)

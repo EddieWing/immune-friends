@@ -613,7 +613,7 @@ func heal(c, amount, source={}):
 	c.hp+=amount
 	c.flash=0.3
 	effect(c.p,Color("#a3e4b6"),"+"+str(amount)+" Health",24)
-	record("heal",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"from":source.get("p",c.p)})
+	record("heal",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"from":source.get("p",c.p),"source_id":source.get("id",-1)})
 
 # SCAPEGOAT_CHAIN targets Connected (whole component), excluding itself.
 # One live guard absorbs at most its HP; overflow reaches the original target.
