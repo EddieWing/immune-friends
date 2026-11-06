@@ -3,9 +3,12 @@
   "scale": 3,
   "movement_multiplier": 1.5,
   "water_trails": {
-    "status": "Provisional Microcosm presentation times, not measured Auto Immune lifetimes. Reference shows short friendly imprint and persistent viral path. Render-time decay freezes on battle pause; bounded history may evict oldest segments.",
+    "status": "Provisional Microcosm visual curves, not measured Auto Immune lifetimes. A strong viral head fades into a weak long residue. The 120s cap is a cleanup bound, not a reference timer or visibility duration. Old paths dissolve on battle launch; recap does not accelerate decay. Render-time decay freezes on battle pause; bounded history may evict oldest segments.",
     "friendly_seconds": 0.6,
-    "virus_seconds": 12.0
+    "virus_seconds": 120.0,
+    "virus_head_seconds": 3.0,
+    "virus_tail_weight": 0.45,
+    "launch_clear_seconds": 0.2
   },
   "blood_drift": {
     "speed": 6,
