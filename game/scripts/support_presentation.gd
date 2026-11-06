@@ -88,9 +88,12 @@ func readiness_of(sim,c):
  if cost>0:
   return {"kind":"recipe","fraction":clampf(float(c.food)/cost,0,1)}
  if c.key=="seeker_factory" and sim.experimental:
-  var capsid=float(c.food)/maxf(1,sim.constant_of(c,"capsid",1))
-  var bullet=float(c.get("bullet_food",0))/maxf(1,sim.constant_of(c,"bullet",2))
-  return {"kind":"recipe","fraction":clampf(minf(capsid,bullet),0,1)}
+  var capsid_cost=maxf(1,sim.constant_of(c,"capsid",1))
+  var bullet_cost=maxf(1,sim.constant_of(c,"bullet",2))
+  # Count acquired ingredients with each kind capped at its own requirement.
+  # Surplus food cannot fill the missing-bullet part of the progress arc.
+  var acquired=clampf(float(c.food),0,capsid_cost)+clampf(float(c.get("bullet_food",0)),0,bullet_cost)
+  return {"kind":"recipe","fraction":acquired/(capsid_cost+bullet_cost)}
  var interval=sim.interval_of(c)
  if interval>0 and sim.catalog[c.key].behavior in ["shoot","sniper","heal","push","spray","drop"]:
   if c.key=="tag_sprayer" and int(c.get("tags",0))<=0:return {}
