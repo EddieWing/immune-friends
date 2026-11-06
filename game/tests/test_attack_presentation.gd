@@ -43,8 +43,10 @@ func _initialize():
  stage.update(sim,0.4)
  check(stage.poses[cannon.id].kick==0,"Recovery finishes on the simulation clock")
  check(sim.cells==before and sim.rng.state==random_state,"Presentation leaves combat state and randomness unchanged")
- var jumper={"type":"jumper","age":2.65,"phase":0.0,"emerging":false,"freeze":0.0}
- check(stage.jumper_pose(jumper)>0,"Jumper crouches before its existing leap boundary")
+ var jumper={"type":"jumper","age":2.65,"phase":0.0,"emerging":false,"freeze":0.0,"jump":false}
+ check(stage.jumper_pose(jumper)==0,"Legacy age cycle creates no false jump warning")
+ jumper.jump=true
+ check(stage.jumper_pose(jumper)>0,"Actual leap drives its visual pose")
  jumper.freeze=1.0
  check(stage.jumper_pose(jumper)==0,"Frozen jumper does not advertise a moving leap")
  virus.type="hungry"
