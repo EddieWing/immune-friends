@@ -197,12 +197,12 @@ func draw_cell(c):
 	var windup=pose.get("windup",0.0)
 	var kick=pose.get("kick",0.0)
 	var reaction=reactions.pose("cell",c.id)
-	pulse*=(1-windup*0.12+kick*0.16)*reaction.squash
+	pulse*=(1-windup*0.12+kick*0.16)
 	var p=c.p-pose.get("direction",Vector2.ZERO)*(windup*1.5+kick*3)+reaction.offset
 	attacks.draw_intent(self,c)
 	var wall=d.behavior=="wall"
 	if new_field:
-		draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
+		draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p)))
 		if wall:
 			if not wall_skins.has(color):
 				var skin=StyleBoxFlat.new()
@@ -219,12 +219,12 @@ func draw_cell(c):
 	else:
 		var texture=visuals.body(c.key,d)
 		var extent=Vector2(106,80) if wall else Vector2(58,58)
-		draw_set_transform(p+Vector2(2,4),c.angle,Vector2(pulse,1/pulse))
+		draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p+Vector2(2,4))))
 		draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
 		if optical_intensity>0:
 			draw_set_transform(p,c.angle)
 			draw_texture_rect(texture,Rect2(-extent*0.54,extent*1.08),false,Color(0.78,0.94,1,0.14*optical_intensity))
-		draw_set_transform(p,c.angle,Vector2(pulse,1/pulse))
+		draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p)))
 		draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
 		draw_set_transform(Vector2.ZERO)
 	if not new_field and not wall and optical_intensity>0:
@@ -270,13 +270,13 @@ func capsule_style(color):
 
 func draw_virus(v):
 	var reaction=reactions.pose("virus",v.id)
-	reaction.squash*=virus_behavior.scale_of(v.id)
+	var feeding_scale=virus_behavior.scale_of(v.id)
 	var windup=attacks.jumper_pose(v)
 	var recovery=attacks.jumper_recovery(v)
 	var stretch=0.14 if v.jump else -recovery*0.1
-	draw_set_transform(v.p+reaction.offset,0,Vector2((1+windup*0.2+stretch)*reaction.squash,(1-windup*0.18-stretch)/reaction.squash))
+	draw_set_transform_matrix(reactions.deform_transform("virus",v.id,Transform2D(0,Vector2((1+windup*0.2+stretch)*feeding_scale,(1-windup*0.18-stretch)/feeding_scale),0,v.p+reaction.offset)))
 	if not new_field and v.hp>1:
-		virus_health.append([v.p+reaction.offset,Vector2((1+windup*0.2+stretch)*reaction.squash,(1-windup*0.18-stretch)/reaction.squash),str(int(v.hp))])
+		virus_health.append([v.p+reaction.offset,Vector2((1+windup*0.2+stretch)*feeding_scale,(1-windup*0.18-stretch)/feeding_scale),str(int(v.hp))])
 	var rendered=v.duplicate()
 	rendered.defer_health=true
 	rendered.p=Vector2.ZERO
