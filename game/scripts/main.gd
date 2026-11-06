@@ -160,7 +160,7 @@ func _ready():
 	cell_tuner.initialize(self)
 	make_ambient()
 	sim.reset(Time.get_ticks_usec()%100000,12)
-	center_preparation_camera()
+	center_preparation_camera(1.0)
 	refresh()
 	show_menu()
 	var lab_layer=CanvasLayer.new()
@@ -554,21 +554,42 @@ func enter_microscope(action: Callable):
 	if entering_game: return
 	entering_game=true
 	action.call()
+	# Resolve camera and optics before the first revealed frame.
+	if sim.phase=="shop": center_preparation_camera(1.0)
+	else:
+		var focus=(board_rect.get_center()-view.position)/view.scale.x
+		view.scale=Vector2.ONE
+		view.position=board_rect.get_center()-focus
+		zoom_target=1.0
+		camera_requested=1.0
+		cancel_camera_transition()
+	camera_optics.previous_zoom=1.0
+	camera_optics.refocus=0.0
 	var tutorial=modal.visible
 	modal.hide()
 	menu_open=false
 	var lens=ui.get_node("MicroscopeVignette").material
+	var state=camera_optics.visor_state(1.0)
+	visor_radius=minf(state.radius,1.2)
+	visor_preparation=state.rim
+	lens.set_shader_parameter("radius",visor_radius)
+	lens.set_shader_parameter("preparation",visor_preparation)
+	lens.set_shader_parameter("aperture",1.65)
+	if tutorial:
+		modal.show()
+		modal.modulate.a=0.0
 	menu_transition=create_tween().set_parallel(true)
 	menu_transition.tween_property(main_menu,"modulate:a",0.0,0.75).set_trans(Tween.TRANS_SINE)
 	menu_transition.tween_method(func(value): lens.set_shader_parameter("aperture",value),1.65,1.0,1.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	menu_transition.tween_property(self,"hud_opacity",1.0,0.8).set_delay(0.45)
+	if tutorial: menu_transition.tween_property(modal,"modulate:a",1.0,0.8).set_delay(0.45)
 	menu_transition.chain().tween_callback(func():
 		main_menu.hide()
 		hud_opacity=1.0
 		apply_menu_visibility()
 		entering_game=false
-		if tutorial: show_help()
-		elif results_stage=="finished" and sim.phase in ["win","lose"]: show_run_result()
+		modal.modulate.a=1.0
+		if not tutorial and results_stage=="finished" and sim.phase in ["win","lose"]: show_run_result()
 		elif results_stage=="losses" and sim.phase in ["recap","win","lose"]: show_infection_results())
 
 func show_run_setup():
@@ -594,8 +615,8 @@ func new_run(rounds,mode=3):
 	sim.reset(Time.get_ticks_usec()%100000,rounds)
 	lab_tools.refresh_available()
 	view.position=Vector2(720,425)
-	view.scale=Vector2.ONE*1.5
-	center_preparation_camera()
+	view.scale=Vector2.ONE
+	center_preparation_camera(1.0)
 	update_zoom()
 	selected={}
 	menu_open=false
@@ -1560,7 +1581,7 @@ func focus_shopping():
 func shopping_in_focus():
 	return sim.phase=="shop" and launch_remaining<=0 and not gym_mode
 
-func center_preparation_camera():
+func center_preparation_camera(initial_zoom=-1.0):
 	cancel_camera_transition()
 	# One-shot framing: preparation never follows cells after control is released.
 	var center=Vector2.ZERO
@@ -1574,8 +1595,8 @@ func center_preparation_camera():
 	panning=false
 	auto_camera=false
 	# Every preparation entry must start at a purchasable magnification.
-	if not gym_mode:
-		view.scale=Vector2.ONE*camera_director.automatic_zoom(camera_director.ZoomLevel.CLOSE)
+	if initial_zoom>0 or not gym_mode:
+		view.scale=Vector2.ONE*(initial_zoom if initial_zoom>0 else camera_director.automatic_zoom(camera_director.ZoomLevel.CLOSE))
 	zoom_target=view.scale.x
 	camera_requested=zoom_target
 	view.position=board_rect.get_center()-center*view.scale.x
