@@ -98,7 +98,7 @@ func draw_departure(canvas,b,t):
  if b.kind=="blood_lost":
   # Six released hand positions and a contracting shell make Core loss distinct.
   var r=13*(1-t*0.6)
-  canvas.draw_arc(b.p,r,0,TAU,24,Color(0.77,0.24,0.38,alpha),2,true)
+  strokes.arc(canvas,b.p,r,0,TAU,24,Color(0.77,0.24,0.38,alpha),2)
   for i in range(6):
    var d=Vector2.from_angle(i*TAU/6)
    canvas.draw_circle(b.p+d*(16+t*8),2*(1-t),Color(0.9,0.43,0.52,alpha))
@@ -111,13 +111,15 @@ func draw_departure(canvas,b,t):
     var n=d.orthogonal()*side*(12+t*5)
     canvas.draw_line(p-d*34+n,p+d*34+n,Color(0.38,0.63,0.61,alpha),2,true)
   else:
-   canvas.draw_arc(p,22*(1-t*0.25),PI*0.1,PI*0.9,20,Color(0.38,0.63,0.61,alpha),2,true)
-   canvas.draw_arc(p,22*(1-t*0.25),PI*1.1,PI*1.9,20,Color(0.38,0.63,0.61,alpha),2,true)
+   strokes.arc(canvas,p,22*(1-t*0.25),PI*0.1,PI*0.8,20,Color(0.38,0.63,0.61,alpha),2)
+   strokes.arc(canvas,p,22*(1-t*0.25),PI*1.1,PI*0.8,20,Color(0.38,0.63,0.61,alpha),2)
  else:
   # Virus membrane breaks outward into short segments rather than a Core echo.
   for i in range(5):
    var a=i*TAU/5
-   canvas.draw_arc(b.p,12+t*18,a,a+0.6,5,Color(0.58,0.35,0.68,alpha),1.5,true)
+   # The five pieces share topology and radius; rotate the cached mesh instead
+   # of rebuilding five native antialiased polylines for every fading membrane.
+   strokes.arc(canvas,b.p,12+t*18,a,0.6,5,Color(0.58,0.35,0.68,alpha),1.5)
 func draw_over(canvas):
  for m in merges:
   var color=Color("#e6ad39") if m.rank==3 else Color("#f3f9ff")
