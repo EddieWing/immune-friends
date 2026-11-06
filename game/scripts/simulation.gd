@@ -1019,15 +1019,22 @@ func update_swarm_attraction(v,delta):
 		record("virus_attachment",{"id":v.id,"p":v.p,"old_host":v.get("host",-1),"host":host})
 	v.host=host
 	if host!=-1 or v.freeze>0:return
-	var nearby=viruses.filter(func(other):return other.alive and other.id!=v.id and not other.jump and v.p.distance_to(other.p)<60.0*26.0/3.5)
-	nearby.sort_custom(func(a,b):return v.p.distance_squared_to(a.p)<v.p.distance_squared_to(b.p))
+	var nearby=[]
+	for other: Dictionary in viruses:
+		if not other.alive or other.id==v.id or other.jump:continue
+		var offset: Vector2=v.p-other.p
+		if offset.length()<60.0*26.0/3.5:nearby.append([offset.length_squared(),other])
+	# Keep the same full sort and strict comparison (including equal-distance
+	# ordering), but calculate each distance once instead of in every comparison.
+	nearby.sort_custom(func(a,b):return a[0]<b[0])
 	if nearby.is_empty():return
 	# All nine attractions use the same material and movement tuning. Preserve
 	# each Vector2 multiply/divide and impulse order, but resolve them once.
 	var movement_scale=virus_motion.multiplier(self,v)
 	var body_mass=physics.mass(self,v)
 	var body_state=physics.state(v)
-	for other in nearby.slice(0,9):
+	for entry in nearby.slice(0,9):
+		var other: Dictionary=entry[1]
 		var force: Vector2=v.p.direction_to(other.p)*25.0*movement_scale/(PI*1.75*1.75)*body_mass
 		body_state.v+=force*delta/body_mass
 

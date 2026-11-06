@@ -34,4 +34,16 @@ func _initialize():
 		assert(a.physics.states==b.physics.states and a.events==b.events,"Attraction impulses differ with tuning")
 	print("PASS: 90 full simulation steps match original swarm loops with unrelated links, dense contacts and death")
 	print("PASS: 120 nine-neighbour attraction passes match with changing density and speed")
+	# More than nine equidistant candidates exercise the original unstable tie
+	# order; choosing the same set in a new order can still change Float32 forces.
+	var ring=[Vector2(40,0),Vector2(24,32),Vector2(0,40),Vector2(-24,32),Vector2(-40,0),Vector2(-24,-32),Vector2(0,-40),Vector2(24,-32)]
+	for tick in range(48):
+		for s in [a,b]:
+			for i in range(s.viruses.size()):
+				var v=s.viruses[i];v.alive=true;v.jump=false;v.freeze=0
+				v.p=Vector2.ZERO if i==0 else ring[(i+tick)%ring.size()]
+			s.viruses[0].type="swarmer"
+			s.update_swarm_attraction(s.viruses[0],1.0/60)
+		assert(a.physics.states==b.physics.states and a.events==b.events,"Equal-distance attraction order differs")
+	print("PASS: 48 equal-distance swarm selections retain the legacy impulse order")
 	quit()
