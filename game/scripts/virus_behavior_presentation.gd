@@ -9,6 +9,7 @@ var feeding={}
 var looks={}
 var effects=[]
 var attachments=[]
+var suspended={}
 func update(sim,delta):
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
@@ -38,8 +39,12 @@ func update(sim,delta):
  cursor=sim.event_sequence
  if effects.size()>32: effects=effects.slice(effects.size()-32)
  var alive={}
+ suspended.clear()
  for v in sim.viruses:
-  if v.alive: alive[v.id]=v
+  if v.alive:
+   alive[v.id]=v
+   if float(v.get("freeze",0))>0:
+    suspended[v.id]={"p":v.p,"remaining":float(v.freeze)}
  for id in looks.keys():
   if not alive.has(id): looks.erase(id)
  attachments=[]
@@ -61,6 +66,16 @@ func draw_links(canvas):
    var p=middle+d.orthogonal()*side*3
    canvas.draw_polyline(PackedVector2Array([p-d*3,p,p+d*3+d.orthogonal()*side*2]),Color("#d5a4d4"),1.5,true)
 func draw_effects(canvas):
+ # This is a status indicator, not a speed test: blocked collisions are not suspend.
+ # Shared by both field styles and driven directly by the mechanical timer.
+ for status in suspended.values():
+  var p=status.p
+  canvas.draw_circle(p,22,Color(0.55,0.86,0.95,0.12))
+  canvas.draw_arc(p,22,0,TAU,28,Color(0.35,0.65,0.8,0.9),1.5,true)
+  var badge=p+Vector2(19,-18)
+  canvas.draw_circle(badge,6,Color("#234857"))
+  for x in [-2,2]:
+   canvas.draw_line(badge+Vector2(x,-3),badge+Vector2(x,3),Color("#d4f8ff"),1.5,true)
  for e in effects.slice(maxi(0,effects.size()-10)):
   var t=e.age/0.65
   var color=Color(0.92,0.7,0.91,1-t)
