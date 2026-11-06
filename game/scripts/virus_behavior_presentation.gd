@@ -10,7 +10,9 @@ var looks={}
 var effects=[]
 var attachments=[]
 var suspended={}
+var motion=preload("res://scripts/motion_presentation.gd").new()
 func update(sim,delta):
+ motion.update(sim)
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
  if fresh or round_seen!=sim.round_no or cursor>sim.event_sequence or sim.elapsed<elapsed or (sim.phase=="battle" and phase_seen!="battle"):
@@ -66,6 +68,7 @@ func draw_links(canvas):
    var p=middle+d.orthogonal()*side*3
    canvas.draw_polyline(PackedVector2Array([p-d*3,p,p+d*3+d.orthogonal()*side*2]),Color("#d5a4d4"),1.5,true)
 func draw_effects(canvas):
+ motion.draw(canvas)
  # This is a status indicator, not a speed test: blocked collisions are not suspend.
  # Shared by both field styles and driven directly by the mechanical timer.
  for status in suspended.values():
