@@ -1101,9 +1101,29 @@ func update_swarm_attraction(v,delta,prepared={}):
 		body_state.v+=force*delta/body_mass
 
 func join_swarm_contacts():
+	var contact_grid={}
+	var grid_ready=false
 	for v in viruses:
 		if not v.alive or v.type!="swarmer" or v.jump or v.get("host",-1)>=0:continue
-		for other in viruses:
+		if not grid_ready:
+			# Virus radii are 10: every possible 20.02-unit contact is in
+			# this tile or a neighbouring 32-unit tile. Sort original indices
+			# to preserve link creation/event order, including multiple joins.
+			for i in range(viruses.size()):
+				var other: Dictionary=viruses[i]
+				if not other.alive or other.jump:continue
+				var tile=Vector2i(floori(other.p.x/32.0),floori(other.p.y/32.0))
+				if not contact_grid.has(tile):contact_grid[tile]=[]
+				contact_grid[tile].append(i)
+			grid_ready=true
+		var tile=Vector2i(floori(v.p.x/32.0),floori(v.p.y/32.0))
+		var candidates=PackedInt32Array()
+		for y in range(-1,2):
+			for x in range(-1,2):
+				for i in contact_grid.get(tile+Vector2i(x,y),[]):candidates.append(i)
+		candidates.sort()
+		for i in candidates:
+			var other: Dictionary=viruses[i]
 			if not other.alive or other==v or other.jump:continue
 			if v.p.distance_to(other.p)>physics.radius(v)+physics.radius(other)+0.02:continue
 			if links.any(func(l):return (l.a==v.id and l.b==other.id) or (l.b==v.id and l.a==other.id)):continue
