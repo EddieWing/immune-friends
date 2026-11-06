@@ -58,6 +58,7 @@ func apply_impulse(s,v,value,body_mass):
 	body_state.v+=value/body_mass
 
 func speed_label(s,kind):
- if kind=="wave":return "wave"
- var value=snappedf(float(SPEEDS.get(kind,15.0))*multiplier(s,{"type":kind}),0.1)
- return str(value)+( " + jump" if kind=="jumper" else "")
+	if kind=="wave":return "wave"
+	var value=snappedf(float(SPEEDS.get(kind,15.0))*multiplier(s,{"type":kind}),0.1)
+	return str(value)+( " + jump" if kind=="jumper" else "")
+
