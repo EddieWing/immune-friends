@@ -485,6 +485,7 @@ func begin_battle():
 		c.contact=0
 		c["friendly_stun"]=0.0
 		c["presentation_target"]=-1
+		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
 		c.speed_buff=1.0
@@ -757,7 +758,7 @@ func update(delta: float):
 					if v.alive and v.tag>0 and c.p.distance_to(v.p)<reach*2:
 						target=v
 						break
-			if not target.is_empty(): velocity=c.p.direction_to(target.p)*speed_of(c)*3
+			velocity=preload("res://scripts/seeker_motion.gd").direction(self,c,target,delta)*speed_of(c)*3
 			var target_id=int(target.get("id",-1))
 			if target_id!=int(c.get("presentation_target",-1)):
 				var had_target=int(c.get("presentation_target",-1))>=0
@@ -1081,6 +1082,8 @@ func next_round():
 		c.erase("initial_conversion_health")
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	rebuild_links()
+	for c in cells:
+		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
 	# Original TradeHealth processes exchanges sequentially after restoration.
 	for c in cells:
 		if c.key!="swapper":continue

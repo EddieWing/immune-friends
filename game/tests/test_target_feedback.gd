@@ -22,5 +22,5 @@ func _initialize():
  s.spawn_virus({"type":"basic","lane":0,"p":c.p+Vector2(150,0)})
  s.update(0.01);view.update(s,0.01)
  assert(view.effects.filter(func(e):return e.kind=="cell_target").size()==3)
- print("PASS: real Seeker acquisition, stable tracking, loss, reacquisition; no inferred return")
+ print("PASS: real Seeker acquisition, stable tracking, loss and reacquisition; loss cue is not an early return cue")
  quit()

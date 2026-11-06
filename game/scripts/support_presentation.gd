@@ -25,13 +25,15 @@ func update(sim,delta):
  for effect in effects: effect.age+=dt
  effects=effects.filter(func(e): return e.age<e.life)
  for event in sim.events_since(cursor):
-  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge","purchase_buff","cell_target","interferon_created"] and event.data.has("p"):
+  if event.event in ["heal","generator_fed","generator_charged","swap","bullet_split","accelerated","attack_fired","merge","purchase_buff","cell_target","cell_return","interferon_created"] and event.data.has("p"):
    if event.event=="heal" and float(event.data.get("amount",0))<=0: continue
    if event.event=="attack_fired" and event.data.get("direction",Vector2.ZERO).length_squared()<0.001: continue
    var e=event.data.duplicate()
    e.kind=event.event
    e.age=0.0
    e.life=1.1 if e.kind=="swap" else 0.65
+   if e.kind=="cell_target" and int(e.get("target_id",-1))>=0:
+    effects=effects.filter(func(old):return old.kind!="cell_return" or old.id!=e.id)
    effects.append(e)
  cursor=sim.event_sequence
  # Keep a healing flash on its recipient while the physical body moves.
@@ -187,8 +189,16 @@ func draw(canvas):
     canvas.draw_line(p+Vector2(0,-4),p+Vector2(0,1),tint,2,true)
     canvas.draw_circle(p+Vector2(0,4),1.3,tint)
    else:
-    # Losing a target does not imply returning home: current Seeker only coasts.
+    # Loss is distinct from the delayed return transition.
     canvas.draw_arc(p,4,PI*0.15,PI*1.7,12,Color(0.48,0.68,0.73,1-t),1.5,true)
+  elif e.kind=="cell_return":
+   var recipient=observed_sim.cell_by_id(e.id)
+   if recipient.is_empty() or not recipient.alive or not recipient.get("seeker_returning",false):continue
+   var p=recipient.p+Vector2(0,-35-t*4)
+   var tint=Color(0.18,0.37,0.45,1-t)
+   canvas.draw_arc(p,3,-PI,PI*0.45,14,tint,1.7,true)
+   canvas.draw_line(p+Vector2(0,3),p+Vector2(0,5),tint,1.7,true)
+   canvas.draw_circle(p+Vector2(0,8),1.2,tint)
   elif e.kind=="interferon_created":
    var tint=Color(0.74,0.62,0.91,(1-t)*0.65)
    for i in range(3):
