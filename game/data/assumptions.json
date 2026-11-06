@@ -36,8 +36,8 @@
   "bullet_damage": 1,
   "bullet_speed": 7428.571428571428,
   "bomb_damage": 1,
-  "virus_speed": 31,
-  "virus_movement_multiplier": 2.0,
+  "virus_speed": 111.42857142857143,
+  "virus_movement_multiplier": 1.0,
   "xp_thresholds": [
     3,
     6,

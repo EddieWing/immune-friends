@@ -41,6 +41,8 @@ jobs:
           timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_cell_click.gd
       - name: Continuous menu entry
         run: timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_camera_entry.gd
+      - name: Verify reference virus speeds
+        run: timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_virus_reference_speed.gd
       - name: Export browser game
         run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --export-release Web ../web/index.html
       - name: Record deployed version

@@ -461,7 +461,7 @@ func draw_virus_record():
  text(Vector2(1254,267),str(count),22,RED)
  var stats=game.sim.tuning.get("virus:"+virus_key,{})
  var hp=stats.get("hp",2 if virus_key=="seeker" else 1)
- text(Vector2(1059,296),"♥ %s   → %s   ATK 1" % [str(hp),str(snappedf(float(game.sim.rules.virus_speed)*float(stats.get("speed_multiplier",1)),0.1))],15)
+ text(Vector2(1059,296),"♥ %s   → %s   ATK 1" % [str(hp),game.sim.virus_motion.speed_label(game.sim,virus_key)],15)
  wrapped_text(Vector2(1059,328),game.wave_trait(virus_key),242,14)
  if virus_key in new_types(game.sim.wave):text(Vector2(1059,402),"★ NEW TYPE",11,RED)
 func draw_combat():

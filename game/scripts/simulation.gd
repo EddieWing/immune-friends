@@ -823,9 +823,6 @@ func update(delta: float):
 			record("virus_target",{"id":v.id,"p":v.p,"target":target_pos})
 		v.visual_target=target_key
 		var dir: Vector2=v.p.direction_to(target_pos)
-		var speed: float=float(rules.virus_speed)
-		speed*=float(rules.get("virus_movement_multiplier",1.0))
-		speed*=float(tuning.get("virus:"+v.type,{}).get("speed_multiplier",1.0))
 		v.visual_avoiding=false
 		if v.type=="avoider":
 			var avoid={};var distance=15.0*26.0/3.5
@@ -833,15 +830,12 @@ func update(delta: float):
 				var d=v.p.distance_to(c.p)
 				if c.alive and d<distance:avoid=c;distance=d
 			if not avoid.is_empty() and v.freeze<=0:
-				var force=avoid.p.direction_to(v.p)*150.0*virus_motion.multiplier(self,v)/(PI*1.75*1.75)*physics.mass(self,v)
+				var force=avoid.p.direction_to(v.p)*150.0*virus_motion.multiplier(self,v)/virus_motion.REFERENCE_MASS*physics.mass(self,v)
 				physics.accelerate(self,v,force,delta)
 				v.visual_avoiding=true
-			speed*=20.0/15.0
-		if v.type=="seeker":speed*=25.0/15.0
 		if v.type=="swarmer":update_swarm_attraction(v,delta)
 		v.visual_heading=dir
-		if not virus_motion.tick(self,v,dir,delta):
-			physics.drive(v,dir*speed*float(rules.movement_multiplier) if v.freeze<=0 else Vector2.ZERO)
+		virus_motion.tick(self,v,dir,delta)
 	physics.step(self,delta)
 	join_swarm_contacts()
 	for pair: Vector2i in physics.contacts:
@@ -993,7 +987,7 @@ func update_swarm_attraction(v,delta):
 	var nearby=viruses.filter(func(other):return other.alive and other.id!=v.id and not other.jump and v.p.distance_to(other.p)<60.0*26.0/3.5)
 	nearby.sort_custom(func(a,b):return v.p.distance_squared_to(a.p)<v.p.distance_squared_to(b.p))
 	for other in nearby.slice(0,9):
-		physics.accelerate(self,v,v.p.direction_to(other.p)*25.0*virus_motion.multiplier(self,v)/(PI*1.75*1.75)*physics.mass(self,v),delta)
+		physics.accelerate(self,v,v.p.direction_to(other.p)*25.0*virus_motion.multiplier(self,v)/virus_motion.REFERENCE_MASS*physics.mass(self,v),delta)
 
 func join_swarm_contacts():
 	for v in viruses:
