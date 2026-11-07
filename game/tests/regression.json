@@ -15,7 +15,8 @@
       "test_source_non_solid",
       "test_hud_a",
       "test_reference_physics",
-      "test_core_rest"
+      "test_core_rest",
+      "test_menu_background"
     ],
     "full": [
       "test_camera",
@@ -91,7 +92,8 @@
       "test_virus_reference_speed",
       "test_reference_physics",
       "test_core_rest",
-      "test_gym_input"
+      "test_gym_input",
+      "test_menu_background"
     ]
   },
   "cases": [
@@ -528,6 +530,22 @@
       "coverage": "Partial",
       "last_manual_result": "Not Run",
       "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-027",
+      "category": "UI",
+      "title": "Непрозрачный фон меню скрывает анимированную воду",
+      "origin": "Найден в браузерной регрессии 2026-11-07",
+      "status": "Active",
+      "preconditions": "Открыть главное меню на чистом тестовом профиле.",
+      "steps": "Наблюдать воду в меню; начать New Run; дождаться перехода в подготовку.",
+      "expected": "Вода видна и движется; игровые объекты скрыты до входа; при входе появляются вместе с HUD.",
+      "automated_tests": [
+        "test_menu_background"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Passed",
+      "note": "Воспроизведён до исправления; локальный Web export проверен после исправления."
     }
   ]
 }

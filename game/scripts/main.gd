@@ -515,7 +515,7 @@ func show_menu():
 	ui.add_child(main_menu)
 	var menu_background=ColorRect.new()
 	menu_background.size=Vector2(1440,900)
-	menu_background.color=Color("#102832")
+	menu_background.color=Color(0.063,0.157,0.196,0.55)
 	menu_background.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	main_menu.add_child(menu_background)
 	ui.move_child(modal,ui.get_child_count()-1)
@@ -547,6 +547,7 @@ func show_menu():
 	apply_menu_visibility()
 
 func apply_menu_visibility():
+	view.modulate.a=hud_opacity
 	for child in ui.get_children():
 		if child==ui.get_child(0) or child==main_menu or child==modal or child.name=="MicroscopeVignette": continue
 		if child is CanvasItem: child.modulate.a=hud_opacity
