@@ -34,6 +34,10 @@ func reference_candidates(bodies):
 					pairs.append(Vector2i(i,j))
 	return pairs
 func _initialize():
+	var empty=setup()
+	empty.physics.contacts[Vector2i(1,2)]=true
+	empty.physics.step(empty,1.0/60)
+	check(empty.physics.contacts.is_empty() and not empty.physics.stepping, 'Empty field clears stale contacts and completes its physics step')
 	var s=setup()
 	var light=add(s,"seeker",Vector2(-200,0));var heavy=add(s,"wildcard",Vector2(200,0))
 	s.push_object(light,Vector2(20,0),"cell",light.p)

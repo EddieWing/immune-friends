@@ -90,7 +90,9 @@ func draw_modern():
  var ratio=clampf((game.view.scale.x-0.45)/1.05,0,1)
  draw_style_box(track_style(Color("#292e30")),Rect2(-4,-2,46,262))
  var font=game.symbol_font
- draw_string(font,Vector2(-2,-13),"⌕ ZOOM",HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#9c916f"))
+ draw_style_box(track_style(Color("#292e30")),Rect2(-8,-29,58,23))
+ draw_style_box(track_style(Color("#292e30")),Rect2(-4,265,46,26))
+ draw_string(font,Vector2(-2,-13),"⌕ ZOOM",HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#fff2cf"))
  for tick in range(21):
   var y=30+tick*10
   draw_line(Vector2(9 if tick%5==0 else 19,y),Vector2(32,y),Color("#6d6b5c"),1)

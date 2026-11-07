@@ -976,7 +976,7 @@ func browsing_from_main_menu():
 	return is_instance_valid(main_menu) and main_menu.visible
 
 func show_catalog():
-	var col=clear_modal("Cell atlas · 27 cells","Explore immune cells, their abilities and elite forms.")
+	var col=clear_modal("Cell atlas · %d cells" % sim.available_cell_keys().size(),"Explore immune cells, their abilities and elite forms.")
 	modal_panel.position=Vector2(250,95)
 	modal_panel.size=Vector2(940,720)
 	var split=HSplitContainer.new()
@@ -1311,6 +1311,8 @@ func _unhandled_input(event):
 	if (modal.visible and not (ui_new and results_stage=="forecast")) or launch_remaining>0: return
 	if event is InputEventMouseButton:
 		var screen=event.position
+		if event.pressed and board_rect.has_point(screen) and zoom_gauge.has_focus():
+			zoom_gauge.release_focus()
 		if event.button_index==MOUSE_BUTTON_RIGHT:
 			if event.pressed: begin_camera_pan(screen)
 			else: panning=false

@@ -369,6 +369,8 @@ func web_angles_supported(bodies: Array) -> bool:
 	return true
 
 func advance_web(s,bodies: Array,delta: float,steps: int):
+	# Empty fields have no rows to encode; Godot rejects empty raw_to_base64 buffers.
+	if bodies.is_empty():return
 	# Compute libm coefficients in Godot once per material, retaining Float64.
 	var dt=delta/steps
 	if dt!=web_template_dt:

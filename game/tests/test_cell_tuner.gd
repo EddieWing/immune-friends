@@ -25,6 +25,11 @@ func run():
  scene._input(key)
  check(tuner.enabled,"Physical Shift+T enables editor with Russian layout")
  check(tuner.inspect_at(cell.p) and scene.modal.visible,"Single click target opens editor and description")
+ for control in tuner.fields.hp.get_parent().get_children():
+  if control is Label and not control.tooltip_text.is_empty():
+   check(control.mouse_filter!=Control.MOUSE_FILTER_IGNORE, 'Parameter label receives hover for its tooltip')
+ tuner.submit(false)
+ check(tuner.session.seeker.is_empty(),"Opening and testing untouched fields preserves exact solver defaults")
  tuner.fields.hp.value=7
  tuner.fields.range.value=65
  tuner.submit(false)

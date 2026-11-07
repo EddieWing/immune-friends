@@ -21,8 +21,14 @@ func run():
    event.position=game.view.to_global(cell.p)
    game._unhandled_input(event)
    assert(game.selected==cell and game.inspected_cell==-1,"Single click selects only")
+   if modern and not gym:
+    game.hud_a._process(0.016)
+    assert(not game.hud_a.cell_block.visible,"HUD frame must not reopen single-click selection")
    event.pressed=false;game._unhandled_input(event)
    event.pressed=true;event.double_click=true;game._unhandled_input(event)
    assert(game.inspected_cell==cell.id,"Double click inspects")
+   if modern and not gym:
+    game.hud_a._process(0.016)
+    assert(game.hud_a.cell_block.visible,"Double-click record remains visible after HUD frame")
  print("PASS single/double click in both HUDs and Gym")
  quit()

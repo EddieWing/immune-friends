@@ -113,6 +113,7 @@ func open(key):
   var label=Label.new()
   label.text=field.replace("physics/","Physics · ").replace("blood_","").replace("_"," ").capitalize()
   label.tooltip_text=spec[3]
+  label.mouse_filter=Control.MOUSE_FILTER_PASS
   label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
   grid.add_child(label)
   var spin=SpinBox.new()
@@ -120,6 +121,8 @@ func open(key):
   spin.max_value=spec[1]
   spin.step=spec[2]
   spin.value=data[field]
+  # Compare against the displayed value, not the unrounded solver default.
+  original_values[field]=spin.value
   spin.tooltip_text=spec[3]
   spin.custom_minimum_size.x=150
   grid.add_child(spin)

@@ -208,7 +208,7 @@ func refresh_data():
    card.pressed.connect(func():game.arm_offer(index,reward))
    card.mouse_entered.connect(func():select_cell(key,{}))
    card.mouse_exited.connect(func():
-    if not game.selected.is_empty():select_cell(game.selected.key,game.selected)
+    if not game.selected.is_empty() and game.selected.id==game.inspected_cell:select_cell(game.selected.key,game.selected)
     elif game.pending_offer.is_empty():cell_key="")
    offers.add_child(card)
  clear_rows(note_rows)
@@ -363,7 +363,7 @@ func _process(delta):
   var skin=b.get_theme_stylebox("normal")
   if skin.border_color!=border_color: skin.border_color=border_color
  if not cell.is_empty() and (not cell.get("alive",false) or not game.sim.cells.has(cell)):cell_key=""
- if prep and not game.selected.is_empty() and not shelf.get_global_rect().has_point(get_global_mouse_position()) and game.pending_offer.is_empty():
+ if prep and not game.selected.is_empty() and game.selected.id==game.inspected_cell and not shelf.get_global_rect().has_point(get_global_mouse_position()) and game.pending_offer.is_empty():
   if cell!=game.selected:select_cell(game.selected.key,game.selected)
  cell_block.visible=prep and cell_key!=""
  virus_block.visible=prep and virus_key!=""

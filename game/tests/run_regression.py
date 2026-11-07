@@ -9,6 +9,9 @@ import subprocess
 import sys
 import time
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 parser = argparse.ArgumentParser(description=__doc__)

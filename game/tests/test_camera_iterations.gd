@@ -46,6 +46,15 @@ func run():
  game.main_menu.hide();game.modal.hide();game.menu_open=false;game.entering_game=false
  game.sim.reset(42,12)
  game.auto_camera=false
+ game.zoom_gauge.grab_focus()
+ check(game.zoom_gauge.has_focus(),"Zoom keyboard focus is acquired")
+ var click=InputEventMouseButton.new()
+ click.button_index=MOUSE_BUTTON_LEFT;click.pressed=true;click.position=game.board_rect.get_center()+Vector2(250,0)
+ game._unhandled_input(click)
+ check(not game.zoom_gauge.has_focus(),"Field click releases zoom keyboard focus")
+ var pan_before=game.view.position
+ game.advance_manual_camera(0.1,Vector2.LEFT)
+ check(game.view.position.x<pan_before.x,"WASD camera resumes after zoom then field click")
  game.view.position=Vector2(400,300)
  game.view.scale=Vector2.ONE*1.5
  game.zoom_target=1.5
