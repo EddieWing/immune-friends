@@ -1,0 +1,533 @@
+{
+  "schema": 1,
+  "cadence_commits": 10,
+  "baseline_commit": "3d62f3a80b40cef136288f49662e97e4716a368a",
+  "baseline_note": "74 автосценария и выборочный браузерный цикл 0.2.53 проверены; весь новый ручной каталог ещё не прогонялся.",
+  "suites": {
+    "smoke": [
+      "test_simulation",
+      "test_systems",
+      "test_ui_save",
+      "test_functional_cycle",
+      "test_camera_entry",
+      "test_cell_click",
+      "test_gym_input",
+      "test_source_non_solid",
+      "test_hud_a",
+      "test_reference_physics",
+      "test_core_rest"
+    ],
+    "full": [
+      "test_camera",
+      "test_camera_iterations",
+      "test_fixed_step",
+      "test_core_solver_equivalence",
+      "test_body_solver_equivalence",
+      "test_visibility_equivalence",
+      "test_body_physics",
+      "test_catalog_economy",
+      "test_simulation",
+      "test_systems",
+      "test_ui_save",
+      "test_ui_layout",
+      "test_graphics",
+      "test_speed_zoom",
+      "test_gym",
+      "test_presentation",
+      "test_debug",
+      "test_attack_presentation",
+      "test_source_presentation",
+      "test_reactions",
+      "test_virus_behavior",
+      "test_support_presentation",
+      "test_attention",
+      "test_staging_lifecycle",
+      "test_playtest_iterations",
+      "test_experimental",
+      "test_microscope",
+      "test_core_feedback",
+      "test_source_placement",
+      "test_cell_tuner",
+      "test_hud_a",
+      "test_functional_cycle",
+      "test_contact_damage",
+      "test_blast_front",
+      "test_projectile_sweep",
+      "test_ability_scope",
+      "test_virus_lifetime",
+      "test_virus_motion",
+      "test_food_competition",
+      "test_swarm_physics",
+      "test_wave_growth",
+      "test_training_modes",
+      "test_merge_progression",
+      "test_rewards",
+      "test_wildcard",
+      "test_preparation_save",
+      "test_battle_replay",
+      "test_consumers",
+      "test_recipes",
+      "test_accelerator",
+      "test_kinetic_bond",
+      "test_offspring",
+      "test_tags",
+      "test_gatling",
+      "test_swapper",
+      "test_electricity",
+      "test_electromagnet",
+      "test_electric_wall",
+      "test_purchase_bonuses",
+      "test_survivor_bonuses",
+      "test_water_trails",
+      "test_cilia_motion",
+      "test_visual_hitstop",
+      "test_electric_feedback",
+      "test_motion_presentation",
+      "test_presentation_completion",
+      "test_bond_iterations",
+      "test_source_non_solid",
+      "test_cell_click",
+      "test_camera_entry",
+      "test_virus_reference_speed",
+      "test_reference_physics",
+      "test_core_rest",
+      "test_gym_input"
+    ]
+  },
+  "cases": [
+    {
+      "id": "RG-001",
+      "category": "UI",
+      "title": "Пропадает магазин",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Пройти бой, OK результата, To preparation; повторить после загрузки сохранения.",
+      "expected": "В подготовке видны предложения, покупка списывает Carbons и добавляет клетку.",
+      "automated_tests": [
+        "test_functional_cycle",
+        "test_hud_a",
+        "test_ui_save"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-002",
+      "category": "Economy",
+      "title": "Кнопка XP и повышение вместимости",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "При XP на одно ниже порога купить 1 XP; повторить без покупки при переходе раунда.",
+      "expected": "Покупка даёт ровно 1 XP; порог немедленно увеличивает уровень/вместимость; бесплатный XP раунда явно обозначен.",
+      "automated_tests": [
+        "test_catalog_economy",
+        "test_hud_a"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-003",
+      "category": "UI",
+      "title": "Кнопки нижней панели расходятся",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Открыть подготовку при 1440×900 и 1280×720, заполнить магазин и изменить окно.",
+      "expected": "Кнопки не перекрываются, цены и вместимость читаемы, стекло пропускает фон.",
+      "automated_tests": [
+        "test_ui_layout",
+        "test_hud_a"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-004",
+      "category": "UI",
+      "title": "Иконки и форма клетки в магазине",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Сравнить предложения Wall/Orbiter/Seeker с купленными клетками на поле; открыть Codex.",
+      "expected": "Форма и признаки типа совпадают, иконки видимы, пропорции сохраняются.",
+      "automated_tests": [
+        "test_graphics"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-005",
+      "category": "Camera",
+      "title": "Скачок при входе в игру",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Из меню запустить New run, затем отдельно Continue и Load saved preparation.",
+      "expected": "Стартовый зум 1×, нет скачка камеры/визора перед подсказкой; меню плавно исчезает.",
+      "automated_tests": [
+        "test_camera_entry"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-006",
+      "category": "Camera",
+      "title": "Автокамера не реагирует на угрозу",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Включить Auto, приблизить поле, запустить одностороннюю угрозу; затем двигать вручную и снова включить Auto.",
+      "expected": "Автокамера сопровождает угрозу; ручное управление освобождает камеру; Auto возвращает сопровождение.",
+      "automated_tests": [
+        "test_camera",
+        "test_camera_iterations"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-007",
+      "category": "Camera",
+      "title": "Некорректный центр в прогнозе",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Завершить бой с отрядом вне центра; открыть прогноз и следующую подготовку.",
+      "expected": "Результат удерживает последний кадр, прогноз даёт обзор; подготовка центрирует Core один раз и отпускает камеру.",
+      "automated_tests": [
+        "test_camera_iterations"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-008",
+      "category": "Camera",
+      "title": "Граница визора исчезает резко",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Медленно менять зум 1.5→0.6→минимум и двигать камеру от центра.",
+      "expected": "Контур меняется плавно, затем растворяется в виньетке; нет порога исчезновения на 1.4.",
+      "automated_tests": [
+        "test_microscope",
+        "test_camera_iterations"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-009",
+      "category": "UI",
+      "title": "Метки и контуры Source перекрывают UI",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Создать три близких Source; зумировать и панорамировать к краю визора и к панелям.",
+      "expected": "Контуры обрезаны визором и UI; снаружи остаются указатели; подписи не накладываются и не имеют пустого хвоста.",
+      "automated_tests": [
+        "test_hud_a"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-010",
+      "category": "Physics",
+      "title": "Источник мешает телам в бою",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "В Gym направить клетки и вирусы через Source и за прежнюю границу поля.",
+      "expected": "Source не толкает и не останавливает тела; ограничения подготовки остаются.",
+      "automated_tests": [
+        "test_source_non_solid"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-011",
+      "category": "Input",
+      "title": "Описание открывается одиночным кликом",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "На обычном поле и в Gym проверить одиночный/двойной клик союзника и вируса в обоих HUD.",
+      "expected": "Одиночный клик выделяет; двойной показывает описание.",
+      "automated_tests": [
+        "test_cell_click"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-012",
+      "category": "Input",
+      "title": "Нельзя отменить размещение в Gym",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Включить Place cell/virus, нажать ПКМ; переместить оба типа объектов на паузе.",
+      "expected": "Режим размещения отменён, случайный объект не создан; объекты перетаскиваются; во время боя перетаскивание запрещено.",
+      "automated_tests": [
+        "test_gym_input"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-013",
+      "category": "Input",
+      "title": "Флип при постановке клетки",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Купить Wall, повернуть и перенести её; повторить после следующего раунда.",
+      "expected": "Нет непредусмотренного зеркального отражения; положение и угол сохраняются по правилам подготовки.",
+      "automated_tests": [
+        "test_playtest_iterations"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-014",
+      "category": "Physics",
+      "title": "Core расходятся в покое или перекрываются",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Запустить браузерный контроль покоя Core; в Gym потянуть крайнюю клетку и отпустить.",
+      "expected": "Без удара группа не разлетается; клетки не накладываются; руки растягиваются и тянут соседей.",
+      "automated_tests": [
+        "test_core_rest",
+        "test_body_physics",
+        "test_bond_iterations"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-015",
+      "category": "Physics",
+      "title": "Удар в край не вращает Wall",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Сравнить попадание в центр и край вытянутой Wall; повторить на ×5.",
+      "expected": "Краевой удар даёт момент вращения; физический сдвиг различим, визуальная деформация не превышает 5%, толчок 3%.",
+      "automated_tests": [
+        "test_body_physics",
+        "test_visual_hitstop"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-016",
+      "category": "Physics",
+      "title": "Скорость и импульсы не соответствуют референсу",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "В Gym сравнить семь типов вирусов, Seeker/Orbiter, взрыв и тяжёлую клетку на ×1/×5.",
+      "expected": "Скорость, разгон, масса и затухание соответствуют числовым тестам; взрыв не делится на 60; исход ускоренного сценария совпадает.",
+      "automated_tests": [
+        "test_virus_reference_speed",
+        "test_reference_physics",
+        "test_virus_motion"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-017",
+      "category": "Performance",
+      "title": "Стаггеры или отставание на ×5",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Активная вкладка Chrome: измерить паузу, ×1 и ×5 одинакового тяжёлого боя по 30 секунд.",
+      "expected": "Сравнить FPS, длительность кадров и реальное/симуляционное время; цель 60 FPS без накопления отставания. Не закрывать MC-125 по лёгкому сценарию.",
+      "automated_tests": [
+        "test_fixed_step"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-018",
+      "category": "Debug",
+      "title": "Shift+T не работает в браузере/Gym",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Открыть Gym, Shift+T, выбрать клетку, изменить параметр, Test; затем Save и перезагрузить.",
+      "expected": "Test действует в сессии; Save сохраняет локальные настройки игры; staged admin settings автоматически не импортируются.",
+      "automated_tests": [
+        "test_cell_tuner",
+        "test_debug"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-019",
+      "category": "Debug",
+      "title": "Радиусы/коллайдеры не видны",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "В F3 включить радиусы, коллайдеры, пути и векторы; проверить крупные/малые тела при разных зумах.",
+      "expected": "Наложения контрастны и совпадают с геометрией; выключение убирает их, управление остаётся доступным.",
+      "automated_tests": [
+        "test_debug",
+        "test_body_physics"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-020",
+      "category": "UI",
+      "title": "Тултипы не показываются или слишком широкие",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Навести мышь на параметры настройки, Source и кнопки; проверить края окна.",
+      "expected": "Текст показывается полностью, нет большого пустого пространства, подсказка не выходит за окно.",
+      "automated_tests": [
+        "test_ui_layout",
+        "test_cell_tuner"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-021",
+      "category": "Lifecycle",
+      "title": "Результат появляется раньше эффектов",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Уничтожить последнего вируса, затем отдельно последний Core.",
+      "expected": "Эффекты завершаются, проходит короткая пауза, результат содержит потери; OK ведёт в прогноз, затем в подготовку.",
+      "automated_tests": [
+        "test_staging_lifecycle",
+        "test_functional_cycle"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-022",
+      "category": "Sources",
+      "title": "Источник телепортируется между фазами",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Завершить волну, открыть прогноз с усилением или новым Source, запустить следующий бой.",
+      "expected": "Source перемещается плавно, усиление заметно; вирусы выходят из миазмы перед движением к Core.",
+      "automated_tests": [
+        "test_source_presentation",
+        "test_source_placement"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-023",
+      "category": "Save",
+      "title": "Параметры/прогресс теряются после загрузки",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Купить XP, объединить клетку, получить модификатор; сохранить подготовку и загрузить.",
+      "expected": "Вместимость, прогресс, характеристики и состав сохраняются однократно, без дублирования бонусов.",
+      "automated_tests": [
+        "test_preparation_save",
+        "test_merge_progression",
+        "test_survivor_bonuses"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-024",
+      "category": "Reactions",
+      "title": "Core не реагирует на потерю соседа",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Соединить Core, уничтожить одного из соседей; отдельно убить ближайший вирус.",
+      "expected": "Связанный сосед плачет; гибель ближайшего вируса вызывает облегчение; взгляд меняется плавно.",
+      "automated_tests": [
+        "test_core_feedback",
+        "test_reactions"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-025",
+      "category": "UI",
+      "title": "Пробел включает удалённый просмотр elite",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Выбрать клетку в подготовке, нажать пробел, проверить подсказки.",
+      "expected": "Пробел не переключает просмотр elite; удалённая подсказка отсутствует.",
+      "automated_tests": [],
+      "coverage": "Manual",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    },
+    {
+      "id": "RG-026",
+      "category": "Input",
+      "title": "Зум работает в главном меню",
+      "origin": "Исторический баг или замечание пользователя; повторная сверка при ближайшем полном раунде",
+      "status": "Active",
+      "preconditions": "Изолированное тестовое сохранение; актуальный билд; для времени/FPS активная вкладка Chrome.",
+      "steps": "Прокрутить колесо в меню, затем войти в игру и проверить колесо и слайдер.",
+      "expected": "В меню поле не зумируется; в игре оба способа управляют одним значением.",
+      "automated_tests": [
+        "test_speed_zoom",
+        "test_camera_entry"
+      ],
+      "coverage": "Partial",
+      "last_manual_result": "Not Run",
+      "note": "Связанные автотесты не заменяют описанную браузерную проверку."
+    }
+  ]
+}
