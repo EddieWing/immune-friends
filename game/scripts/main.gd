@@ -33,6 +33,7 @@ var selected={}
 var dragging=false
 var rotating=false
 var dragging_blood=-1
+var dragging_virus={}
 var panning=false
 var pan_previous=Vector2.ZERO
 var mouse_offset=Vector2.ZERO
@@ -1247,7 +1248,17 @@ func _notification(what):
 		if is_instance_valid(zoom_gauge): zoom_gauge.dragging=false
 	elif what==NOTIFICATION_APPLICATION_FOCUS_IN: camera_input_focused=true
 
+func can_edit_field_objects():
+	return sim.phase=="shop" or (gym_mode and sim.phase=="battle" and paused)
+
 func _input(event):
+	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_RIGHT and event.pressed and gym_mode and not gym_tool.is_empty():
+		gym_tool={}
+		view.drag_preview=Vector2.INF
+		panning=false
+		if lab_tools: lab_tools.hint.text="Placement cancelled. Drag objects to reposition; double-click to inspect."
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_RIGHT and not event.pressed:
 		panning=false
 	if event is InputEventMouseMotion and panning:
@@ -1259,6 +1270,7 @@ func _input(event):
 		return
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
 		sim.release_blood()
+		dragging_virus={}
 	if event is InputEventKey and event.pressed:
 		if (event.physical_keycode==KEY_T or (event.physical_keycode==0 and event.keycode==KEY_T)) and event.shift_pressed and not event.echo:
 			cell_tuner.toggle()
@@ -1318,7 +1330,7 @@ func _unhandled_input(event):
 					buy_offer_at(pending_offer.index,pending_offer.reward,world)
 					return
 				if ui_new and not gym_mode and event.double_click and hud_a.source_click(world): return
-				if sim.phase=="shop" and not selected.is_empty():
+				if can_edit_field_objects() and not selected.is_empty():
 					var handle=selected.p+Vector2.RIGHT.rotated(selected.angle)*62
 					if world.distance_to(handle)<14:
 						rotating=true
@@ -1334,13 +1346,19 @@ func _unhandled_input(event):
 						selected=c
 				if not selected.is_empty():
 					if event.double_click: inspected_cell=selected.id
-					dragging=sim.phase=="shop"
+					dragging=can_edit_field_objects()
 					if dragging: sim.proteins.pickup(sim,selected)
 					mouse_offset=selected.p-world
-				elif sim.phase=="shop":
+				elif can_edit_field_objects():
 					for i in range(sim.blood.size()):
 						if sim.blood[i].alive and sim.blood[i].p.distance_to(world)<16:
 							dragging_blood=i
+							break
+				if selected.is_empty() and dragging_blood<0 and gym_mode and can_edit_field_objects() and not event.double_click:
+					for virus in sim.viruses:
+						if virus.alive and virus.p.distance_to(world)<20:
+							dragging_virus=virus
+							mouse_offset=virus.p-world
 							break
 				if selected.is_empty() and event.double_click:
 					for virus in sim.viruses:
@@ -1360,6 +1378,7 @@ func _unhandled_input(event):
 				dragging=false
 				rotating=false
 				dragging_blood=-1
+				dragging_virus={}
 	if event is InputEventMouseMotion:
 		var world=view.get_global_transform().affine_inverse()*event.position
 		if not pending_offer.is_empty() or not gym_tool.is_empty(): view.drag_preview=world
@@ -1368,6 +1387,12 @@ func _unhandled_input(event):
 		elif dragging and not selected.is_empty():
 			sim.proteins.drag(sim,selected,(world+mouse_offset).clamp(Vector2(-590,-345),Vector2(590,325)))
 			sim.rebuild_links()
+		elif not dragging_virus.is_empty():
+			dragging_virus.p=world+mouse_offset
+			dragging_virus.spawn_position=dragging_virus.p
+			var body=sim.physics.state(dragging_virus)
+			body.v=Vector2.ZERO
+			body.w=0.0
 		elif dragging_blood>=0:
 			sim.move_blood(dragging_blood,world)
 

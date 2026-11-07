@@ -50,7 +50,7 @@ func _ready():
  hint=Label.new()
  hint.custom_minimum_size=Vector2(246,0)
  hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
- hint.text="Choose an object, then click the field. Esc cancels. F3: debug tools."
+ hint.text="Choose an object, then click the field. RMB / Esc cancels. Drag objects to reposition. F3: debug tools."
  col.add_child(hint)
  game.button(col,"Back to main menu",game.leave_gym,Vector2(246,34))
  inspect_button=game.button(col,"Inspect cells · Shift+T",game.cell_tuner.toggle,Vector2(246,34))
