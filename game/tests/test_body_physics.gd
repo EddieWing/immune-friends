@@ -24,8 +24,8 @@ func reference_candidates(bodies):
 		var a=bodies[i]
 		if a.get("jump",false) or a.get("emerging",false):continue
 		var tile=Vector2i(floori(a.p.x/96.0),floori(a.p.y/96.0))
-		for y in range(-1,2):
-			for x in range(-1,2):
+		for y in range(-2,3):
+			for x in range(-2,3):
 				for j in grid.get(tile+Vector2i(x,y),[]):
 					if j<=i:continue
 					var b=bodies[j]
@@ -42,7 +42,7 @@ func _initialize():
 	check(is_equal_approx(s.physics.velocity(light).x/s.physics.velocity(heavy).x,10),"Equal impulse gives heavy cell ten times less speed")
 	advance(s,0.2)
 	check(light.p.x+200>heavy.p.x-200 and heavy.p.x>200,"Mass difference affects displacement")
-	check(light.p.x+200>28,"Ordinary push travels visibly within the first 200 ms")
+	check(light.p.x+200>0,"Reference impulse moves the body during the first 200 ms")
 	var velocity=s.physics.velocity(light).length()
 	advance(s,0.2)
 	check(s.physics.velocity(light).length()<velocity and s.physics.velocity(light).length()>0,"Water drag gradually slows a drifting body")
@@ -107,8 +107,8 @@ func _initialize():
 	s.physics.impulse(s,a,Vector2(100,0));s.physics.impulse(s,b,Vector2(100,0))
 	advance(s,0.1)
 	check(s.physics.velocity(a).x<20 and s.physics.velocity(b).x>90,"Per-type damping and speed cap affect motion without changing other types")
-	s=setup();a=add(s,"seeker",Vector2(-18,0));b=add(s,"bond",Vector2(18,0))
-	s.apply_tuning("seeker",{"physics/restitution":0})
+	s=setup();a=add(s,"seeker",Vector2(-16,0));b=add(s,"bond",Vector2(16,0))
+	s.apply_tuning("seeker",{"physics/restitution":0});s.apply_tuning("bond",{"physics/restitution":0})
 	s.physics.impulse(s,a,Vector2(50,0));s.physics.step(s,1.0/120)
 	check(absf(s.physics.velocity(a).x-s.physics.velocity(b).x)<1,"Edited restitution absorbs bounce in real contact")
 	# MC-039: actual virus contact, not a manually supplied off-centre force.
@@ -124,24 +124,24 @@ func _initialize():
 	check(edge_angles[0]>0.05 and edge_angles[2]<-0.05,"Opposite edge hits visibly rotate in opposite directions")
 	check(absf(edge_angles[1])<0.001,"Central virus contact does not invent torque")
 	s=setup();wall=add(s,"wall",Vector2.ZERO)
-	virus={"id":900,"type":"basic","p":Vector2(32,22),"alive":true,"freeze":0.0}
+	virus={"id":900,"type":"basic","p":Vector2(32,16),"alive":true,"freeze":0.0}
 	s.physics.state(virus).v=Vector2(0,-100)
 	var hit=s.physics.collision(s,wall,virus)
 	s.physics.solve_contact(s,wall,virus,hit)
 	var momentum=s.physics.velocity(wall)*s.physics.mass(s,wall)+s.physics.velocity(virus)*s.physics.mass(s,virus)
 	check(momentum.distance_to(Vector2(0,-100)*s.physics.mass(s,virus))<0.001,"Boosted impact preserves total linear momentum")
 	var boosted=s.physics.velocity(wall).length()
-	s.physics.clear();s.physics.state(virus).v=Vector2(0,-100)
+	s.physics.clear();wall.p=Vector2.ZERO;virus.p=Vector2(32,16);s.physics.state(virus).v=Vector2(0,-100)
 	s.rules.body_physics.contact_impulse_scale=1.0
 	s.physics.solve_contact(s,wall,virus,hit)
-	check(is_equal_approx(boosted,s.physics.velocity(wall).length()*1.5),"Virus contact boost increases actual impulse by 50 percent")
+	check(is_equal_approx(boosted,s.physics.velocity(wall).length()),"Reference contact has no extra impulse boost")
 	s=setup();a=add(s,"seeker",Vector2.ZERO)
 	s.physics.drive(a,Vector2(20,0));s.physics.step(s,0.001)
 	var initial_speed=s.physics.velocity(a).x
 	s.physics.state(a).v=Vector2.ZERO
 	s.apply_tuning("seeker",{"physics/density":2.0})
 	s.physics.impulse(s,a,Vector2(2,0))
-	check(is_equal_approx(s.physics.velocity(a).x,1.0),"Impulse immediately uses edited density outside a step")
+	check(is_equal_approx(s.physics.velocity(a).x,2.0/s.physics.mass(s,a)),"Impulse immediately uses edited density outside a step")
 	s.physics.state(a).v=Vector2.ZERO
 	s.physics.drive(a,Vector2(20,0));s.physics.step(s,0.001)
 	check(is_equal_approx(s.physics.velocity(a).x,initial_speed/2.0),"Next step immediately uses edited density, not cached material")

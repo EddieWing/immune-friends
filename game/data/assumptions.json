@@ -1,7 +1,7 @@
 {
   "status": "Unverified reconstruction parameters, not measured original rules",
-  "scale": 3,
-  "movement_multiplier": 1.5,
+  "scale": 7.428571428571429,
+  "movement_multiplier": 1.0,
   "water_trails": {
     "status": "Provisional Microcosm visual curves, not measured Auto Immune lifetimes. A strong viral head fades into a weak long residue. The 120s cap is a cleanup bound, not a reference timer or visibility duration. Old paths dissolve on battle launch; recap does not accelerate decay. Render-time decay freezes on battle pause; bounded history may evict oldest segments.",
     "friendly_seconds": 0.6,
@@ -72,17 +72,17 @@
   "pusher_virus_range": 90,
   "experimental_rules": "Default OFF, snapshotted per run. Catalog numeric constants and elite overrides are used by existing algorithms. Kinetic network targeting, magnet direct charge draw, Gatling cooldown floor0.05, Factory targeting/launch and PusherVirus remain provisional; no electrical graph or physics reconstruction.",
   "body_physics": {
-    "status": "Custom impulse solver, not exact Box2D. MC-039 calibrated pushes, virus contact boost and reduced angular drag are deliberate game-feel settings; geometry and density classes retain the current model.",
+    "status": "Reference base geometry, relative masses, force/impulse units and damping. Custom contact solver; Core elasticity and visual limits intentionally retained.",
     "linear_damping": 0.5,
-    "angular_damping": 2,
+    "angular_damping": 5,
     "restitution": 1,
-    "max_step": 0.008333333333333333,
+    "max_step": 0.016666666666666666,
     "motor_response": 8,
     "motor_force": 900,
-    "max_speed": 650,
-    "max_angular_speed": 10,
-    "impulse_scale": 12,
-    "contact_impulse_scale": 1.5,
+    "max_speed": 891.4285714285714,
+    "max_angular_speed": 94.24777960769379,
+    "impulse_scale": 1,
+    "contact_impulse_scale": 1.0,
     "spring_stiffness": 100,
     "spring_damping": 12
   }

@@ -1,4 +1,5 @@
 extends RefCounted
+const Ref=preload("res://scripts/reference_physics.gd")
 # Rules marked provisional are centralized in data/assumptions.json.
 var shop_rules: Dictionary
 var selected_rewards: Array = []
@@ -484,6 +485,8 @@ func begin_battle():
 		c["distance_health"]=0.0
 		c["travel_x"]=c.p.x
 		c["travel_y"]=c.p.y
+		c.erase("orbit_center");c.erase("orbit_radius")
+		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
 		if c.key=="hungry_bomb": c["radius_growth"]=0.0
 		if c.key=="greed_wall": c.hp+=constant_of(c,"conversionRate",2)*money
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
@@ -506,7 +509,7 @@ func source_position_clear(p):
 		if not c.alive: continue
 		if catalog[c.key].behavior=="wall":
 			var local=(p-c.p).rotated(-c.angle)
-			var nearest=local.clamp(Vector2(-43,-13),Vector2(43,13))
+			var nearest=local.clamp(-physics.half_size(c),physics.half_size(c))
 			if local.distance_to(nearest)<70.0: return false
 		elif p.distance_to(c.p)<88.0: return false
 	return true
@@ -668,18 +671,19 @@ func damage_virus(v, amount, source={}):
 	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat})
 
 func push_object(object,offset,kind,origin):
-	physics.impulse(self,object,offset*physics.parameter(self,object,"impulse_scale"),origin)
+	physics.impulse(self,object,Ref.impulse(offset)*physics.parameter(self,object,"impulse_scale"),origin)
 	if offset.length_squared()>0:
 		record("pushed",{"id":object.id,"p":object.p,"kind":kind,"from":origin,"direction":offset.normalized()})
 
 func contains_cell(c, p, extra=0.0):
 	var local=(p-c.p).rotated(-c.angle)
-	if catalog[c.key].behavior=="wall":
-		return absf(local.x)<43+extra and absf(local.y)<13+extra
-	return local.length()<18+extra
+	if physics.is_box(self,c):
+		var half=physics.half_size(c)
+		return absf(local.x)<half.x+extra and absf(local.y)<half.y+extra
+	return local.length()<physics.radius(c)+extra
 
 func update(delta: float):
-	var movement_delta: float=delta*float(rules.get("movement_multiplier",1.0))
+	var movement_delta: float=delta
 	for e: Dictionary in effects: e.life-=delta
 	effects=effects.filter(func(e): return e.life>0)
 	for c: Dictionary in cells: c.flash=maxf(0,c.flash-delta)
@@ -725,7 +729,7 @@ func update(delta: float):
 					target=candidate
 					break
 		if d.behavior=="forward" or d.behavior=="drop":
-			velocity=Vector2.RIGHT.rotated(c.angle)*speed_of(c)*3
+			velocity=Vector2.RIGHT.rotated(c.angle)*speed_of(c)*Ref.SCALE
 		elif d.behavior=="seek":
 			# Tagged targets can be detected at twice the normal distance.
 			if target.is_empty():
@@ -733,17 +737,19 @@ func update(delta: float):
 					if v.alive and v.tag>0 and c.p.distance_to(v.p)<reach*2:
 						target=v
 						break
-			if not target.is_empty(): velocity=c.p.direction_to(target.p)*speed_of(c)*3
+			velocity=preload("res://scripts/seeker_motion.gd").direction(self,c,target,delta)*speed_of(c)*Ref.SCALE
 		elif d.behavior=="orbit":
-			var radius: float=maxf(100,c.start.length())
-			if c.friendly_stun<=0:c.orbit-=speed_of(c)*3/radius*movement_delta
-			var desired: Vector2=Vector2.from_angle(c.orbit)*radius
-			velocity=(desired-c.p).limit_length(speed_of(c)*3)
+			if not c.has("orbit_center"):
+				c["orbit_center"]=reference_core_center()
+				c["orbit_radius"]=c.p.distance_to(c.orbit_center)
+			var radial: Vector2=c.p-c.orbit_center
+			var desired: Vector2=c.orbit_center+radial.normalized().rotated(-PI/100.0)*float(c.orbit_radius)
+			velocity=c.p.direction_to(desired)*speed_of(c)*Ref.SCALE
 		if c.get("launch_remaining",0.0)>0:
 			velocity=Vector2.RIGHT.rotated(c.angle)*150.0
 			c.launch_remaining=maxf(0,c.launch_remaining-delta)
 		if c.friendly_stun>0: velocity=Vector2.ZERO
-		physics.drive(c,velocity*float(rules.movement_multiplier)*float(c.speed_buff))
+		drive_reference_cell(c,velocity*float(c.speed_buff),delta)
 		if c.cool<=0:
 			c.cool=maxf(0.05,interval_of(c))
 			match d.behavior:
@@ -766,9 +772,9 @@ func update(delta: float):
 					record("attack_fired",{"id":c.id,"p":c.p,"direction":Vector2.ZERO,"key":c.key})
 					effect(c.p,Color("#f7dec3"),"",reach)
 					for v: Dictionary in viruses:
-						if v.alive and v.p.distance_to(c.p)<reach: push_object(v,(v.p-c.p).normalized()*30,"virus",c.p)
+						if v.alive and v.p.distance_to(c.p)<reach: push_object(v,(v.p-c.p).normalized()*400,"virus",c.p)
 					for other: Dictionary in cells:
-						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*20,"cell",c.p)
+						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*400,"cell",c.p)
 				"drop":
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id})
 				"spray":
@@ -778,7 +784,7 @@ func update(delta: float):
 						particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":1e12,"r":5.0,"owner":c.id})
 		if c.key=="magnet":
 			for v: Dictionary in viruses:
-				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*60*float(rules.movement_multiplier),delta)
+				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*Ref.impulse(1000.0),delta)
 	electricity.update(self)
 	for c: Dictionary in pending_cells:
 		if cells.size()<int(rules.produced_cell_limit): cells.append(c)
@@ -830,7 +836,7 @@ func update(delta: float):
 				var d=v.p.distance_to(c.p)
 				if c.alive and d<distance:avoid=c;distance=d
 			if not avoid.is_empty() and v.freeze<=0:
-				var force=avoid.p.direction_to(v.p)*150.0*virus_motion.multiplier(self,v)/virus_motion.REFERENCE_MASS*physics.mass(self,v)
+				var force=avoid.p.direction_to(v.p)*150.0*virus_motion.multiplier(self,v)*Ref.MASS_UNIT
 				physics.accelerate(self,v,force,delta)
 				v.visual_avoiding=true
 		if v.type=="swarmer":update_swarm_attraction(v,delta)
@@ -911,8 +917,8 @@ func advance_blasts(delta):
 			# Distance to the fixture, including rotated rectangular walls.
 			if not contains_cell(body,blast.p,blast.radius) if body.has("key") else body.p.distance_to(blast.p)>blast.radius+physics.radius(body):continue
 			blast.hit[body.id]=true
-			# Force 600 / 400 is integrated for one original fixed physics step.
-			physics.impulse(self,body,blast.p.direction_to(body.p)*blast.force*(26.0/3.5)/60.0,blast.p)
+			# Reference 600 / 400 is a one-shot linear impulse, not a force times dt.
+			physics.impulse(self,body,blast.p.direction_to(body.p)*Ref.impulse(blast.force),blast.p)
 			if blast.damage>0:
 				if body.has("type"):damage_virus(body,blast.damage,{"p":blast.p,"cause":"blast"})
 				else:damage_cell(body,blast.damage,false,{"kind":"cell","id":blast.owner,"p":blast.p})
@@ -925,7 +931,7 @@ func projectile_fraction(body,from,to,radius):
 	if physics.is_box(self,body):
 		start=start.rotated(-float(body.get("angle",0)))
 		motion=motion.rotated(-float(body.get("angle",0)))
-		var half=Vector2(43,13)+Vector2.ONE*radius
+		var half=physics.half_size(body)+Vector2.ONE*radius
 		var entry=0.0;var leave=1.0
 		for axis in range(2):
 			if absf(motion[axis])<0.000001:
@@ -987,7 +993,7 @@ func update_swarm_attraction(v,delta):
 	var nearby=viruses.filter(func(other):return other.alive and other.id!=v.id and not other.jump and v.p.distance_to(other.p)<60.0*26.0/3.5)
 	nearby.sort_custom(func(a,b):return v.p.distance_squared_to(a.p)<v.p.distance_squared_to(b.p))
 	for other in nearby.slice(0,9):
-		physics.accelerate(self,v,v.p.direction_to(other.p)*25.0*virus_motion.multiplier(self,v)/virus_motion.REFERENCE_MASS*physics.mass(self,v),delta)
+		physics.accelerate(self,v,v.p.direction_to(other.p)*25.0*virus_motion.multiplier(self,v)*Ref.MASS_UNIT,delta)
 
 func join_swarm_contacts():
 	for v in viruses:
@@ -1027,6 +1033,8 @@ func next_round():
 	rebuild_links()
 	# Original TradeHealth processes exchanges sequentially after restoration.
 	for c in cells:
+		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
+	for c in cells:
 		if c.key!="swapper":continue
 		var neighbors=ability_targets(c)
 		neighbors.sort_custom(func(a,b):
@@ -1060,9 +1068,9 @@ func finish(won):
 	record("result",{"won":won,"round":round_no})
 
 func body_radius(c, direction):
-	if catalog[c.key].behavior!="wall": return 18.0
+	if not physics.is_box(self,c): return physics.radius(c)
 	var local=direction.rotated(-c.angle).abs()
-	return minf(43.0/maxf(0.001,local.x),13.0/maxf(0.001,local.y))
+	return minf(physics.half_size(c).x/maxf(0.001,local.x),physics.half_size(c).y/maxf(0.001,local.y))
 
 # Provisional soft-body constraints: touching membranes, fixed neighbour links.
 func rebuild_blood_links():
@@ -1225,3 +1233,21 @@ func nearest_blood_at(p: Vector2,positions: PackedVector2Array) -> Dictionary:
 			distance=candidate
 			best=blood[i]
 	return best
+
+func drive_reference_cell(c,target,delta):
+	if target.length_squared()==0:return
+	var accel=16.0
+	if catalog[c.key].behavior=="seek":accel=speed_of(c)*5.0
+	var velocity: Vector2=physics.state(c).v
+	var change: Vector2=target.normalized()*accel*Ref.SCALE*delta
+	if (velocity+change).length()>=target.length():
+		var axis=velocity.normalized()
+		change-=axis*change.dot(axis)
+	physics.state(c).v+=change
+
+func reference_core_center():
+	var center=Vector2.ZERO
+	var count=0
+	for core in blood:
+		if core.alive:center+=core.p;count+=1
+	return center/maxi(1,count)

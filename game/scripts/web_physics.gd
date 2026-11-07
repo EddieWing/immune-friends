@@ -27,19 +27,19 @@ globalThis.microcosmContacts = (() => {
   if(ix<=0x407b53d1){if(ix>0x4016cbe3)return -cosd(sign?x+Math.PI:x-Math.PI);return sind(sign?x+Math.PI/2:Math.PI/2-x)}
   if(ix<=0x40e231d5){if(ix>0x40afeddf)return cosd(sign?x+2*Math.PI:x-2*Math.PI);return sind(sign?-x-3*Math.PI/2:x-3*Math.PI/2)}
   return f(Math.cos(x));};
- function shape(r){return {p:r.slice(0,2),v:r.slice(2,4),w:r[4],r:r[5],box:r[6],cell:r[7],virus:r[8],im:r[9],ii:r[10],bounce:r[11],id:r[12],c:r[13],s:r[14],eligible:r[15],axes:[[r[13],r[14]],[-r[14],r[13]]]}}
- const extent=(a,n)=>a.box?Math.abs(dot(n,a.axes[0]))*43+Math.abs(dot(n,a.axes[1]))*13:a.r;
- const support=(a,n)=>a.box?add(add(a.p,mul(mul(a.axes[0],43),Math.sign(dot(n,a.axes[0])))),mul(mul(a.axes[1],13),Math.sign(dot(n,a.axes[1])))):add(a.p,mul(n,a.r));
+ function shape(r){return {p:r.slice(0,2),v:r.slice(2,4),w:r[4],r:r[5],box:r[6],hx:r[31]??43,hy:r[32]??13,cell:r[7],virus:r[8],im:r[9],ii:r[10],bounce:r[11],id:r[12],c:r[13],s:r[14],eligible:r[15],axes:[[r[13],r[14]],[-r[14],r[13]]]}}
+ const extent=(a,n)=>a.box?Math.abs(dot(n,a.axes[0]))*a.hx+Math.abs(dot(n,a.axes[1]))*a.hy:a.r;
+ const support=(a,n)=>a.box?add(add(a.p,mul(mul(a.axes[0],a.hx),Math.sign(dot(n,a.axes[0])))),mul(mul(a.axes[1],a.hy),Math.sign(dot(n,a.axes[1])))):add(a.p,mul(n,a.r));
  function hit(a,b){
-  const dx=f(b.p[0]-a.p[0]),dy=f(b.p[1]-a.p[1]),reach=(a.box?45:a.r)+(b.box?45:b.r)+.02;
+  const dx=f(b.p[0]-a.p[0]),dy=f(b.p[1]-a.p[1]),reach=(a.box?Math.hypot(a.hx,a.hy):a.r)+(b.box?Math.hypot(b.hx,b.hy):b.r)+.02;
   if(f(f(dx*dx)+f(dy*dy))>reach*reach)return null;
   const d=[dx,dy];
   let n=[1,0],depth=0,p;
   if(!a.box&&!b.box){const distance=len(d);depth=a.r+b.r-distance;if(depth<-.02)return null;n=distance>.0001?div(d,distance):[1,0];p=add(a.p,mul(n,a.r-depth*.5));}
   else if(a.box&&b.box){depth=Infinity;for(const axis of [...a.axes,...b.axes]){const overlap=extent(a,axis)+extent(b,axis)-Math.abs(dot(d,axis));if(overlap<-.02)return null;if(overlap<depth){depth=overlap;n=dot(d,axis)>=0?axis:neg(axis)}}p=mul(add(support(a,n),support(b,neg(n))),.5);}
-  else {const box=a.box?a:b,ball=a.box?b:a,local=rotate(sub(ball.p,box.p),box.c,-box.s);let closest=[Math.max(-43,Math.min(43,local[0])),Math.max(-13,Math.min(13,local[1]))];const difference=sub(local,closest),distance=len(difference);
+  else {const box=a.box?a:b,ball=a.box?b:a,local=rotate(sub(ball.p,box.p),box.c,-box.s);let closest=[Math.max(-box.hx,Math.min(box.hx,local[0])),Math.max(-box.hy,Math.min(box.hy,local[1]))];const difference=sub(local,closest),distance=len(difference);
    if(distance>.0001){depth=ball.r-distance;if(depth<-.02)return null;n=div(difference,distance)}
-   else {const dx=43-Math.abs(local[0]),dy=13-Math.abs(local[1]);n=dx<dy?[local[0]>=0?1:-1,0]:[0,local[1]>=0?1:-1];closest=add(local,mul(n,Math.min(dx,dy)));depth=ball.r+Math.min(dx,dy)}
+   else {const dx=box.hx-Math.abs(local[0]),dy=box.hy-Math.abs(local[1]);n=dx<dy?[local[0]>=0?1:-1,0]:[0,local[1]>=0?1:-1];closest=add(local,mul(n,Math.min(dx,dy)));depth=ball.r+Math.min(dx,dy)}
    n=rotate(n,box.c,box.s);if(!a.box)n=neg(n);p=add(box.p,rotate(closest,box.c,box.s));
   }return {n,depth:Math.max(0,depth),p};
  }
@@ -51,10 +51,17 @@ globalThis.microcosmContacts = (() => {
   const aim=f(a.im),bim=f(b.im);
   if(relative<0){
    const ca=f(f(ax*ny)-f(ay*nx)),cb=f(f(bx*ny)-f(by*nx));
-   const denom=a.im+b.im+(ca*ca)*a.ii+(cb*cb)*b.ii,bounce=relative < -2?Math.min(a.bounce,b.bounce):0,k=f(-(1+bounce)*relative/denom);
+   const denom=a.im+b.im+(ca*ca)*a.ii+(cb*cb)*b.ii,bounce=relative < -2?Math.max(a.bounce,b.bounce):0,k=f(-(1+bounce)*relative/denom);
    let vx=f(nx*k),vy=f(ny*k);if((a.virus&&b.cell)||(b.virus&&a.cell)){vx=f(vx*f(scale));vy=f(vy*f(scale))}
    a.v=[f(a.v[0]-f(vx*aim)),f(a.v[1]-f(vy*aim))];a.w-=f(f(ax*vy)-f(ay*vx))*a.ii;
    b.v=[f(b.v[0]+f(vx*bim)),f(b.v[1]+f(vy*bim))];b.w+=f(f(bx*vy)-f(by*vx))*b.ii;
+   const tangent=[-ny,nx],armA=[ax,ay],armB=[bx,by];
+   const after=sub(add(b.v,mul([-by,bx],b.w)),add(a.v,mul([-ay,ax],a.w)));
+   const td=a.im+b.im+Math.pow(cross(armA,tangent),2)*a.ii+Math.pow(cross(armB,tangent),2)*b.ii;
+   const cap=len([vx,vy])*.2,friction=mul(tangent,Math.max(-cap,Math.min(cap,-dot(after,tangent)/td)));
+   a.v=sub(a.v,mul(friction,a.im));a.w-=cross(armA,friction)*a.ii;
+   b.v=add(b.v,mul(friction,b.im));b.w+=cross(armB,friction)*b.ii;
+
   }
   const depth=f(Math.max(0,h.depth-.02)),denom=f(a.im+b.im),cx=f(f(f(nx*depth)*f(.65))/denom),cy=f(f(f(ny*depth)*f(.65))/denom);
   a.p=[f(a.p[0]-f(cx*aim)),f(a.p[1]-f(cy*aim))];b.p=[f(b.p[0]+f(cx*bim)),f(b.p[1]+f(cy*bim))];
@@ -62,7 +69,7 @@ globalThis.microcosmContacts = (() => {
  function contacts(bodies,scale,groups={}){
   const grid=new Map(),cells=new Map(),tiles=[],pairs=[],found=new Map();
   bodies.forEach((b,i)=>{const tile=[Math.floor(b.p[0]/96),Math.floor(b.p[1]/96)];tiles.push(tile);if(!b.eligible)return;const key=tile.join(',');if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(!b.virus){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
-  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=!b.virus?grid:cells,t=tiles[i];for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i&&(b.cell||b.virus||bodies[j].cell||bodies[j].virus)&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))pairs.push([i,j])});
+  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=!b.virus?grid:cells,t=tiles[i];for(let y=-2;y<=2;y++)for(let x=-2;x<=2;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i&&(b.cell||b.virus||bodies[j].cell||bodies[j].virus)&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))pairs.push([i,j])});
   for(let pass=0;pass<3;pass++)for(const [i,j] of pairs){const a=bodies[i],b=bodies[j],h=hit(a,b);if(!h)continue;const ids=[Math.min(a.id,b.id),Math.max(a.id,b.id)];found.set(ids.join(','),ids);resolve(a,b,h,scale)}
   return found;
  }
@@ -114,11 +121,12 @@ globalThis.microcosmContacts = (() => {
  }
  const corners=[[-43,-13],[43,-13],[43,13],[-43,13]];
  function visible(origin,target,walls){
-  const lower=[f(Math.min(origin[0],target[0])-45),f(Math.min(origin[1],target[1])-45)],upper=[f(Math.max(origin[0],target[0])+45),f(Math.max(origin[1],target[1])+45)];
+  const lower=[f(Math.min(origin[0],target[0])-160),f(Math.min(origin[1],target[1])-160)],upper=[f(Math.max(origin[0],target[0])+160),f(Math.max(origin[1],target[1])+160)];
   for(const w of walls){if(w[0]<lower[0]||w[0]>upper[0]||w[1]<lower[1]||w[1]>upper[1])continue;
    const a=rotate(sub(origin,w),w[2],w[3]),b=rotate(sub(target,w),w[2],w[3]);
-   if(Math.max(a[0],b[0])<-43||Math.min(a[0],b[0])>43||Math.max(a[1],b[1])<-13||Math.min(a[1],b[1])>13)continue;
-   if(a[0]>=-43&&a[0]<43&&a[1]>=-13&&a[1]<13)continue;
+   const hx=w[4]??43,hy=w[5]??13,corners=[[-hx,-hy],[hx,-hy],[hx,hy],[-hx,hy]];
+   if(Math.max(a[0],b[0])<-hx||Math.min(a[0],b[0])>hx||Math.max(a[1],b[1])<-hy||Math.min(a[1],b[1])>hy)continue;
+   if(a[0]>=-hx&&a[0]<hx&&a[1]>=-hy&&a[1]<hy)continue;
    for(let i=0;i<4;i++)if(intersects(a,b,corners[i],corners[(i+1)%4]))return false;
   }return true;
  }

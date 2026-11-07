@@ -41,7 +41,7 @@ func run():
 	check(s.cells.any(func(c):return c.key=="seeker" and c.get("temporary",false)),"Factory recipe produces a temporary Seeker")
 	var kinetic=add(s,"kinetic_generator",Vector2(-300,0))
 	s.experiments.tick(s,kinetic,0.1)
-	kinetic.p.x+=36
+	kinetic.p.x+=12*float(s.rules.scale)+0.001
 	s.experiments.tick(s,kinetic,0.1)
 	check(kinetic.charge==1,"Twelve microns generate one charge")
 	var magnet=add(s,"electromagnet",kinetic.p+Vector2(30,0))
@@ -84,7 +84,7 @@ func run():
 	s.rebuild_links()
 	s.phase="battle"
 	s.experiments.tick(s,bond,0.1)
-	bond.p.x+=61
+	bond.p.x+=20*float(s.rules.scale)+1
 	s.experiments.tick(s,bond,0.1)
 	check(passenger.hp>passenger.max_hp,"Kinetic Bond grants movement health")
 	# UI/settings/save round trip must retain a run flag independently of preferences.
@@ -102,7 +102,7 @@ func run():
 	scene.new_run(12,-1)
 	check(scene.sim.experimental,"New run uses toggle")
 	var dropper=add(scene.sim,"tag_drag",Vector2(100,200))
-	scene.sim.proteins.drag(scene.sim,dropper,Vector2(190,200))
+	scene.sim.proteins.drag(scene.sim,dropper,Vector2(100+30*float(scene.sim.rules.scale),200))
 	var survivor=add(scene.sim,"survivor_bomb",Vector2(300,200))
 	survivor["radius_growth"]=16
 	scene.save_run()
@@ -117,7 +117,7 @@ func run():
 	scene.enter_gym()
 	check(scene.sim.experimental and scene.lab_tools.cell_keys.size()==42 and scene.lab_tools.virus_keys.size()==8,"Gym refreshes experimental selectors")
 	dropper=add(scene.sim,"tag_drag",Vector2(100,200))
-	scene.sim.proteins.drag(scene.sim,dropper,Vector2(190,200))
+	scene.sim.proteins.drag(scene.sim,dropper,Vector2(100+30*float(scene.sim.rules.scale),200))
 	scene.gym_run()
 	scene.gym_reset_setup()
 	check(scene.sim.particles.size()==2 and scene.sim.cells[0].tags==13,"Gym reset restores preparation tags and inventory")

@@ -8,8 +8,8 @@ var ray_walls=[]
 var prepared_visibility=false
 const WALL_CORNERS=[Vector2(-43,-13),Vector2(43,-13),Vector2(43,13),Vector2(-43,13)]
 func visible(sim,origin: Vector2,target: Vector2):
- var lower=origin.min(target)-Vector2(45,45)
- var upper=origin.max(target)+Vector2(45,45)
+ var lower=origin.min(target)-Vector2(160,160)
+ var upper=origin.max(target)+Vector2(160,160)
  for c in (ray_walls if prepared_visibility else sim.cells):
   if not prepared_visibility and (not c.alive or sim.catalog[c.key].behavior!="wall"): continue
   var position: Vector2=c.p
@@ -25,17 +25,19 @@ func visible(sim,origin: Vector2,target: Vector2):
   else:
    a=(origin-position).rotated(-c.angle)
    b=(target-position).rotated(-c.angle)
-  if maxf(a.x,b.x)<-43 or minf(a.x,b.x)>43 or maxf(a.y,b.y)<-13 or minf(a.y,b.y)>13:continue
-  if Rect2(-43,-13,86,26).has_point(a): continue
+  var half: Vector2=c.half if prepared_visibility else sim.physics.half_size(c)
+  var corners=[-half,Vector2(half.x,-half.y),half,Vector2(-half.x,half.y)]
+  if maxf(a.x,b.x)<-half.x or minf(a.x,b.x)>half.x or maxf(a.y,b.y)<-half.y or minf(a.y,b.y)>half.y:continue
+  if Rect2(-half,half*2).has_point(a): continue
   for i in range(4):
-   if Geometry2D.segment_intersects_segment(a,b,WALL_CORNERS[i],WALL_CORNERS[(i+1)%4])!=null: return false
+   if Geometry2D.segment_intersects_segment(a,b,corners[i],corners[(i+1)%4])!=null: return false
  return true
 func update(sim,delta):
  ray_walls.clear()
  for wall in sim.cells:
   if not wall.alive or sim.catalog[wall.key].behavior!="wall":continue
   var axis=Vector2.RIGHT.rotated(-wall.angle)
-  ray_walls.append({"p":wall.p,"x_axis":Vector2(axis.x,-axis.y),"y_axis":Vector2(axis.y,axis.x)})
+  ray_walls.append({"half":sim.physics.half_size(wall),"p":wall.p,"x_axis":Vector2(axis.x,-axis.y),"y_axis":Vector2(axis.y,axis.x)})
  prepared_visibility=true
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  observed_sim=sim
@@ -46,7 +48,7 @@ func update(sim,delta):
   var origins=[];var targets=[];var walls=[]
   for b in sim.blood:origins.append([b.p.x,b.p.y])
   for v in sim.viruses:targets.append([v.p.x,v.p.y,v.alive])
-  for wall in ray_walls:walls.append([wall.p.x,wall.p.y,wall.y_axis.y,wall.y_axis.x])
+  for wall in ray_walls:walls.append([wall.p.x,wall.p.y,wall.y_axis.y,wall.y_axis.x,wall.half.x,wall.half.y])
   web_targets=JSON.parse_string(sim.physics.web_kernel.nearestVisible(JSON.stringify([origins,targets,walls,float(config.attention_radius)],"",true,true)))
  if fresh or (phase!=sim.phase and sim.phase in ["shop","battle"]) or cursor>sim.event_sequence:
   states.clear()

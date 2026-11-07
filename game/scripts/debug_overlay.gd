@@ -81,14 +81,14 @@ func draw(view):
   if core.alive: circle(view,core.p,13,Color("#ed18ff"))
  for cell in view.sim.cells:
   if not cell.alive: continue
-  if view.sim.catalog[cell.key].behavior=="wall":
+  if view.sim.physics.is_box(view.sim,cell):
    view.draw_set_transform(cell.p,cell.angle)
-   view.draw_rect(Rect2(-43,-13,86,26),Color(1,0,0.15,0.3),true)
-   view.draw_rect(Rect2(-43,-13,86,26),Color("#ff002b"),false,2.5)
+   view.draw_rect(Rect2(-view.sim.physics.half_size(cell),view.sim.physics.half_size(cell)*2),Color(1,0,0.15,0.3),true)
+   view.draw_rect(Rect2(-view.sim.physics.half_size(cell),view.sim.physics.half_size(cell)*2),Color("#ff002b"),false,2.5)
    view.draw_set_transform(Vector2.ZERO)
-  else: circle(view,cell.p,18,Color("#ff002b"))
+  else: circle(view,cell.p,view.sim.physics.radius(cell),Color("#ff002b"))
  for virus in view.sim.viruses:
-  if virus.alive: circle(view,virus.p,10,Color("#ed18ff"))
+  if virus.alive: circle(view,virus.p,view.sim.physics.radius(virus),Color("#ed18ff"))
  for particle in view.sim.particles:
   if particle.kind=="bullet": circle(view,particle.p,particle.r,Color("#ff002b"))
 func circle(view,p,r,color):

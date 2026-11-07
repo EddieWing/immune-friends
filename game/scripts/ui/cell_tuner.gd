@@ -13,7 +13,7 @@ const PHYSICS_FIELDS={
  "linear_damping":[0,100,0.05,"How quickly free movement fades."],
  "angular_damping":[0,100,0.05,"How quickly rotation settles."],
  "restitution":[0,1,0.05,"Collision bounce: 0 absorbs, 1 is elastic. The lower value of the pair is used."],
- "impulse_scale":[0,100,0.1,"Strength of ability pushes received by this type."],
+ "impulse_scale":[0,100,0.1,"Ability push multiplier. 1 uses the reference impulse; mass determines the resulting speed."],
  "motor_response":[0,100,0.1,"How quickly movement tries to reach the desired speed."],
  "motor_force":[0,10000,1,"Maximum movement force."],
  "max_speed":[0,2000,1,"Maximum physical movement speed."],

@@ -1,0 +1,166 @@
+{
+  "wall": [
+    128,
+    32
+  ],
+  "tackle": [
+    86,
+    86
+  ],
+  "seeker": [
+    64,
+    64
+  ],
+  "orbiter": [
+    104,
+    104
+  ],
+  "magnet": [
+    54,
+    54
+  ],
+  "bandage": [
+    52,
+    52
+  ],
+  "regen": [
+    64,
+    64
+  ],
+  "bank": [
+    64,
+    64
+  ],
+  "resonant_wall": [
+    196,
+    49
+  ],
+  "resonant_buffer": [
+    64,
+    64
+  ],
+  "turret": [
+    64,
+    64
+  ],
+  "sniper": [
+    64,
+    64
+  ],
+  "cannon": [
+    92,
+    92
+  ],
+  "bullet_wall": [
+    148,
+    84
+  ],
+  "impact_wall": [
+    196,
+    49
+  ],
+  "tag_dropper": [
+    102,
+    102
+  ],
+  "tag_sprayer": [
+    64,
+    64
+  ],
+  "zapper": [
+    54,
+    54
+  ],
+  "generator": [
+    88,
+    88
+  ],
+  "bond": [
+    42,
+    42
+  ],
+  "bodyguard": [
+    42,
+    42
+  ],
+  "radar": [
+    64,
+    42
+  ],
+  "swapper": [
+    42,
+    42
+  ],
+  "accelerator": [
+    42,
+    42
+  ],
+  "wildcard": [
+    64,
+    64
+  ],
+  "bomb": [
+    64,
+    64
+  ],
+  "pusher": [
+    92,
+    92
+  ],
+  "mortar": [
+    64,
+    64
+  ],
+  "mint": [
+    88,
+    88
+  ],
+  "tag_splitter": [
+    64,
+    64
+  ],
+  "tag_drag": [
+    94,
+    94
+  ],
+  "greed_wall": [
+    196,
+    49
+  ],
+  "survivor_bomb": [
+    64,
+    64
+  ],
+  "electric_wall": [
+    196,
+    49
+  ],
+  "electromagnet": [
+    104,
+    104
+  ],
+  "kinetic_generator": [
+    104,
+    104
+  ],
+  "tag_proof": [
+    92,
+    92
+  ],
+  "seeker_factory": [
+    128,
+    128
+  ],
+  "gatling": [
+    100,
+    100
+  ],
+  "kinetic_bond": [
+    42,
+    42
+  ],
+  "hungry_bomb": [
+    64,
+    64
+  ]
+}

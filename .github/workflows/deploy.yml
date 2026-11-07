@@ -42,7 +42,10 @@ jobs:
       - name: Continuous menu entry
         run: timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_camera_entry.gd
       - name: Verify reference virus speeds
-        run: timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_virus_reference_speed.gd
+        run: |
+          timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_virus_reference_speed.gd
+          timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_reference_physics.gd
+          timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_core_rest.gd
       - name: Gym input regression
         run: timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/test_gym_input.gd
       - name: Export browser game

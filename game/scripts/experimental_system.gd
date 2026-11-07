@@ -22,7 +22,7 @@ func tick(s,c,delta):
 		c.distance_charge-=count*s.constant_of(c,"distance",12)*s.rules.scale
 	if c.key=="electromagnet":
 		for v in s.viruses:
-			if v.alive and v.p.distance_to(c.p)<s.range_of(c): s.physics.accelerate(s,v,v.p.direction_to(c.p)*60*float(s.rules.movement_multiplier),delta)
+			if v.alive and v.p.distance_to(c.p)<s.range_of(c): s.physics.accelerate(s,v,v.p.direction_to(c.p)*preload("res://scripts/reference_physics.gd").impulse(1000.0),delta)
 
 func feed_target(s,c):
 	if not s.experimental: return {}

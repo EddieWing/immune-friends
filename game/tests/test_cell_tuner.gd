@@ -65,7 +65,7 @@ func run():
  owner.set_process(false)
  check(owner.sim.catalog.wall.hp==9 and owner.sim.catalog.seeker.hp==2,"Restart loads only saved types")
  var wall=owner.sim.make_cell("wall",Vector2.ZERO)
- check(is_equal_approx(owner.sim.physics.mass(owner.sim,wall),4*86*26/(PI*18*18)),"Saved density controls physical mass after restart")
+ check(is_equal_approx(owner.sim.physics.mass(owner.sim,wall),4*owner.sim.physics.half_size(wall).x*owner.sim.physics.half_size(wall).y*4/(PI*18*18)),"Saved density controls physical mass after restart")
  check(owner.sim.physics.parameter(owner.sim,wall,"linear_damping")==3,"Saved damping reloads into solver")
  for cell_key in scene.sim.catalog:
   check(tuner.schema(cell_key).has("physics/density"),"Physics available for "+cell_key)

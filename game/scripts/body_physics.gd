@@ -1,6 +1,7 @@
 extends RefCounted
 # F2: impulse-based bodies with circle / oriented-box contacts.
-# Current game geometry is retained. This is not a numerically identical Box2D port.
+# Reference geometry and units; this is not a numerically identical Box2D port.
+const Ref=preload("res://scripts/reference_physics.gd")
 var web_kernel
 func _init():
 	if OS.has_feature("web"):
@@ -47,28 +48,35 @@ func velocity(body):
 func angular_velocity(body):
 	return float(state(body).w)
 func is_box(s,body: Dictionary) -> bool:
-	return body.has("key") and s.catalog[body.key].behavior=="wall"
+	var size=Ref.size(body)
+	return not is_equal_approx(size.x,size.y)
 func radius(body: Dictionary) -> float:
-	return 18.0 if body.has("key") else (10.0 if body.has("type") else 13.0)
+	return Ref.size(body).x*0.5
+func half_size(body):
+	return Ref.size(body)*0.5
+func broad_radius(body):
+	return half_size(body).length()
 func tuning_key(body: Dictionary) -> String:
 	return str(body.key) if body.has("key") else ("virus:"+str(body.type) if body.has("type") else "__core")
+func material_key(body):
+	return tuning_key(body)+":"+str(body.get("physics_diameter",0.0))
 func parameter(s,body: Dictionary,field: String) -> float:
-	var key=tuning_key(body)
+	var key=material_key(body)
 	if stepping and material_cache.has(key): return material_cache[key][field]
 	var fallback=s.rules.body_physics.get(field,1.0)
 	if field=="density":
 		fallback=10.0 if tuning_key(body) in ["__core","mortar","seeker_factory","wildcard"] else (0.01 if tuning_key(body)=="kinetic_generator" else 1.0)
 	return float(s.tuning.get(tuning_key(body),{}).get("physics/"+field,fallback))
 func mass(s,body: Dictionary) -> float:
-	var key=tuning_key(body)
+	var key=material_key(body)
 	if stepping and material_cache.has(key): return material_cache[key].mass
 	var density=maxf(0.001,parameter(s,body,"density"))
-	var area=86.0*26.0 if is_box(s,body) else PI*pow(radius(body),2)
+	var area=Ref.size(body).x*Ref.size(body).y if is_box(s,body) else PI*pow(radius(body),2)
 	return density*area/(PI*18.0*18.0)
 func inertia(s,body: Dictionary) -> float:
-	var key=tuning_key(body)
+	var key=material_key(body)
 	if stepping and material_cache.has(key): return material_cache[key].inertia
-	return mass(s,body)*((86.0*86.0+26.0*26.0)/12.0 if is_box(s,body) else radius(body)*radius(body)*0.5)
+	return mass(s,body)*(Ref.size(body).length_squared()/12.0 if is_box(s,body) else radius(body)*radius(body)*0.5)
 func impulse(s,body,value,point=Vector2.INF):
 	var st: Dictionary=state(body)
 	st.v+=value/mass(s,body)
@@ -89,17 +97,17 @@ func axes(body: Dictionary) -> Array[Vector2]:
 func extent(s,body: Dictionary,axis: Vector2) -> float:
 	if not is_box(s,body): return radius(body)
 	var basis: Array[Vector2]=axes(body)
-	return absf(axis.dot(basis[0]))*43.0+absf(axis.dot(basis[1]))*13.0
+	return absf(axis.dot(basis[0]))*half_size(body).x+absf(axis.dot(basis[1]))*half_size(body).y
 func support(s,body: Dictionary,axis: Vector2) -> Vector2:
 	if not is_box(s,body): return body.p+axis*radius(body)
 	var basis: Array[Vector2]=axes(body)
 	# Face centre for parallel directions, rather than an arbitrary corner.
-	return body.p+basis[0]*43.0*signf(axis.dot(basis[0]))+basis[1]*13.0*signf(axis.dot(basis[1]))
+	return body.p+basis[0]*half_size(body).x*signf(axis.dot(basis[0]))+basis[1]*half_size(body).y*signf(axis.dot(basis[1]))
 func collision(s,a: Dictionary,b: Dictionary) -> Dictionary:
 	var delta: Vector2=b.p-a.p
 	var a_box: bool=is_box(s,a);var b_box: bool=is_box(s,b)
-	var ra: float=45.0 if a_box else radius(a)
-	var rb: float=45.0 if b_box else radius(b)
+	var ra: float=broad_radius(a)
+	var rb: float=broad_radius(b)
 	if delta.length_squared()>(ra+rb+0.02)*(ra+rb+0.02): return {}
 	if not a_box and not b_box:
 		var distance: float=delta.length()
@@ -121,7 +129,7 @@ func collision(s,a: Dictionary,b: Dictionary) -> Dictionary:
 	var ball: Dictionary=b if a_box else a
 	var angle: float=float(box.get("angle",0))
 	var local: Vector2=(ball.p-box.p).rotated(-angle)
-	var closest: Vector2=local.clamp(Vector2(-43,-13),Vector2(43,13))
+	var closest: Vector2=local.clamp(-half_size(box),half_size(box))
 	var difference: Vector2=local-closest
 	var distance: float=difference.length()
 	var normal: Vector2=Vector2.RIGHT
@@ -131,7 +139,7 @@ func collision(s,a: Dictionary,b: Dictionary) -> Dictionary:
 		if depth < -0.02:return {}
 		normal=difference/distance
 	else:
-		var dx: float=43-absf(local.x);var dy: float=13-absf(local.y)
+		var dx: float=half_size(box).x-absf(local.x);var dy: float=half_size(box).y-absf(local.y)
 		normal=Vector2(1 if local.x>=0 else -1,0) if dx<dy else Vector2(0,1 if local.y>=0 else -1)
 		closest=local+normal*minf(dx,dy)
 		depth=radius(ball)+minf(dx,dy)
@@ -145,13 +153,13 @@ func solve_contact(s,a: Dictionary,b: Dictionary,hit: Dictionary):
 	var vb: Vector2=sb.v+Vector2(-arm_b.y,arm_b.x)*sb.w
 	var relative: float=(vb-va).dot(normal)
 	if relative>=0 and hit.depth<=0.02:return
-	var ma: Dictionary=material_cache.get(tuning_key(a),{}) if stepping else {}
-	var mb: Dictionary=material_cache.get(tuning_key(b),{}) if stepping else {}
+	var ma: Dictionary=material_cache.get(material_key(a),{}) if stepping else {}
+	var mb: Dictionary=material_cache.get(material_key(b),{}) if stepping else {}
 	var ima: float=1.0/(ma.mass if not ma.is_empty() else mass(s,a));var imb: float=1.0/(mb.mass if not mb.is_empty() else mass(s,b))
 	if relative<0:
 		var iia: float=1.0/(ma.inertia if not ma.is_empty() else inertia(s,a));var iib: float=1.0/(mb.inertia if not mb.is_empty() else inertia(s,b))
 		var denom: float=ima+imb+pow(arm_a.cross(normal),2)*iia+pow(arm_b.cross(normal),2)*iib
-		var bounce: float=minf(ma.restitution if not ma.is_empty() else parameter(s,a,"restitution"),mb.restitution if not mb.is_empty() else parameter(s,b,"restitution")) if relative < -2.0 else 0.0
+		var bounce: float=maxf(ma.restitution if not ma.is_empty() else parameter(s,a,"restitution"),mb.restitution if not mb.is_empty() else parameter(s,b,"restitution")) if relative < -2.0 else 0.0
 		var value: Vector2=normal*(-(1.0+bounce)*relative/denom)
 		# Deliberate game-feel boost for approaching virus/cell impacts only.
 		# Equal/opposite impulses retain momentum and the actual contact lever arm.
@@ -161,6 +169,12 @@ func solve_contact(s,a: Dictionary,b: Dictionary,hit: Dictionary):
 		sa.w-=arm_a.cross(value)*iia
 		sb.v+=value*imb
 		sb.w+=arm_b.cross(value)*iib
+		var tangent=Vector2(-normal.y,normal.x)
+		var after=(sb.v+Vector2(-arm_b.y,arm_b.x)*sb.w)-(sa.v+Vector2(-arm_a.y,arm_a.x)*sa.w)
+		var tangent_denom=ima+imb+pow(arm_a.cross(tangent),2)*iia+pow(arm_b.cross(tangent),2)*iib
+		var friction=tangent*clampf(-after.dot(tangent)/tangent_denom,-value.length()*0.2,value.length()*0.2)
+		sa.v-=friction*ima;sa.w-=arm_a.cross(friction)*iia
+		sb.v+=friction*imb;sb.w+=arm_b.cross(friction)*iib
 	# Small mass-weighted overlap correction; momentum comes from the impulses above.
 	var correction: Vector2=normal*maxf(0,hit.depth-0.02)*0.65/(ima+imb)
 	a.p-=correction*ima
@@ -190,8 +204,8 @@ func candidate_pairs(bodies: Array) -> Array:
 		if not eligible[i]:continue
 		var tile: Vector2i=tiles[i]
 		var candidates: Dictionary=grid if cells[i] else cell_grid
-		for y in range(-1,2):
-			for x in range(-1,2):
+		for y in range(-2,3):
+			for x in range(-2,3):
 				var neighbour=tile+Vector2i(x,y)
 				if not candidates.has(neighbour):continue
 				for j in candidates[neighbour]:
@@ -224,7 +238,7 @@ func step(s,delta: float):
 		material_cache.clear()
 		web_templates.clear();web_materials.clear();web_material_ids.clear();web_materials_dirty=true
 	for body in bodies:
-		var key=tuning_key(body)
+		var key=material_key(body)
 		if material_cache.has(key): continue
 		var material={}
 		for field in ["density","restitution","motor_response","motor_force","linear_damping","angular_damping","max_speed","max_angular_speed"]:
@@ -238,7 +252,7 @@ func step(s,delta: float):
 		if not live.has(id): states.erase(id)
 	for i in range(s.blood.size()):
 		if s.blood[i].alive:state(s.blood[i]).v=s.blood_velocity.get(i,Vector2.ZERO)
-	var steps=maxi(1,ceili(delta/float(settings.max_step)))
+	var steps=maxi(1,ceili(delta/float(settings.max_step)-0.0000001))
 	var dt: float=delta/steps
 	if web_kernel!=null and web_angles_supported(bodies):
 		advance_web(s,bodies,delta,steps)
@@ -250,7 +264,7 @@ func step(s,delta: float):
 		stepping=false
 		return
 	var broad_radii: Array[float]=[]
-	for body in bodies: broad_radii.append(45.0 if is_box(s,body) else radius(body))
+	for body in bodies: broad_radii.append(broad_radius(body))
 	for tick in range(steps):
 		# Existing elastic bonds retain their rest length and nearest-neighbour rules.
 		for link in s.links:
@@ -274,7 +288,7 @@ func step(s,delta: float):
 			if not body.has("key") and not body.has("type"):continue # Blood retains its soft-body integrator until F5.
 			if body.get("emerging",false):continue # Scripted birth animation remains outside F2.
 			var st: Dictionary=state(body)
-			var material: Dictionary=material_cache[tuning_key(body)]
+			var material: Dictionary=material_cache[material_key(body)]
 			var velocity: Vector2=st.v
 			var spin: float=st.w
 			var position: Vector2=body.p
@@ -288,8 +302,8 @@ func step(s,delta: float):
 				var force: Vector2=(target-velocity)*float(material.motor_response)
 				force=force.limit_length(float(material.motor_force))
 				velocity+=force/float(material.mass)*dt
-			velocity*=1.0 if body.get("jump",false) else exp(-float(material.linear_damping)*dt)
-			spin*=exp(-float(material.angular_damping)*dt)
+			velocity*=1.0 if body.get("jump",false) else 1.0/(1.0+float(material.linear_damping)*dt)
+			spin*=1.0/(1.0+float(material.angular_damping)*dt)
 			velocity=velocity.limit_length(float(material.max_speed))
 			spin=clampf(spin,-float(material.max_angular_speed),float(material.max_angular_speed))
 			position+=velocity*dt
@@ -361,16 +375,16 @@ func advance_web(s,bodies: Array,delta: float,steps: int):
 		web_template_dt=dt
 		web_templates.clear();web_materials.clear();web_material_ids.clear();web_materials_dirty=true
 	for m: Dictionary in material_cache.values():
-		m.linear_decay=exp(-float(m.linear_damping)*dt)
-		m.angular_decay=exp(-float(m.angular_damping)*dt)
+		m.linear_decay=1.0/(1.0+float(m.linear_damping)*dt)
+		m.angular_decay=1.0/(1.0+float(m.angular_damping)*dt)
 	# Shared material columns are prepared once per kind, not looked up for
 	# every body. Dynamic columns remain full-precision Float64 values.
 	for body: Dictionary in bodies:
-		var key: String=tuning_key(body)
+		var key: String=material_key(body)
 		if web_templates.has(key):continue
 		var m: Dictionary=material_cache[key]
 		var cell: bool=body.has("key");var virus: bool=body.has("type")
-		web_templates[key]=PackedFloat64Array([0,0,0,0,0,radius(body),float(is_box(s,body)),float(cell),float(virus),1.0/m.mass,1.0/m.inertia,m.restitution,0,1,0,1,0,0,0,0,0,m.motor_response,m.motor_force,m.mass,m.linear_damping,m.angular_damping,m.max_speed,m.max_angular_speed,m.inertia,m.linear_decay,m.angular_decay])
+		web_templates[key]=PackedFloat64Array([0,0,0,0,0,radius(body),float(is_box(s,body)),float(cell),float(virus),1.0/m.mass,1.0/m.inertia,m.restitution,0,1,0,1,0,0,0,0,0,m.motor_response,m.motor_force,m.mass,m.linear_damping,m.angular_damping,m.max_speed,m.max_angular_speed,m.inertia,m.linear_decay,m.angular_decay,half_size(body).x,half_size(body).y])
 		web_material_ids[key]=web_materials.size()
 		web_materials.append(Array(web_templates[key]))
 		web_materials_dirty=true
@@ -397,7 +411,7 @@ func advance_web(s,bodies: Array,delta: float,steps: int):
 		rows[row_offset+9]=float(not body.get("jump",false) and not body.get("emerging",false))
 		rows[row_offset+10]=float(body.get("emerging",false))
 		rows[row_offset+11]=float(float(body.get("freeze",0))>0)
-		rows[row_offset+12]=web_material_ids[tuning_key(body)]
+		rows[row_offset+12]=web_material_ids[material_key(body)]
 		row_offset+=13
 	var links=[]
 	for link in s.links:

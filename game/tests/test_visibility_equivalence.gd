@@ -16,8 +16,9 @@ func original_visible(sim,origin,target):
   if not c.alive or sim.catalog[c.key].behavior!="wall": continue
   var a=(origin-c.p).rotated(-c.angle)
   var b=(target-c.p).rotated(-c.angle)
-  var corners=[Vector2(-43,-13),Vector2(43,-13),Vector2(43,13),Vector2(-43,13)]
-  if Rect2(-43,-13,86,26).has_point(a): continue
+  var half=sim.physics.half_size(c)
+  var corners=[-half,Vector2(half.x,-half.y),half,Vector2(-half.x,half.y)]
+  if Rect2(-half,half*2).has_point(a): continue
   for i in range(4):
    if Geometry2D.segment_intersects_segment(a,b,corners[i],corners[(i+1)%4])!=null: return false
  return true

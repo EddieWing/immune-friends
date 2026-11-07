@@ -84,6 +84,7 @@ func route_food(s,delta):
 			continue
 		p.life=0
 		if chosen.has("type"):
+			chosen["physics_diameter"]=float(chosen.get("physics_diameter",2.0))+0.5
 			chosen.hp+=1;chosen.peak_hp=maxf(chosen.get("peak_hp",chosen.hp),chosen.hp)
 			s.record("virus_fed",{"id":chosen.id,"p":chosen.p,"from":p.p,"hp":chosen.hp})
 		else:
@@ -132,7 +133,7 @@ func produce(s,parent,key,elite=false,launch_force=500.0):
 	child.start=child.p;child.angle=parent.angle;child.start_angle=parent.angle
 	child["temporary"]=true;child["creator"]=parent.id
 	# One launch impulse, not a forced velocity over successive frames.
-	s.physics.impulse(s,child,direction*launch_force*(26.0/3.5)/60.0)
+	s.physics.impulse(s,child,direction*preload("res://scripts/reference_physics.gd").impulse(launch_force))
 	s.pending_cells.append(child)
 	s.record("produced",{"id":parent.id,"p":parent.p,"key":key,"child":child.id,"elite":elite})
 	return child

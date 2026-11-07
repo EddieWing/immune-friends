@@ -203,7 +203,8 @@ func draw_cell(c):
 	var wall=d.behavior=="wall"
 	# Shared silhouette for shop and both field themes.
 	var texture=visuals.body(c.key,d)
-	var extent=Vector2(102,102) if wall else Vector2(58,58)
+	var physical=sim.physics.half_size(c)*2
+	var extent=physical*Vector2(128.0/108.0,128.0/32.6) if wall else physical*(128.0/86.0)
 	draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p+Vector2(2,4))))
 	draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
 	if not new_field and optical_intensity>0:
@@ -254,12 +255,13 @@ func capsule_style(color):
 func draw_virus(v):
 	var reaction=reactions.pose("virus",v.id)
 	var feeding_scale=virus_behavior.scale_of(v.id)
+	var physical_scale=sim.physics.radius(v)/10.0
 	var windup=attacks.jumper_pose(v)
 	var recovery=attacks.jumper_recovery(v)
 	var stretch=0.14 if v.jump else -recovery*0.1
-	draw_set_transform_matrix(reactions.deform_transform("virus",v.id,Transform2D(0,Vector2((1+windup*0.2+stretch)*feeding_scale,(1-windup*0.18-stretch)/feeding_scale),0,v.p+reaction.offset)))
+	draw_set_transform_matrix(reactions.deform_transform("virus",v.id,Transform2D(0,Vector2((1+windup*0.2+stretch)*feeding_scale*physical_scale,(1-windup*0.18-stretch)/feeding_scale*physical_scale),0,v.p+reaction.offset)))
 	if not new_field and v.hp>1:
-		virus_health.append([v.p+reaction.offset,Vector2((1+windup*0.2+stretch)*feeding_scale,(1-windup*0.18-stretch)/feeding_scale),str(int(v.hp))])
+		virus_health.append([v.p+reaction.offset,Vector2((1+windup*0.2+stretch)*feeding_scale*physical_scale,(1-windup*0.18-stretch)/feeding_scale*physical_scale),str(int(v.hp))])
 	var rendered=v.duplicate()
 	rendered.defer_health=true
 	rendered.p=Vector2.ZERO

@@ -59,7 +59,7 @@ func _initialize():
 	var mint=add(s,"mint",Vector2(-300,0))
 	var splitter=add(s,"tag_splitter",Vector2(0,200))
 	var dropper=add(s,"tag_drag",Vector2(-200,-200))
-	s.proteins.drag(s,dropper,Vector2(-110,-200))
+	s.proteins.drag(s,dropper,Vector2(-200+30*float(s.rules.scale),-200))
 	check(dropper.tags==13 and s.particles.size()==2,"Tag drag spends stock by travelled distance")
 	s.begin_battle()
 	s.spawn_queue.clear()
