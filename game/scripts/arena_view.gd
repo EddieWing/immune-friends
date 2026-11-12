@@ -4,6 +4,8 @@ const SIMPLE_VIRUS_BODY=preload("res://assets/ui/virus-field-body.svg")
 const SIMPLE_CORE_BODIES=preload("res://assets/ui/core-field-bodies.svg")
 const CORE_FACE_PARTS=preload("res://assets/ui/core-face-parts.svg")
 const CLASSIC_CORE_BODIES=preload("res://assets/ui/core-classic-bodies.svg")
+var atlas_enabled=true
+var atlas=preload('res://atlas_integration/presentation.gd').new()
 var virus_health=[]
 var effect_strokes=preload("res://scripts/stroke_cache.gd").new()
 const CELL_FACE_PARTS=preload("res://assets/ui/cell-face-parts.svg")
@@ -68,6 +70,7 @@ func _process(delta):
 		visual_revision=sim.presentation_revision
 	if sim!=null: diagnostics.update(sim,delta)
 	if sim!=null:
+		if atlas_enabled:atlas.update(sim,delta)
 		microscope_effects.update(sim,delta,-1.0 if water_paused==null else (0.0 if water_paused else delta))
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)
@@ -168,6 +171,7 @@ func _draw():
 			draw_colored_polygon(PackedVector2Array([tip+d*5,tip-d*3+d.orthogonal()*4,tip-d*3-d.orthogonal()*4]),Color("#283d49"))
 	microscope_effects.draw_over(self)
 	presentation.draw_events(self)
+	if atlas_enabled:atlas.draw_deaths(self)
 	reactions.draw(self)
 	virus_behavior.draw_effects(self)
 	support.draw(self)
@@ -189,6 +193,18 @@ func face(p, factor, id, hurt, look=Vector2.ZERO,focused=false):
 	face_part(6,p,factor)
 
 func draw_cell(c):
+	if atlas_enabled:
+		var width=sim.physics.extent(sim,c,Vector2.RIGHT.rotated(c.angle))*(2.2 if sim.catalog[c.key].behavior=="wall" else 2.5)
+		atlas.draw_body(self,c,width)
+		support.draw_cell(self,c)
+		var fraction=clampf(c.hp/maxf(c.max_hp,c.hp),0,1)
+		draw_line(c.p+Vector2(-12,22),c.p+Vector2(12,22),Color("#453450"),3,true)
+		draw_line(c.p+Vector2(-12,22),c.p+Vector2(-12+24*fraction,22),Color("#cae2b0"),3,true)
+		text_at(c.p+Vector2(18,31),str(int(ceil(c.hp))),10,Color("#e7efe1"))
+		if c.charge>0:text_at(c.p+Vector2(-5,-27),"ϟ",18,Color("#ffe89a"))
+		if c.rank>1:
+			for i in range(c.rank):draw_circle(c.p+Vector2(-6+i*6,-27),2.2,Color("#ffe6a1"))
+		return
 	var d=sim.catalog[c.key]
 	var color=Color(d.color)
 	var pulse=1+sin(time*2+c.id)*0.035
@@ -270,6 +286,11 @@ func capsule_style(color):
 	return s
 
 func draw_virus(v):
+	if atlas_enabled:
+		atlas.draw_body(self,v,sim.physics.radius(v)*3.0)
+		if v.hp>1:text_at(v.p+Vector2(12,-9),str(int(v.hp)),10,Color("#e7efe1"))
+		if v.get("freeze",0)>0:draw_arc(v.p,sim.physics.radius(v)*1.3,0,TAU,20,Color("#b7def0"),1,true)
+		return
 	var reaction=reactions.pose("virus",v.id)
 	var feeding_scale=virus_behavior.scale_of(v.id)
 	var windup=attacks.jumper_pose(v)
@@ -323,6 +344,11 @@ func draw_warning(center,lane):
 		text_at(marker+Vector2(-8,32),str(entry.count),13,Color("#365b70"))
 
 func draw_blood_cluster():
+	if atlas_enabled:
+		for body in sim.blood:
+			if body.alive:atlas.draw_body(self,body,34.0)
+		presentation.draw_bonds(self,"core")
+		return
 	var occupied={}
 	for link in sim.blood_links:
 		var a=sim.blood[link.a]

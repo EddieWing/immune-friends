@@ -30,5 +30,16 @@ void fragment() {
   float bubble=(1.0-smoothstep(0.06,0.095,length(fract(bubbles)-vec2(0.2+0.6*random,0.2+0.6*fract(random*7.0)))))*step(0.78,random);
   base=mix(base,vec3(0.98),bubble*0.4);
  }
+ // Original microscope structures and fluid motion, remapped to atlas violet.
+ float detail=dot(base,vec3(0.2126,0.7152,0.0722));
+ vec3 deep=vec3(0.035,0.020,0.061);
+ vec3 membrane=vec3(0.115,0.075,0.160);
+ base=mix(deep,membrane,smoothstep(0.45,1.0,detail)*0.65);
+ base+=vec3(0.012,0.007,0.018)*water*optical_intensity;
+ // Uneven translucent membranes at the optical periphery, quiet central play area.
+ vec2 organic=uv*vec2(6.0,4.0)+drift*0.09;
+ float membrane_edge=exp(-pow((length(fract(organic)-0.5)-0.37)*44.0,2.0));
+ float peripheral=smoothstep(0.22,0.72,length(UV-0.5));
+ base+=vec3(0.026,0.018,0.038)*membrane_edge*peripheral*optical_intensity;
  COLOR=vec4(base,opacity);
 }

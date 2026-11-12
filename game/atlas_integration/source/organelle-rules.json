@@ -1,0 +1,113 @@
+{
+  "size_basis": "atlas_tile_width",
+  "rules": [
+    {
+      "id": 1,
+      "size_percent": 30,
+      "count": 1,
+      "always": true
+    },
+    {
+      "id": 2,
+      "size_percent": 20,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 3,
+      "size_percent": 10,
+      "count": 3,
+      "always": false
+    },
+    {
+      "id": 4,
+      "size_percent": 18,
+      "count": 1,
+      "always": true
+    },
+    {
+      "id": 5,
+      "size_percent": 20,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 6,
+      "size_percent": 24,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 7,
+      "size_percent": 17,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 8,
+      "size_percent": 18,
+      "count": 1,
+      "always": true
+    },
+    {
+      "id": 9,
+      "size_percent": 12,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 10,
+      "size_percent": 21,
+      "count": 1,
+      "always": true
+    },
+    {
+      "id": 11,
+      "size_percent": 18,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 12,
+      "size_percent": 11,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 13,
+      "size_percent": 23,
+      "count": 1,
+      "always": true
+    },
+    {
+      "id": 14,
+      "size_percent": 10,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 15,
+      "size_percent": 12,
+      "count": 2,
+      "always": true
+    },
+    {
+      "id": 16,
+      "size_percent": 16,
+      "count": 1,
+      "always": false
+    },
+    {
+      "id": 17,
+      "size_percent": 9,
+      "count": 1,
+      "always": false
+    }
+  ],
+  "count_semantics": "maximum",
+  "always_semantics": "priority_may_omit_if_no_space",
+  "fit_policy": {
+    "minimum_scale": 0.5,
+    "gap_atlas_pixels": 6
+  }
+}
