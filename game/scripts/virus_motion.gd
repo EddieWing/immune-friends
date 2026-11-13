@@ -47,12 +47,13 @@ func tick(s,v,dir,delta,prepared={}):
 # Reference motor applies constant acceleration; above the limit only lateral force remains.
 func continuous(s,v,dir,delta,limit,acceleration):
 	if v.freeze>0:return
-	var velocity: Vector2=s.physics.state(v).v
+	var body_state: Dictionary=s.physics.state(v)
+	var velocity: Vector2=body_state.v
 	var change: Vector2=dir*acceleration*delta
 	if (velocity+change).length()>=limit:
 		var axis=velocity.normalized()
 		change-=axis*change.dot(axis)
-	s.physics.state(v).v+=change
+	body_state.v+=change
 
 func apply_impulse(s,v,value,body_mass):
 	var body_state=s.physics.state(v)

@@ -1,0 +1,51 @@
+extends SceneTree
+const Sim=preload("res://scripts/simulation.gd")
+const Facts=preload("res://scripts/ui/cell_facts.gd")
+const Save=preload("res://scripts/preparation_save.gd")
+func _initialize():
+	var sim=Sim.new()
+	sim.reset(42,12)
+	sim.blood.clear()
+	sim.blood_links.clear()
+	var a=sim.make_cell("swapper",Vector2.ZERO)
+	var b=sim.make_cell("greed_wall",Vector2(45,0))
+	a.max_hp=9;a.hp=9
+	sim.cells=[a,b]
+	sim.phase="recap"
+	sim.next_round()
+	assert(b.max_hp==9 and a.max_hp==2)
+	assert("Round 2 swap: 2 → 9 HP" in Facts.lines(sim,b))
+	a.p=Vector2(500,0)
+	sim.rebuild_links()
+	var copy=sim.make_cell("greed_wall",b.p)
+	sim.cells.append(copy)
+	sim.merge(b,copy)
+	assert(b.max_hp==11)
+	var survivor=sim.make_cell("survivor_bomb",Vector2(200,0))
+	survivor.radius_growth=16.0
+	sim.cells.append(survivor)
+	var expected=Facts.lines(sim,b)
+	var expected_radius=Facts.lines(sim,survivor)
+	var saved=Save.capture(sim)
+	var loaded=Sim.new()
+	var checked=Save.inspect(JSON.parse_string(JSON.stringify(saved)),loaded)
+	assert(not checked.has("error"))
+	Save.restore(loaded,checked)
+	assert(Facts.lines(loaded,loaded.cell_by_id(b.id))==expected)
+	assert(Facts.lines(loaded,loaded.cell_by_id(survivor.id))==expected_radius)
+	sim.money=5
+	var forecast=sim.preparation_start_health(b)
+	sim.begin_battle()
+	assert("HP set at infection start: %s (temporary)" % Facts.number(forecast) in Facts.lines(sim,b))
+	assert("Permanent HP: 11" in Facts.lines(sim,b))
+	b.hp-=3
+	assert("Current HP: 7" in Facts.lines(sim,b))
+	sim.phase="recap"
+	sim.next_round()
+	assert(not b.has("initial_health_bonus"))
+	assert(not b.has("initial_conversion_health"))
+	assert(b.max_hp==11)
+	assert("HP becomes 2 ×" in Facts.ability(sim,"greed_wall",1))
+	assert("HP becomes 4 ×" in Facts.ability(sim,"greed_wall",3))
+	print("PASS: shared cell facts, both sides of swap, merge persistence, save/load, Survivor and temporary Greed replacement")
+	quit()

@@ -1,7 +1,7 @@
 game/.godot/
 game/artifacts/
 game/export-templates/
-web/
+/web/
 .build/
 .env
 .env.*

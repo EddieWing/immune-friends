@@ -7,6 +7,8 @@ func _initialize():
  var sim=load("res://scripts/simulation.gd").new()
  sim.reset(42,12)
  var source=load("res://scripts/source_presentation.gd").new()
+ source.update(sim,sim.wave,sim.infection_sources,"",0.0)
+ check(source.states[0].surge==0,"Initial source is not falsely announced as growing")
  source.update(sim,sim.wave,sim.infection_sources,"",2.0)
  var origin=source.states[0].p
  var future=sim.infection_sources.duplicate()
@@ -26,6 +28,10 @@ func _initialize():
  check(source.states[0].p==future[0] and source.states[0].surge==0,"Source settles exactly at the real spawn position; surge ends")
  source.update(sim,sim.wave,sim.infection_sources,"",0.1)
  check(source.states[0].surge==0,"Unchanged threat does not retrigger its effect")
+ var smaller=wave.duplicate(true)
+ smaller[0].count-=1
+ source.update(sim,smaller,future,"warning",0.1)
+ check(source.states[0].surge==0,"Reduced threat does not trigger growth")
  var changed=wave.duplicate(true)
  changed[0].type="seeker"
  source.update(sim,changed,future,"warning",0.1)

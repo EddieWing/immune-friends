@@ -1,0 +1,32 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+
+const root = process.cwd();
+const game = path.join(root, 'game');
+const web = path.join(root, 'web');
+const godot = process.env.GODOT_BIN || (process.platform === 'win32' ? 'D:/Create/Godot/Godot_v4.7.2-stable_win64_console.exe' : path.join(root, '.build/Godot_v4.7.2-stable_linux.x86_64'));
+const run = (args) => {
+  const result = spawnSync(godot, args, {cwd: root, stdio: 'inherit'});
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`Godot failed (${result.status}): ${args.join(' ')}`);
+};
+await fs.mkdir(path.join(root, '.build'), {recursive:true});
+await fs.mkdir(path.join(web, 'single'), {recursive:true});
+await fs.mkdir(path.join(web, 'threaded'), {recursive:true});
+for (const name of ['web_nothreads_release.zip', 'web_dlink_release.zip']) await fs.access(path.join(game, 'export-templates', name));
+run(['--headless','--editor','--path',game,'--import']);
+run(['--headless','--path',game,'--export-release','Web',path.join(web,'single/index.html')]);
+const stage = await fs.mkdtemp(path.join(root, '.build', 'web-stage-'));
+await fs.cp(game, stage, {recursive:true, filter:(source) => ![path.join(game,'.godot'),path.join(game,'export-templates')].includes(source)});
+await fs.mkdir(path.join(stage,'export-templates'),{recursive:true});
+await fs.copyFile(path.join(game,'export-templates/web_dlink_release.zip'),path.join(stage,'export-templates/web_dlink_release.zip'));
+await fs.copyFile(path.join(stage,'native/core.gdextension.in'),path.join(stage,'native/core.gdextension'));
+const preset = path.join(stage,'export_presets.cfg');
+let text = await fs.readFile(preset,'utf8');
+text = text.replace('web_nothreads_release.zip','web_dlink_release.zip').replace('variant/extensions_support=false','variant/extensions_support=true').replace('variant/thread_support=false','variant/thread_support=true');
+await fs.writeFile(preset,text);
+run(['--headless','--editor','--path',stage,'--import']);
+run(['--headless','--path',stage,'--export-release','Web',path.join(web,'threaded/index.html')]);
+for (const [source,target] of [['launcher.html','index.html'],['launcher.js','launcher.js'],['isolation-sw.js','isolation-sw.js']]) await fs.copyFile(path.join(game,'web',source),path.join(web,target));
+console.log('Web builds created: threaded and single-thread fallback.');

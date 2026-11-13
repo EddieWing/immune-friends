@@ -4,7 +4,7 @@ extends RefCounted
 const Ref=preload("res://scripts/reference_physics.gd")
 var web_kernel
 func _init():
-	if OS.has_feature("web"):
+	if OS.has_feature("web") and OS.get_thread_caller_id()==OS.get_main_thread_id():
 		JavaScriptBridge.eval(preload("res://scripts/web_physics.gd").SOURCE,true)
 		web_kernel=JavaScriptBridge.get_interface("microcosmContacts")
 var rigid_membership={}
@@ -376,45 +376,35 @@ func advance_web(s,bodies: Array,delta: float,steps: int):
 	if dt!=web_template_dt:
 		web_template_dt=dt
 		web_templates.clear();web_materials.clear();web_material_ids.clear();web_materials_dirty=true
-	for m: Dictionary in material_cache.values():
-		m.linear_decay=1.0/(1.0+float(m.linear_damping)*dt)
-		m.angular_decay=1.0/(1.0+float(m.angular_damping)*dt)
-	# Shared material columns are prepared once per kind, not looked up for
-	# every body. Dynamic columns remain full-precision Float64 values.
-	for body: Dictionary in bodies:
-		var key: String=material_key(body)
-		if web_templates.has(key):continue
-		var m: Dictionary=material_cache[key]
-		var cell: bool=body.has("key");var virus: bool=body.has("type")
-		web_templates[key]=PackedFloat64Array([0,0,0,0,0,radius(body),float(is_box(s,body)),float(cell),float(virus),1.0/m.mass,1.0/m.inertia,m.restitution,0,1,0,1,0,0,0,0,0,m.motor_response,m.motor_force,m.mass,m.linear_damping,m.angular_damping,m.max_speed,m.max_angular_speed,m.inertia,m.linear_decay,m.angular_decay,half_size(body).x,half_size(body).y])
-		web_material_ids[key]=web_materials.size()
-		web_materials.append(Array(web_templates[key]))
-		web_materials_dirty=true
-	if web_materials_dirty:
-		web_kernel.setMaterials(JSON.stringify(web_materials,"",true,true))
-		web_materials_dirty=false
 	var rows=PackedFloat64Array()
-	rows.resize(bodies.size()*13)
 	var body_states: Array[Dictionary]=[]
 	var indices={}
-	var row_offset=0
 	for body: Dictionary in bodies:
+		# Prepare new material rows in the same pass as dynamic body values.
+		# step() invalidates these caches for tuning edits; dt changes above also
+		# invalidate the Godot-computed damping coefficients.
+		var key: String=material_key(body)
+		if not web_templates.has(key):
+			var m: Dictionary=material_cache[key]
+			m.linear_decay=1.0/(1.0+float(m.linear_damping)*dt)
+			m.angular_decay=1.0/(1.0+float(m.angular_damping)*dt)
+			var cell: bool=body.has("key");var virus: bool=body.has("type")
+			web_templates[key]=PackedFloat64Array([0,0,0,0,0,radius(body),float(is_box(s,body)),float(cell),float(virus),1.0/m.mass,1.0/m.inertia,m.restitution,0,1,0,1,0,0,0,0,0,m.motor_response,m.motor_force,m.mass,m.linear_damping,m.angular_damping,m.max_speed,m.max_angular_speed,m.inertia,m.linear_decay,m.angular_decay,half_size(body).x,half_size(body).y])
+			web_material_ids[key]=web_materials.size()
+			web_materials.append(Array(web_templates[key]))
+			web_materials_dirty=true
 		var id: int=id_of(body)
-		var st: Dictionary=state(body)
+		if not states.has(id):states[id]={"v":Vector2.ZERO,"w":0.0}
+		var st: Dictionary=states[id]
 		var p: Vector2=body.p;var v: Vector2=st.v
 		var angle: float=body.get("angle",0)
 		var target: Vector2=drives.get(id,Vector2.ZERO)
 		indices[id]=body_states.size()
 		body_states.append(st)
-		rows[row_offset]=p.x;rows[row_offset+1]=p.y
-		rows[row_offset+2]=v.x;rows[row_offset+3]=v.y
-		rows[row_offset+4]=st.w;rows[row_offset+5]=id
-		rows[row_offset+6]=angle;rows[row_offset+7]=target.x;rows[row_offset+8]=target.y
-		rows[row_offset+9]=float(not body.get("jump",false) and not body.get("emerging",false))
-		rows[row_offset+10]=float(body.get("emerging",false))
-		rows[row_offset+11]=float(float(body.get("freeze",0))>0)
-		rows[row_offset+12]=web_material_ids[material_key(body)]
-		row_offset+=13
+		rows.append_array(PackedFloat64Array([p.x,p.y,v.x,v.y,st.w,id,angle,target.x,target.y,float(not body.get("jump",false) and not body.get("emerging",false)),float(body.get("emerging",false)),float(float(body.get("freeze",0))>0),web_material_ids[key]]))
+	if web_materials_dirty:
+		web_kernel.setMaterials(JSON.stringify(web_materials,"",true,true))
+		web_materials_dirty=false
 	var links=[]
 	for link in s.links:
 		if link.get("locked",false):continue

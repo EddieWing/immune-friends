@@ -5,6 +5,7 @@ uniform float flow_time = 0.0;
 uniform vec2 camera_offset = vec2(0.0);
 uniform float optical_intensity = 1.0;
 void fragment() {
+ float opacity=COLOR.a;
  float magnification = camera_zoom / 0.45;
  vec2 uv = (UV-vec2(0.5))/magnification+vec2(0.5)+camera_offset*0.00012;
  vec2 p=uv*vec2(9.6,6.0);
@@ -29,5 +30,5 @@ void fragment() {
   float bubble=(1.0-smoothstep(0.06,0.095,length(fract(bubbles)-vec2(0.2+0.6*random,0.2+0.6*fract(random*7.0)))))*step(0.78,random);
   base=mix(base,vec3(0.98),bubble*0.4);
  }
- COLOR=vec4(base,1.0);
+ COLOR=vec4(base,opacity);
 }

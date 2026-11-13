@@ -53,6 +53,11 @@ var clock_accum=0.0
 var clock_sim=null
 var clock_phase=""
 var clock_revision=-1
+var battle_worker=null
+var battle_worker_sim=null
+var battle_worker_fps_cap=0
+const BattleWorker=preload("res://scripts/workers/battle_worker.gd")
+const WorkerSnapshot=preload("res://scripts/workers/snapshot.gd")
 var visuals=preload("res://scripts/cell_visuals.gd").new()
 var settings_path="user://settings.cfg"
 var symbol_font: Font
@@ -72,6 +77,8 @@ var catalogue_key=""
 var catalogue_text: RichTextLabel
 var volumes=[0.45,0.3,0.6,0.3]
 var settings=ConfigFile.new()
+var tutorial_guide: PanelContainer
+var card_refresh_delay=0.0
 var save_path="user://run.json"
 var battle_replay=preload("res://scripts/battle_replay.gd").new()
 var detail_panel: PanelContainer
@@ -156,6 +163,9 @@ func _ready():
 	hud_a.game=self
 	hud_a.process_priority=10
 	ui.add_child(hud_a)
+	tutorial_guide=preload("res://scripts/ui/tutorial_guide.gd").new()
+	tutorial_guide.game=self
+	ui.add_child(tutorial_guide)
 	ui.move_child(modal,ui.get_child_count()-1)
 	apply_appearance()
 	cell_tuner.initialize(self)
@@ -372,6 +382,7 @@ func build_ui():
 	column.add_child(detail_virus)
 	detail_virus.hide()
 	detail=RichTextLabel.new()
+	detail.add_theme_font_override("normal_font",symbol_font)
 	detail.bbcode_enabled=true
 	detail.custom_minimum_size=Vector2(310,0)
 	detail.fit_content=true
@@ -501,6 +512,7 @@ func fit_modal(window):
 	if window.get_meta("field_report",false): window.position=Vector2(40,110)
 
 func show_menu():
+	synchronize_battle_worker()
 	if gym_mode:
 		leave_gym()
 		return
@@ -513,11 +525,20 @@ func show_menu():
 	main_menu.size=Vector2(1440,900)
 	main_menu.mouse_filter=Control.MOUSE_FILTER_STOP
 	ui.add_child(main_menu)
-	var menu_background=ColorRect.new()
+	var menu_background=TextureRect.new()
+	menu_background.name="MenuWater"
 	menu_background.size=Vector2(1440,900)
-	menu_background.color=Color(0.063,0.157,0.196,0.55)
+	menu_background.texture=ui.get_child(0).texture
+	menu_background.material=background_material
+	menu_background.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	menu_background.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	menu_background.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	main_menu.add_child(menu_background)
+	var menu_shade=ColorRect.new()
+	menu_shade.size=Vector2(1440,900)
+	menu_shade.color=Color(0.035,0.10,0.13,0.62)
+	menu_shade.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	main_menu.add_child(menu_shade)
 	ui.move_child(modal,ui.get_child_count()-1)
 	var title=label(main_menu,"MICROCOSM",Vector2(700,320),72,Color("#e0f0ea"))
 	title.size=Vector2(680,100)
@@ -603,6 +624,7 @@ func show_run_setup():
 	button(col,"Back",func():modal.hide();show_menu())
 
 func new_run(rounds,mode=3):
+	synchronize_battle_worker()
 	launch_remaining=0.0
 	view.staging=""
 	view.warning_wave=[]
@@ -625,9 +647,17 @@ func new_run(rounds,mode=3):
 	modal.hide()
 	last_phase=""
 	changed()
-	if not settings.get_value("tutorial","disabled",false): show_help()
+	if not settings.get_value("tutorial","disabled",false): tutorial_guide.begin()
+	else: tutorial_guide.active=false
+	save_run()
 
 func show_help():
+	if not browsing_from_main_menu() and not gym_mode:
+		modal.hide()
+		settings.set_value("tutorial","disabled",false)
+		tutorial_guide.begin()
+		save_run()
+		return
 	var col=clear_modal("Take your time","Protect the red blood cells. Your team fights automatically.")
 	var t=Label.new()
 	t.text="1. Drag a cell from the shop onto the field for 2 Carbons.\n2. Or select an offer, then click on the field to place it.\n3. Hold and drag the round arrow to rotate a cell.\n4. Merge matching cells: the third creates an elite.\n5. Bonds automatically hold hands with nearby cells.\n6. Unspent Carbons disappear between waves.\n\nBomb hurts friendly cells too. Keep your team safe!"
@@ -749,7 +779,7 @@ func show_settings():
 	var tutorials=HBoxContainer.new()
 	col.add_child(tutorials)
 	button(tutorials,"Reset tutorial",func(): settings.set_value("tutorial","disabled",false); settings.save(settings_path); show_help(),Vector2(272,40))
-	button(tutorials,"Skip tutorial",func(): modal.hide(); menu_open=false,Vector2(272,38))
+	button(tutorials,"Skip tutorial",func(): tutorial_guide.skip(); modal.hide(); menu_open=false; save_run(),Vector2(272,38))
 	var atlases=HBoxContainer.new()
 	col.add_child(atlases)
 	button(atlases,"Cell atlas",show_catalog,Vector2(272,40))
@@ -758,6 +788,7 @@ func show_settings():
 	button(col,"Back",func(): modal.hide(); menu_open=false)
 
 func enter_gym():
+	synchronize_battle_worker()
 	if gym_mode: return
 	cancel_placement()
 	sim.release_blood()
@@ -801,8 +832,11 @@ func enter_gym():
 	refresh()
 
 func leave_gym():
+	synchronize_battle_worker()
 	if not gym_mode: return
 	cancel_camera_transition()
+	view.soft_motion.enabled=false
+	view.soft_motion.ids.clear()
 	cancel_placement()
 	dragging=false
 	rotating=false
@@ -832,6 +866,7 @@ func leave_gym():
 	show_menu()
 
 func gym_place(p):
+	synchronize_battle_worker()
 	if gym_tool.is_empty() or (not gym_mode and not gym_tool.get("debug",false)) or sim.phase not in ["shop","battle"] or (sim.phase=="battle" and not paused): return
 	var kind=gym_tool.kind
 	if kind=="cell" and gym_tool.key!="__core" and not sim.available_cell_keys().has(gym_tool.key): return
@@ -906,6 +941,7 @@ func gym_run():
 	refresh()
 
 func gym_reset_setup():
+	synchronize_battle_worker()
 	if not gym_mode: return
 	if lab_tools: lab_tools.hint.text="Setup restored. Choose an object to place, or Run to repeat the test."
 	sim.presentation_revision+=1
@@ -936,6 +972,7 @@ func gym_reset_setup():
 	refresh()
 
 func gym_clear():
+	synchronize_battle_worker()
 	if not gym_mode: return
 	gym_setup={}
 	sim.cells=[]
@@ -943,7 +980,25 @@ func gym_clear():
 	sim.wave=[]
 	gym_reset_setup()
 
+func gym_soft_motion_demo():
+	if not gym_mode: return
+	gym_clear()
+	var single=sim.make_cell("tackle",Vector2(-180,-160))
+	var mover=sim.make_cell("tackle",Vector2(-100,130))
+	var friend=sim.make_cell("bond",Vector2(-150,130))
+	sim.cells.append_array([single,mover,friend])
+	sim.rebuild_links()
+	view.soft_motion.ids=[single.id,mover.id,friend.id]
+	view.soft_motion.states.clear()
+	view.soft_motion.enabled=true
+	lab_tools.soft_toggle.set_pressed_no_signal(true)
+	set_zoom(1.35)
+	lab_tools.hint.text="Single Tackle above, linked pair below. Drag, or Run to see towing. Toggle Soft motion to compare. Reset setup repeats."
+	selected={}
+	refresh()
+
 func debug_replenish_core():
+	synchronize_battle_worker()
 	if browsing_from_main_menu() or sim.phase not in ["shop","battle"]: return
 	var restored=0
 	for i in range(sim.blood.size()):
@@ -955,6 +1010,7 @@ func debug_replenish_core():
 	refresh()
 
 func gym_restore_core():
+	synchronize_battle_worker()
 	if not gym_mode: return
 	sim.presentation_revision+=1
 	paused=sim.phase=="battle"
@@ -1017,7 +1073,7 @@ func description(key, elite=false):
 	if r>0: txt+="Range  [b]"+str(r)+"[/b]\n"
 	if speed>0: txt+="Speed  [b]"+str(speed)+"[/b]\n"
 	if interval>0: txt+="Interval  [b]"+str(interval)+" s[/b]\n"
-	txt+="\n"+d.description
+	txt+="\n"+preload("res://scripts/ui/cell_facts.gd").ability(sim,key,3 if elite else 1)
 	if key=="accelerator": txt+="\n[color=#975535]Provisional ability: the original effect is not yet known.[/color]"
 	return txt
 
@@ -1043,7 +1099,7 @@ func refresh():
 	animate_dock(shopping_in_focus() and not shop_collapsed)
 	shop_toggle.hide()
 	update_transport()
-	if not is_shop:
+	if sim.phase not in ["shop","battle"]:
 		detail_panel.hide()
 		term_panel.hide()
 	elif not selected.is_empty() and sim.cells.has(selected) and selected.id==inspected_cell:
@@ -1165,6 +1221,11 @@ func start_battle():
 	paused=false
 	sim.release_blood()
 	cancel_placement()
+	inspected_cell=-1
+	inspected_virus={}
+	if hud_a:
+		hud_a.cell_key=""
+		hud_a.virus_key=""
 	save_run()
 	auto_camera=true
 	camera_phase=""
@@ -1186,6 +1247,7 @@ func xp_purchase_tooltip():
 func changed():
 	if sim.phase=="shop": sim.ensure_infection_sources_clear()
 	sim.rebuild_links()
+	if tutorial_guide: tutorial_guide.observe()
 	refresh()
 	save_run()
 
@@ -1202,6 +1264,10 @@ func _process(delta):
 		hud_opacity=1.0
 		apply_menu_visibility()
 	position_scanner()
+	card_refresh_delay-=delta
+	if card_refresh_delay<=0:
+		card_refresh_delay=0.2
+		if detail_panel.visible and not card_cell.is_empty() and sim.cells.has(card_cell):show_cell_card(card_cell.key,card_cell)
 	advance_manual_camera(delta)
 	advance_camera(delta)
 	if not entering_game: advance_simulation(delta,SIMULATION_FRAME_BUDGET_US)
@@ -1241,6 +1307,7 @@ func advance_manual_camera(delta,direction=Vector2.INF):
 		cancel_camera_transition()
 		auto_camera=false
 		view.position+=direction.limit_length(1.0)*delta*280
+		if delta>0 and tutorial_guide: tutorial_guide.complete("pan")
 
 func _notification(what):
 	if what==NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -1264,6 +1331,7 @@ func _input(event):
 		panning=false
 	if event is InputEventMouseMotion and panning:
 		if can_pan_camera():
+			if event.position.distance_to(pan_previous)>1 and tutorial_guide:tutorial_guide.complete("pan")
 			view.position+=event.position-pan_previous
 			pan_previous=event.position
 			get_viewport().set_input_as_handled()
@@ -1402,6 +1470,9 @@ func _unhandled_input(event):
 func save_run():
 	if gym_mode or sim.phase!="shop": return
 	var data=preload("res://scripts/preparation_save.gd").capture(sim)
+	if tutorial_guide:
+		tutorial_guide.observe()
+		data["tutorial"]=tutorial_guide.capture()
 	var file=FileAccess.open(save_path,FileAccess.WRITE)
 	if file: file.store_string(JSON.stringify(data,"",true,true))
 
@@ -1411,6 +1482,7 @@ func show_save_error(message):
 	button(col,"Choose a new run",show_run_setup,Vector2(420,44))
 
 func load_run():
+	synchronize_battle_worker()
 	var data=JSON.parse_string(FileAccess.get_file_as_string(save_path))
 	if data is Dictionary and data.get("version",0)==2:
 		var codec=preload("res://scripts/preparation_save.gd")
@@ -1419,6 +1491,10 @@ func load_run():
 			show_save_error(checked.error)
 			return
 		codec.restore(sim,checked)
+		if tutorial_guide:
+			var progress=data.get("tutorial",{})
+			if int(settings.get_value("tutorial","seed",-1))==sim.seed_value:progress=settings.get_value("tutorial","progress",progress)
+			tutorial_guide.restore(progress)
 		launch_remaining=0.0
 		results_pending=false
 		results_stage=""
@@ -1549,13 +1625,17 @@ func arm_offer(index,reward):
 	var source=sim.rewards if reward else sim.offers
 	if index<0 or index>=source.size(): return
 	pending_offer={"index":index,"reward":reward,"key":source[index]}
+	view.preview_offer_key=source[index]
+	view.preview_offer_reward=reward
 	show_cell_card(source[index])
 	sim.last_message="Drag onto the field or click to place. Esc to cancel."
 	message.text=sim.last_message
 
 func cancel_placement():
 	pending_offer={}
-	if view: view.drag_preview=Vector2.INF
+	if view:
+		view.drag_preview=Vector2.INF
+		view.preview_offer_key=""
 
 func toggle_shop():
 	shop_collapsed=not shop_collapsed
@@ -1580,6 +1660,7 @@ func set_automatic_zoom(level: int) -> bool:
 
 func set_zoom(value):
 	if browsing_from_main_menu() or entering_game: return
+	if tutorial_guide and not is_equal_approx(camera_requested,clampf(value,0.45,1.5)):tutorial_guide.complete("zoom")
 	cancel_camera_transition()
 	camera_phase="warning" if view.staging=="warning" else sim.phase
 	camera_requested=clampf(value,0.45,1.5)
@@ -1741,7 +1822,104 @@ func position_scanner():
 	scanner.anchor=anchor
 	scanner.queue_redraw()
 
+# The worker owns combat state while active. UI changes synchronize first.
+func create_battle_worker():
+	return BattleWorker.new()
+
+func begin_battle_worker() -> bool:
+	battle_worker_fps_cap=Engine.max_fps
+	battle_worker=create_battle_worker()
+	battle_worker_sim=sim
+	var result=battle_worker.start(sim,clock_accum)
+	if result!=OK:
+		battle_worker=null;battle_worker_sim=null
+		return false
+	clock_accum=0.0
+	return true
+
+func rebind_worker_selection():
+	if not selected.is_empty():selected=sim.cell_by_id(selected.get("id",-1))
+	if not card_cell.is_empty():card_cell=sim.cell_by_id(card_cell.get("id",-1))
+	if not inspected_virus.is_empty():inspected_virus=sim.endpoint_by_id(inspected_virus.get("id",-1))
+
+func read_battle_worker():
+	if battle_worker==null:return
+	var state=battle_worker.read()
+	var frame=state.view
+	if not frame.is_empty():
+		for key in BattleWorker.VIEW_FIELDS:sim.set(key,frame[key])
+		for key in BattleWorker.SCALARS:sim.set(key,frame[key])
+		sim.physics.states=frame.physics_states
+		rebind_worker_selection()
+	sim.events.append_array(state.events)
+	if sim.events.size()>12000:sim.events=sim.events.slice(sim.events.size()-12000)
+	if state.done:
+		var final=state.final
+		final.fields.events=sim.events.duplicate(true)
+		WorkerSnapshot.restore(sim,final)
+		# Worker and UI have separate Web physics material tables.
+		sim.physics.web_materials_dirty=true
+		rebind_worker_selection()
+		if not battle_replay.recording.is_empty() and not gym_mode:
+			battle_replay.recording.ticks+=int(final.ticks)
+			if sim.phase!="battle" and int(final.ticks)>0:
+				battle_replay.recording.ticks-=1
+				battle_replay.tick(sim)
+				var replay_file=FileAccess.open(save_path+".replay",FileAccess.WRITE)
+				if replay_file:replay_file.store_string(JSON.stringify(battle_replay.last,"",true,true))
+		clock_accum=0.0 if sim.phase!="battle" else float(final.credit)
+		clock_phase=sim.phase;clock_revision=sim.presentation_revision
+		battle_worker.finish();battle_worker=null;battle_worker_sim=null
+		Engine.max_fps=battle_worker_fps_cap
+	elif not frame.is_empty() and frame.phase!="battle":
+		# Wait for the authoritative final state before processing phase changes.
+		battle_worker.finish()
+		read_battle_worker()
+
+func synchronize_battle_worker():
+	if battle_worker==null:return
+	assert(battle_worker_sim==sim)
+	battle_worker.stop()
+	battle_worker.finish()
+	read_battle_worker()
+
+func _exit_tree():
+	synchronize_battle_worker()
+
+func advance_threaded_battle(delta) -> bool:
+	if not OS.has_feature("web") or not ClassDB.class_exists("CoreKernel"):return false
+	if battle_worker!=null and battle_worker_sim!=sim:
+		push_error("Battle simulation changed without synchronization")
+		return true
+	if sim.phase!="battle":
+		if battle_worker!=null:synchronize_battle_worker()
+		return false
+	if (modal.visible and is_instance_valid(modal_panel) and modal_panel.get_meta("pause_for_settings",false)) or paused:
+		synchronize_battle_worker()
+		return true
+	delta=maxf(0.0,delta)
+	if launch_remaining>0:
+		var consumed=minf(delta,launch_remaining)
+		launch_remaining=maxf(0,launch_remaining-consumed);delta-=consumed
+		if launch_remaining==0:
+			view.staging=""
+			update_transport()
+		else:return true
+	if battle_worker==null and not begin_battle_worker():return false
+	# A temporary rendering ceiling leaves enough CPU for the fixed-step solver.
+	Engine.max_fps=32 if playback_speed==5 else battle_worker_fps_cap
+	read_battle_worker()
+	if battle_worker!=null:
+		battle_worker.add_time(delta*playback_speed)
+		clock_accum=battle_worker.debt()
+	return true
+
 func advance_simulation(delta,budget_us=0):
+	if clock_sim!=sim or clock_phase!=sim.phase or clock_revision!=sim.presentation_revision:
+		if battle_worker!=null:synchronize_battle_worker()
+		clock_accum=0.0
+		clock_sim=sim;clock_phase=sim.phase;clock_revision=sim.presentation_revision
+	if advance_threaded_battle(delta):return
 	# Never carry a partial tick or catch-up debt into another run, Gym setup or phase.
 	if clock_sim!=sim or clock_phase!=sim.phase or clock_revision!=sim.presentation_revision:
 		clock_accum=0.0
@@ -1782,11 +1960,14 @@ func advance_simulation(delta,budget_us=0):
 		# Debt is retained; slower devices must not freeze trying to catch up.
 		if budget_us>0 and Time.get_ticks_usec()-started>=budget_us: break
 
+func cell_fact_lines(c):
+	return preload("res://scripts/ui/cell_facts.gd").lines(sim,c)
+
 func show_cell_card(key,c={}):
 	if ui_new and not gym_mode and hud_a: hud_a.select_cell(key,c)
 	detail_icon.show()
 	detail_virus.hide()
-	if sim.phase!="shop": return
+	if sim.phase not in ["shop","battle"]: return
 	detail_key=key
 	card_cell=c
 	card_anchor=get_viewport().get_mouse_position()
@@ -1795,14 +1976,13 @@ func show_cell_card(key,c={}):
 	detail_panel.size.y=0
 	term_panel.size.y=0
 	detail.text=description(key,c.get("rank",1)==3)
-	sell_button.visible=not c.is_empty()
 	if not c.is_empty():
-		detail.text+="\n[b]Current: "+str(snappedf(c.hp,0.1))+" HP  ·  "+str(c.rank)+"/3[/b]"
+		detail.text=detail.text.replace("Health  [b]","Base HP  [b]").replace("Range  [b]","Base range  [b]")
+	sell_button.visible=not c.is_empty() and sim.phase=="shop"
+	if not c.is_empty():
+		detail.text+="\n[b]Rank: "+str(c.rank)+"/3[/b]"
 		sell_button.text="Sell · "+str(c.sale)
-		if key=="tag_drag": detail.text+="\nTags left: "+str(c.get("tags",15))+" / 15"
-		if c.get("temporary",false): detail.text+="\nThis battle only"
-		if key=="greed_wall": detail.text+="\nBase HP: "+str(c.max_hp)+" · next battle bonus: +"+str(2*sim.money)
-		if key=="survivor_bomb": detail.text+="\nCurrent radius: "+str(sim.range_of(c)/float(sim.rules.scale))+" · growth: +"+str(c.get("radius_growth",0))+" this run"
+		detail.text+="\n"+"\n".join(cell_fact_lines(c))
 	var behavior=sim.catalog[key].behavior
 	term_panel.show()
 	var term="B-Cell" if sim.catalog[key].category=="B" else "T-Cell"

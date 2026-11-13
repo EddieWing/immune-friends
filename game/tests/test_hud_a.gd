@@ -60,6 +60,9 @@ func run():
  scene.launch_remaining=0
  hud._process(1)
  check(not hud.shelf.visible and hud.transport[0].visible and not hud.cell_block.visible and not hud.virus_block.visible,"Infection hides shelf and files and reveals transport")
+ hud.select_cell("seeker",cell)
+ hud._process(0.1)
+ check(hud.cell_block.visible,"Cell details can be reopened during infection")
  scene.sim.phase="recap"
  scene.sim.battle_income=3
  var money=scene.sim.money

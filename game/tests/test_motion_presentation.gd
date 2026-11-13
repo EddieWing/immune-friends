@@ -21,6 +21,8 @@ func _initialize():
   sim.elapsed+=float(speed)/60
   view.update(sim)
   check(view.wakes.size()==1 and view.wakes[0].mode=="accelerate","Actual acceleration produces wake x"+str(speed))
+  view.update(sim)
+  check(view.wakes[0].mode=="accelerate","Paused observation preserves pressure phase")
   sim.elapsed+=float(speed)/60
   view.update(sim)
   check(view.wakes[0].mode=="glide","Constant speed becomes glide")

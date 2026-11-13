@@ -66,11 +66,24 @@ globalThis.microcosmContacts = (() => {
   const depth=f(Math.max(0,h.depth-.02)),denom=f(a.im+b.im),cx=f(f(f(nx*depth)*f(.65))/denom),cy=f(f(f(ny*depth)*f(.65))/denom);
   a.p=[f(a.p[0]-f(cx*aim)),f(a.p[1]-f(cy*aim))];b.p=[f(b.p[0]+f(cx*bim)),f(b.p[1]+f(cy*bim))];
  }
+ // Candidate pairs depend on grid tiles, eligibility, type and rigid group only.
+ // Reuse indices while those inputs match; exact contacts still run every pass.
+ let pairInputs=[],cachedPairs=[];
  function contacts(bodies,scale,groups={}){
-  const grid=new Map(),cells=new Map(),tiles=[],pairs=[],found=new Map();
-  bodies.forEach((b,i)=>{const tile=[Math.floor(b.p[0]/96),Math.floor(b.p[1]/96)];tiles.push(tile);if(!b.eligible)return;const key=tile.join(',');if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(!b.virus){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
-  bodies.forEach((b,i)=>{if(!b.eligible)return;const map=!b.virus?grid:cells,t=tiles[i];for(let y=-2;y<=2;y++)for(let x=-2;x<=2;x++)for(const j of map.get((t[0]+x)+','+(t[1]+y))||[])if(j>i&&(b.cell||b.virus||bodies[j].cell||bodies[j].virus)&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))pairs.push([i,j])});
-  for(let pass=0;pass<3;pass++)for(const [i,j] of pairs){const a=bodies[i],b=bodies[j],h=hit(a,b);if(!h)continue;const ids=[Math.min(a.id,b.id),Math.max(a.id,b.id)];found.set(ids.join(','),ids);resolve(a,b,h,scale)}
+  let unchanged=pairInputs.length===bodies.length*6;
+  for(let i=0;i<bodies.length;i++){
+   const b=bodies[i],k=i*6,x=Math.floor(b.p[0]/96),y=Math.floor(b.p[1]/96),eligible=!!b.eligible,cell=!!b.cell,virus=!!b.virus,group=groups[b.id];
+   if(pairInputs[k]!==x||pairInputs[k+1]!==y||pairInputs[k+2]!==eligible||pairInputs[k+3]!==cell||pairInputs[k+4]!==virus||pairInputs[k+5]!==group)unchanged=false;
+   pairInputs[k]=x;pairInputs[k+1]=y;pairInputs[k+2]=eligible;pairInputs[k+3]=cell;pairInputs[k+4]=virus;pairInputs[k+5]=group;
+  }
+  pairInputs.length=bodies.length*6;
+  if(!unchanged){
+   const grid=new Map(),cells=new Map();cachedPairs=[];
+   bodies.forEach((b,i)=>{if(!b.eligible)return;const key=pairInputs[i*6]+','+pairInputs[i*6+1];if(!grid.has(key))grid.set(key,[]);grid.get(key).push(i);if(!b.virus){if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i)}});
+   bodies.forEach((b,i)=>{if(!b.eligible)return;const map=!b.virus?grid:cells,tx=pairInputs[i*6],ty=pairInputs[i*6+1];for(let y=-2;y<=2;y++)for(let x=-2;x<=2;x++)for(const j of map.get((tx+x)+','+(ty+y))||[])if(j>i&&(b.cell||b.virus||bodies[j].cell||bodies[j].virus)&&!(groups[b.id]!==undefined&&groups[b.id]===groups[bodies[j].id]))cachedPairs.push(i,j)});
+  }
+  const pairs=cachedPairs,found=new Map();
+  for(let pass=0;pass<3;pass++)for(let k=0;k<pairs.length;k+=2){const a=bodies[pairs[k]],b=bodies[pairs[k+1]],h=hit(a,b);if(!h)continue;const ids=[Math.min(a.id,b.id),Math.max(a.id,b.id)];found.set(ids.join(','),ids);resolve(a,b,h,scale)}
   return found;
  }
  function run(rows,scale){const bodies=rows.map(shape),found=contacts(bodies,scale);return [bodies.map(b=>[...b.p,...b.v,b.w]),[...found.values()]];}
@@ -105,7 +118,10 @@ globalThis.microcosmContacts = (() => {
    for(const [k,v] of contacts(bodies,scale,groups))found.set(k,v);
   }
 
-  return new Float64Array([...bodies.flatMap(b=>[...b.p,...b.v,b.w,b.angle]),...[...found.values()].flat()]);
+  const output=new Float64Array(bodies.length*6+found.size*2);let offset=0;
+  for(const b of bodies){output[offset++]=b.p[0];output[offset++]=b.p[1];output[offset++]=b.v[0];output[offset++]=b.v[1];output[offset++]=b.w;output[offset++]=b.angle;}
+  for(const ids of found.values()){output[offset++]=ids[0];output[offset++]=ids[1];}
+  return output;
  }
  const unpack=(text,stride)=>{const raw=atob(text),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const data=new Float64Array(bytes.buffer),rows=[];for(let i=0;i<data.length;i+=stride)rows.push(Array.from(data.subarray(i,i+stride)));return rows};
  // Geometry2D segment predicate, with the same Float32 operation order and epsilon.
@@ -170,11 +186,74 @@ globalThis.microcosmContacts = (() => {
   for(let i=0;i<120;i++){advance(rows.map(r=>r.slice()),1/60,2,1,[],30,2);coreStep(coreInput)}
  }
  warm();
+ // Decode directly to bytes on supporting browsers; retain the portable path.
+ const decode64=typeof Uint8Array.fromBase64==='function'
+  ? text=>Uint8Array.fromBase64(text)
+  : text=>{const raw=atob(text),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return bytes};
  let materials=[];
  function advanceCompact(text,config,links){
-  const p=JSON.parse(config),rows=unpack(text,13).map(d=>{const r=materials[d[12]].slice();r[0]=d[0];r[1]=d[1];r[2]=d[2];r[3]=d[3];r[4]=d[4];r[12]=d[5];r[16]=d[6];r[17]=d[7];r[18]=d[8];r[15]=d[9];r[19]=d[10];r[20]=d[11];if(r[6]){r[13]=cosf(r[16]);r[14]=sinf(r[16])}return r});
+  const p=JSON.parse(config),bytes=decode64(text);
+  const data=new Float64Array(bytes.buffer),rows=[];
+  for(let i=0;i<data.length;i+=13){const r=materials[data[i+12]].slice();r[0]=data[i];r[1]=data[i+1];r[2]=data[i+2];r[3]=data[i+3];r[4]=data[i+4];r[12]=data[i+5];r[16]=data[i+6];r[17]=data[i+7];r[18]=data[i+8];r[15]=data[i+9];r[19]=data[i+10];r[20]=data[i+11];if(r[6]){r[13]=cosf(r[16]);r[14]=sinf(r[16])}rows.push(r);}
   return advance(rows,p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5],p[6]);
  }
- return {advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5],p[6])}};
+// Geometry/motion only. Stop at every hit; GDScript owns effects/recipes.
+// Bodies: x,y,id,alive,jump,tag,kind,box,angle,radius.
+// Particles: kind,x,y,vx,vy,life,radius,owner,split. Results use ten Float64 slots:
+// particle index,to.x,to.y,vx,vy,life,from.x,from.y,body index,hit fraction.
+let projectileBodies=[],projectileItems=[],projectileCursor=0,projectileDelta=0,projectileMovement=0,projectileExperimental=false;
+const projectileDecode=text=>{const bytes=decode64(text);return new Float64Array(bytes.buffer,bytes.byteOffset,bytes.byteLength/8)};
+function projectileAppend(text){if(!text)return;const values=projectileDecode(text);for(let i=0;i<values.length;i+=9)projectileItems.push(Array.from(values.subarray(i,i+9)));}
+function projectileStart(bodyText,itemText,config){
+ const [delta,movement,experimental]=JSON.parse(config);
+ const values=projectileDecode(bodyText);projectileBodies=[];
+ for(let i=0;i<values.length;i+=12)projectileBodies.push(Array.from(values.subarray(i,i+12)));
+ projectileItems=[];projectileCursor=0;projectileDelta=delta;projectileMovement=movement;projectileExperimental=experimental;projectileAppend(itemText);
+}
+function projectileFraction(body,from,to,radius){
+ let start=sub(from,body),motion=sub(to,from);
+ if(body[7]){
+  const c=cosf(-body[8]),s=sinf(-body[8]);start=rotate(start,c,s);motion=rotate(motion,c,s);
+  const half=[f((body[10]??43)+f(radius)),f((body[11]??13)+f(radius))];let entry=0,leave=1;
+  for(let axis=0;axis<2;axis++){
+   if(Math.abs(motion[axis])<0.000001){if(Math.abs(start[axis])>half[axis])return Infinity;}
+   else{const a=(-half[axis]-start[axis])/motion[axis],b=(half[axis]-start[axis])/motion[axis];entry=Math.max(entry,Math.min(a,b));leave=Math.min(leave,Math.max(a,b));if(entry>leave)return Infinity;}
+  }return entry;
+ }
+ const reach=body[9]+radius,c=dot(start,start)-reach*reach;if(c<=0)return 0;
+ const a=dot(motion,motion);if(a<0.000001)return Infinity;
+ const b=dot(start,motion),disc=b*b-a*c;if(disc<0)return Infinity;
+ const t=(-b-Math.sqrt(disc))/a;return t>=0&&t<=1?t:Infinity;
+}
+function projectileNext(changed,alive,tag,added){
+ if(changed>=0){projectileBodies[changed][3]=alive;projectileBodies[changed][5]=tag;}
+ projectileAppend(added);const output=[];
+ while(projectileCursor<projectileItems.length){
+  const index=projectileCursor++,p=projectileItems[index];if(p[5]<=0)continue;
+  const from=p.slice(1,3);let velocity=p.slice(3,5);
+  if(p[0]===2){
+   let target=null,nearest=15*26/3.5;
+   for(const b of projectileBodies){if(b[6]!==0||!b[3]||b[5]>0||b[4])continue;const distance=len(sub(from,b));if(distance<nearest){nearest=distance;target=b;}}
+   if(!target)for(const b of projectileBodies){if(b[6]!==5||!b[3])continue;const distance=len(sub(from,b));if(distance<nearest){nearest=distance;target=b;}}
+   let desired=[0,0];if(target){const direction=sub(target,from),length=len(direction);desired=div(mul(mul(length===0?[0,0]:div(direction,length),25),26),3.5);}
+   const v=sub(desired,velocity),length=len(v),step=f(125*26/3.5*projectileDelta);
+   velocity=length<=step||length<0.00001?desired:add(velocity,mul(div(v,length),step));
+  }
+  const to=add(from,mul(velocity,projectileMovement));let target=-1,nearest=Infinity;
+  if(p[0]===1||p[0]===2)for(let i=0;i<projectileBodies.length;i++){
+   const b=projectileBodies[i];if(!b[3]||b[2]===p[7])continue;
+   if(b[6]===0){if(b[4])continue;}
+   else if(p[0]===2){if(b[6]!==5)continue;}
+   else if(b[6]!==2&&b[6]!==3&&b[6]!==4)continue;
+   else if(b[6]===2&&p[8]||b[6]===4&&!projectileExperimental)continue;
+   const fraction=projectileFraction(b,from,to,p[6]);if(fraction<nearest){nearest=fraction;target=i;}
+  }
+  output.push(index,to[0],to[1],velocity[0],velocity[1],p[5]-projectileDelta,from[0],from[1],target,nearest);
+  if(target>=0)break;
+ }
+ return new Float64Array(output);
+}
+
+ return {projectileStart,projectileNext,advanceCompact,setMaterials:text=>materials=JSON.parse(text),advance,nearestVisible,visible,coreStep,advanceBinary:(text,config,links)=>{const p=JSON.parse(config);return advance(unpack(text,31),p[0],p[1],p[2],JSON.parse(links),p[3],p[4],p[5],p[6])}};
 })();
 """

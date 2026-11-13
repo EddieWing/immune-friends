@@ -12,6 +12,7 @@ var recoil={}
 var poses={}
 var focus={}
 var focus_cooldown=0.0
+var jumps={}
 func update(sim,delta):
  var fresh=observed_sim!=sim or revision_seen!=sim.presentation_revision
  revision_seen=sim.presentation_revision
@@ -19,6 +20,7 @@ func update(sim,delta):
   cursor=sim.event_sequence if fresh else cursor
   recoil.clear()
   poses.clear()
+  jumps.clear()
   focus={}
   focus_cooldown=0.0
   previous_time=sim.elapsed
@@ -36,16 +38,30 @@ func update(sim,delta):
   if recoil[id].age>=RECOVERY: recoil.erase(id)
  for event in sim.events_since(cursor):
   var data=event.data
-  if event.event=="attack_fired" and data.key in ["cannon","sniper","pusher"]:
+  if event.event=="attack_fired":
    recoil[data.id]={"age":0.0,"direction":data.direction}
   elif event.event=="virus_defeated" and data.get("key_threat",false) and focus_cooldown<=0:
    focus={"p":data.p,"age":0.0}
    focus_cooldown=1.2
  cursor=sim.event_sequence
  poses.clear()
- if sim.phase!="battle": return
+ if sim.phase!="battle":
+  jumps.clear()
+  return
+ var jump_alive={}
+ for v in sim.viruses:
+  if not v.alive or v.type!="jumper" or v.get("emerging",false): continue
+  jump_alive[v.id]=true
+  var state=jumps.get(v.id,{"active":v.jump,"landing":-1.0})
+  if state.landing>=0: state.landing+=dt
+  if state.active and not v.jump: state.landing=0.0
+  if v.jump: state.landing=-1.0
+  state.active=v.jump
+  jumps[v.id]=state
+ for id in jumps.keys():
+  if not jump_alive.has(id): jumps.erase(id)
  for c in sim.cells:
-  if not c.alive or c.key not in ["cannon","sniper","pusher"]: continue
+  if not c.alive or (c.key not in ["cannon","sniper","pusher"] and not recoil.has(c.id)): continue
   var pose={"windup":0.0,"kick":0.0,"look":Vector2.ZERO,"direction":Vector2.RIGHT.rotated(c.angle),"radial":c.key=="pusher"}
   var target=aim_target(sim,c)
   var ready=c.key=="pusher" or not target.is_empty()
@@ -73,12 +89,12 @@ func aim_target(sim,c):
  return target
 func jumper_pose(v):
  if v.type!="jumper" or v.get("emerging",false) or v.get("freeze",0)>0: return 0.0
- var cycle=fposmod(v.get("age",0)+v.get("phase",0),3.5)
- return clampf((cycle-2.5)/0.3,0,1) if cycle<=2.8 else 0.0
+ # No invented warning based on age/phase: the physical jump has already started.
+ return clampf(float(v.get("jump_remaining",0.1))/0.1,0,1) if v.jump else 0.0
 func jumper_recovery(v):
- if v.type!="jumper" or v.get("emerging",false) or v.get("freeze",0)>0 or v.get("age",0)<0.2: return 0.0
- var cycle=fposmod(v.get("age",0)+v.get("phase",0),3.5)
- return 1-smoothstep(0,0.2,cycle) if cycle<0.2 else 0.0
+ if v.type!="jumper" or v.get("emerging",false) or v.get("freeze",0)>0: return 0.0
+ var landing=float(jumps.get(v.id,{}).get("landing",-1.0))
+ return 1-smoothstep(0,0.2,landing) if landing>=0 and landing<0.2 else 0.0
 func draw_intent(canvas,c):
  var pose=poses.get(c.id,{})
  if pose.is_empty() or pose.windup<=0: return

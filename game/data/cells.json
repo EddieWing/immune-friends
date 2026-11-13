@@ -592,7 +592,7 @@
     "interval": 0,
     "behavior": "wall",
     "color": "#d9c081",
-    "description": "At battle start gains 2 HP for each leftover Carb. Bonus lasts for this battle only.",
+    "description": "At infection start HP becomes 2 × leftover Carbons (minimum 1). Replaces current HP; permanent HP returns in preparation.",
     "reference_id": 38,
     "elite": {},
     "constants": {

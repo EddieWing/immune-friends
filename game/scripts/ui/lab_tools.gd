@@ -1,5 +1,6 @@
 extends Control
 var game
+var soft_toggle: CheckButton
 var gym_panel: PanelContainer
 var debug_panel: PanelContainer
 var readout: Label
@@ -22,7 +23,12 @@ func _ready():
  gym_panel=game.panel(self,Rect2(20,95,270,0))
  var col=VBoxContainer.new()
  col.add_theme_constant_override("separation",7)
- gym_panel.add_child(col)
+ var gym_scroll=ScrollContainer.new()
+ gym_scroll.custom_minimum_size=Vector2(260,740)
+ gym_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+ gym_panel.add_child(gym_scroll)
+ col.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+ gym_scroll.add_child(col)
  var title=Label.new()
  title.text="GYM · Sandbox"
  title.add_theme_font_size_override("font_size",24)
@@ -47,6 +53,11 @@ func _ready():
  game.button(col,"Reset setup",game.gym_reset_setup,Vector2(246,34))
  game.button(col,"Clear field",game.gym_clear,Vector2(246,34))
  game.button(col,"Restore core cells",game.gym_restore_core,Vector2(246,34))
+ game.button(col,"Soft motion · demo setup",game.gym_soft_motion_demo,Vector2(246,34))
+ soft_toggle=CheckButton.new()
+ soft_toggle.text="Soft motion preview"
+ soft_toggle.toggled.connect(func(value): game.view.soft_motion.enabled=value; game.view.soft_motion.states.clear())
+ col.add_child(soft_toggle)
  hint=Label.new()
  hint.custom_minimum_size=Vector2(246,0)
  hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
@@ -131,8 +142,8 @@ func _ready():
    game.paused=not game.paused
    game.update_transport())
  game.button(debug,"Step · 1/60 s",func():
-  if game.paused and game.sim.phase=="battle" and game.launch_remaining==0: game.sim.update(1.0/60.0))
- game.button(debug,"+10 Carbons (current session)",func(): game.sim.money+=10; game.refresh())
+  if game.paused and game.sim.phase=="battle" and game.launch_remaining==0: game.synchronize_battle_worker(); game.sim.update(1.0/60.0))
+ game.button(debug,"+10 Carbons (current session)",func(): game.synchronize_battle_worker(); game.sim.money+=10; game.refresh())
  var camera_row=HBoxContainer.new()
  debug.add_child(camera_row)
  for level in range(3):

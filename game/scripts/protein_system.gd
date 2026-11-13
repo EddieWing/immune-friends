@@ -54,6 +54,7 @@ func drag(s,c,destination):
 		while cursor<=distance and int(c.get("tags",0))>0:
 			var p=old.lerp(destination,cursor/maxf(distance,0.001))
 			s.particles.append({"kind":"tag","p":p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id,"setup":true})
+			s.record("interferon_created",{"id":c.id,"p":p})
 			c.tags-=1
 			cursor+=spacing
 		c["tag_distance"]=fmod(float(c.get("tag_distance",0.0))+distance,spacing)
@@ -95,7 +96,7 @@ func route_food(s,delta):
 # Steering is separate from consumption: only the first body crossed consumes a tag.
 func resolve_tag(s,p,from,to):
 	var target={};var nearest=INF
-	for body in s.cells+s.viruses:
+	for body in s.projectile_candidates(from,to,float(p.r)):
 		if not body.alive or body.id==p.owner:continue
 		if body.has("type"):
 			if body.get("jump",false):continue
@@ -103,6 +104,9 @@ func resolve_tag(s,p,from,to):
 		var fraction=s.projectile_fraction(body,from,to,float(p.r))
 		if fraction<nearest:nearest=fraction;target=body
 	if target.is_empty():return
+	apply_tag_hit(s,p,from,to,target,nearest)
+
+func apply_tag_hit(s,p,from,to,target,nearest):
 	p.p=from.lerp(to,nearest);p.life=0
 	if target.has("type"):
 		if target.tag<=0:

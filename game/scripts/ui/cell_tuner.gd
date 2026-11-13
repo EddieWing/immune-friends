@@ -25,6 +25,7 @@ func initialize(owner):
 func apply_to(sim):
  for key in session: sim.apply_tuning(key,session[key])
 func toggle():
+ game.synchronize_battle_worker()
  enabled=not enabled
  game.cancel_placement()
  game.gym_tool={}
@@ -82,6 +83,7 @@ func gameplay_values(key):
   return result
  return game.sim.catalog[key]
 func open(key):
+ game.synchronize_battle_worker()
  current_key=key
  fields.clear()
  var title="Core cells" if key=="__core" else (key.trim_prefix("virus:").capitalize()+" virus" if key.begins_with("virus:") else game.sim.catalog[key].name)
@@ -154,6 +156,7 @@ func export_saved():
    OS.shell_open(ProjectSettings.globalize_path("user://"))
   else: status.text="Export failed: "+str(FileAccess.get_open_error())
 func submit(persist):
+ game.synchronize_battle_worker()
  var data=session.get(current_key,{}).duplicate(true)
  for field in fields:
   if fields[field].get_line_edit().has_focus(): fields[field].apply()

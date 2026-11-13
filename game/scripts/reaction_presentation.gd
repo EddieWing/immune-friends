@@ -54,7 +54,7 @@ func update(sim,delta):
     contact_holds[key]={"anchor":anchor.p,"angle":anchor.angle,"age":0.0,"offset":Vector2.ZERO,"angle_offset":0.0,"released":repeated}
     contacts_this_frame[key]=true
   if e.event in ["virus_hit","pushed","tagged","thawed","tag_ended"]:
-   bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("from",d.p).direction_to(d.p)})
+   bursts.append({"p":d.p,"age":0.0,"kind":e.event,"direction":d.get("direction",d.get("from",d.p).direction_to(d.p)).normalized()})
  cursor=sim.event_sequence
  var alive={}
  for bodies in [sim.cells,sim.viruses]:

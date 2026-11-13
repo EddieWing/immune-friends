@@ -55,6 +55,7 @@
   "charge_range": 111.42857142857143,
   "charge_rule": "one charge kills one reachable virus; nearby objects bridge",
   "healing": "may exceed base during combat; reset next shop",
+  "greed_conversion": "Demo 1.0.0 handler and isolated ECS matrix: set runtime HP to max(1, leftover Carbons * conversionRate), normal2/elite4; permanent HP remains in composition. One live normal case9->18 observed. Full original UI save/load and all simultaneous effect interactions remain unverified.",
   "max_battle_seconds": 180,
   "stalemate_resolution": "After 180 seconds, remaining viruses each remove one blood cell; provisional safeguard, original unknown",
   "contact_model": "Mutual 1 HP damage for immune-virus contact every 0.8 seconds; original formula unmeasured",

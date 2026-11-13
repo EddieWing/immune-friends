@@ -3,6 +3,8 @@ extends RefCounted
 # Rigid pose projection is our solver implementation, not a Box2D port.
 var groups=[]
 var membership={}
+var prepared_links=[]
+var prepared=false
 func eligible(s,origin,other):
 	var reach=float(s.rules.get("bond_query_radius",6.0*26.0/3.5))
 	if not s.physics.is_box(s,other):
@@ -35,11 +37,17 @@ func lock(s):
 		link.relative_angle=wrapf(float(b.get("angle",0))-float(a.get("angle",0)),-PI,PI)
 		link.locked=true
 func prepare(s):
-	groups.clear();membership.clear()
-	if s.phase!="battle":return
+	if s.phase!="battle":
+		groups.clear();membership.clear();prepared=false
+		return
 	s.links=s.links.filter(func(link):
 		var a=s.endpoint_by_id(link.a);var b=s.endpoint_by_id(link.b)
 		return not a.is_empty() and not b.is_empty() and a.alive and b.alive)
+	# Rest poses depend on link values, not the current physical positions.
+	# Compare values so in-place debug edits and broken links invalidate the cache.
+	if prepared and s.links==prepared_links:return
+	prepared_links=s.links.duplicate(true);prepared=true
+	groups.clear();membership.clear()
 	var adjacency={}
 	for link in s.links:
 		if not link.get("locked",false):continue
@@ -69,32 +77,34 @@ func project(s):
 	for group in groups:
 		var mass=0.0
 		var center=Vector2.ZERO;var rest_center=Vector2.ZERO;var velocity=Vector2.ZERO
+		var members=[]
 		for node in group:
 			var body=s.endpoint_by_id(node.id)
 			var m=s.physics.mass(s,body)
-			mass+=m;center+=body.p*m;rest_center+=node.p*m;velocity+=s.physics.velocity(body)*m
+			var state=s.physics.state(body)
+			members.append([node,body,m,s.physics.inertia(s,body),state])
+			mass+=m;center+=body.p*m;rest_center+=node.p*m;velocity+=state.v*m
 		center/=mass;rest_center/=mass;velocity/=mass
 		var cosine=0.0;var sine=0.0
-		for node in group:
-			var body=s.endpoint_by_id(node.id)
+		for member in members:
+			var node=member[0];var body=member[1]
 			var rest=node.p-rest_center;var actual=body.p-center
-			var m=s.physics.mass(s,body);var inertia=s.physics.inertia(s,body)
+			var m=member[2];var inertia=member[3]
 			var angle=float(body.get("angle",0))-node.angle
 			cosine+=m*rest.dot(actual)+inertia*cos(angle)
 			sine+=m*rest.cross(actual)+inertia*sin(angle)
 		var rotation=atan2(sine,cosine)
 		var angular_momentum=0.0;var group_inertia=0.0
-		for node in group:
-			var body=s.endpoint_by_id(node.id)
-			var m=s.physics.mass(s,body);var inertia=s.physics.inertia(s,body)
-			angular_momentum+=inertia*s.physics.angular_velocity(body)+m*(body.p-center).cross(s.physics.velocity(body)-velocity)
+		for member in members:
+			var node=member[0];var body=member[1];var m=member[2];var inertia=member[3];var state=member[4]
+			angular_momentum+=inertia*float(state.w)+m*(body.p-center).cross(state.v-velocity)
 			group_inertia+=inertia+m*(node.p-rest_center).length_squared()
 		var spin=angular_momentum/maxf(group_inertia,0.001)
-		for node in group:
-			var body=s.endpoint_by_id(node.id)
+		for member in members:
+			var node=member[0];var body=member[1]
 			var offset=(node.p-rest_center).rotated(rotation)
 			body.p=center+offset
 			body.angle=wrapf(rotation+node.angle,-PI,PI)
-			var state=s.physics.state(body)
+			var state=member[4]
 			state.v=velocity+Vector2(-offset.y,offset.x)*spin
 			state.w=spin

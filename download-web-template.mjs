@@ -12,21 +12,23 @@ const eocd=tail.lastIndexOf(Buffer.from([0x50,0x4b,0x05,0x06]));
 if(eocd<0) throw new Error('Missing ZIP directory');
 const offset=tail.readUInt32LE(eocd+16), length=tail.readUInt32LE(eocd+12);
 const directory=await range(offset,offset+length-1);
+const wanted=new Set(['web_nothreads_release.zip','web_dlink_release.zip']);
 await fs.mkdir('game/export-templates',{recursive:true});
 for(let p=0;p<directory.length;){
  if(directory.readUInt32LE(p)!==0x02014b50) break;
  const method=directory.readUInt16LE(p+10), compressed=directory.readUInt32LE(p+20);
  const nameLength=directory.readUInt16LE(p+28),extra=directory.readUInt16LE(p+30),comment=directory.readUInt16LE(p+32);
  const name=directory.subarray(p+46,p+46+nameLength).toString();
- if(/web.*(nothreads|release).*\.zip$/.test(name)){
-  console.log(name,compressed);
-  if(name.endsWith('web_nothreads_release.zip')){
-   const localOffset=directory.readUInt32LE(p+42);
-   const header=await range(localOffset,localOffset+29);
-   const start=localOffset+30+header.readUInt16LE(26)+header.readUInt16LE(28);
-   const content=await range(start,start+compressed-1);
-   await fs.writeFile('game/export-templates/web_nothreads_release.zip',method===8?inflateRawSync(content):content);
-  }
+ const file=name.split('/').pop();
+ if(wanted.has(file)){
+  const localOffset=directory.readUInt32LE(p+42);
+  const header=await range(localOffset,localOffset+29);
+  const start=localOffset+30+header.readUInt16LE(26)+header.readUInt16LE(28);
+  const content=await range(start,start+compressed-1);
+  await fs.writeFile(`game/export-templates/${file}`,method===8?inflateRawSync(content):content);
+  wanted.delete(file);
+  console.log(`Downloaded ${file}`);
  }
  p+=46+nameLength+extra+comment;
 }
+if(wanted.size) throw new Error(`Missing web templates: ${[...wanted].join(', ')}`);

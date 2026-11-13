@@ -22,7 +22,7 @@ func update(sim,wave,positions,stage,delta):
  for lane in active:
   var target=positions[lane]
   if not states.has(lane):
-   states[lane]={"p":target,"from":target,"target":target,"move":1.0,"alpha":0.0,"opening":0.0,"threat":active[lane].duplicate(),"surge":1.0,"active":true}
+   states[lane]={"p":target,"from":target,"target":target,"move":1.0,"alpha":0.0,"opening":0.0,"threat":active[lane].duplicate(),"surge":0.0,"active":true}
   var s=states[lane]
   s.active=true
   if not s.target.is_equal_approx(target):
@@ -78,10 +78,23 @@ func draw(canvas,lane):
    var a=i*2.4+lane
    var p=center+Vector2.from_angle(a+sin(t*3+a)*0.2)*(8+t*45)
    canvas.draw_circle(p,2+3*t,Color(0.53,0.31,0.62,(1-t)*0.22*openness*alpha))
+ draw_growth(canvas,lane)
+
+# Shared by the classic miasma and the simplified field body.
+func draw_growth(canvas,lane):
+ if not states.has(lane): return
+ var s=states[lane]
+ var center=s.p
+ var alpha=s.alpha
  if s.surge>0:
   var progress=1-s.surge
+  # Growth draws the surrounding water inward, unlike outward release particles.
+  for i in range(8):
+   var d=Vector2.from_angle(i*TAU/8+lane*0.3)
+   var p=center+d*(78-progress*42)
+   canvas.draw_line(p,p+d*(6+progress*4),Color(0.87,0.73,0.94,s.surge*alpha*0.6),1.5,true)
   for i in range(3):
-   var r=30+progress*45+i*7
+   var r=30+(1-progress)*45+i*7
    canvas.draw_arc(center,r,0,TAU,64,Color(0.74,0.35,0.72,s.surge*alpha*(0.6-i*0.12)),2,true)
   canvas.draw_string(ThemeDB.fallback_font,center+Vector2(-35,-72-progress*12),"THREAT RISING",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(0.34,0.16,0.4,s.surge*alpha))
 

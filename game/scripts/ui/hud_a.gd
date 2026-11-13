@@ -35,6 +35,8 @@ var cell_block: Control
 var virus_block: Control
 var dock_offset=0.0
 var active=false
+var facts_scroll: ScrollContainer
+var facts_text: RichTextLabel
 func _ready():
  mouse_filter=Control.MOUSE_FILTER_IGNORE
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -80,6 +82,19 @@ func _ready():
  cell_block.position=cell_rect.position
  cell_block.size=cell_rect.size
  add_child(cell_block)
+ facts_scroll=ScrollContainer.new()
+ facts_scroll.position=Vector2(355,307)
+ facts_scroll.size=Vector2(260,220)
+ facts_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+ add_child(facts_scroll)
+ facts_text=RichTextLabel.new()
+ facts_text.fit_content=true
+ facts_text.scroll_active=false
+ facts_text.custom_minimum_size.x=242
+ facts_text.add_theme_font_override("normal_font",game.symbol_font)
+ facts_text.add_theme_color_override("default_color",INK)
+ facts_text.add_theme_font_size_override("normal_font_size",13)
+ facts_scroll.add_child(facts_text)
  virus_block=Control.new()
  virus_block.position=virus_rect.position
  virus_block.size=virus_rect.size
@@ -236,9 +251,9 @@ func select_cell(key,instance):
  cell_key=key
  cell=instance
  var width=game.symbol_font.get_string_size(game.sim.catalog[key].description,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
- cell_rect.size.y=maxf(242,165+ceil(width/240.0)*18+50)
+ cell_rect.size.y=370
  cell_block.size=cell_rect.size
- sell.position.y=cell_rect.end.y-60
+ sell.position.y=cell_rect.end.y-48
  rotate.position.y=sell.position.y
 func select_virus(key,lane):
  virus_key=key
@@ -365,9 +380,21 @@ func _process(delta):
  if not cell.is_empty() and (not cell.get("alive",false) or not game.sim.cells.has(cell)):cell_key=""
  if prep and not game.selected.is_empty() and game.selected.id==game.inspected_cell and not shelf.get_global_rect().has_point(get_global_mouse_position()) and game.pending_offer.is_empty():
   if cell!=game.selected:select_cell(game.selected.key,game.selected)
- cell_block.visible=prep and cell_key!=""
+ cell_block.visible=(prep or combat) and cell_key!="" and (prep or not cell.is_empty())
+ facts_scroll.visible=cell_block.visible
+ if cell_block.visible:
+  var facts="\n".join(game.cell_fact_lines(cell))
+  var info=preload("res://scripts/ui/cell_facts.gd").ability(game.sim,cell_key,int(cell.get("rank",1)))
+  var content=(facts+"\n\n" if facts!="" else "")+"ABILITY\n"+info
+  if facts_text.text!=content:facts_text.text=content
+  var body_height=clampf(facts_text.get_content_height()+8,80,220)
+  facts_scroll.size.y=body_height
+  cell_rect.size.y=99+body_height+60
+  cell_block.size=cell_rect.size
+  sell.position.y=cell_rect.end.y-48
+  rotate.position.y=sell.position.y
  virus_block.visible=prep and virus_key!=""
- sell.visible=cell_block.visible and not cell.is_empty()
+ sell.visible=prep and cell_block.visible and not cell.is_empty()
  rotate.visible=sell.visible
  sell.disabled=not prep
  sell.text="SELL  ● %d" % int(cell.get("sale",1))
@@ -425,7 +452,7 @@ func _draw():
     box(Rect2(280,y,21,62.0/steps-3),Color("#715c28") if sim.xp-prev>i else DARK,Color("#6e654e"))
     for dot in range(3):draw_circle(Vector2(284+dot*6,y+(62.0/steps-3)/2),1.5,GOLD if sim.xp-prev>i else MUTED)
   draw_set_transform(Vector2.ZERO)
- if prep and cell_key!="":
+ if cell_block.visible:
   if not cell.is_empty():
    var anchor=game.view.to_global(cell.p)
    var edge=Vector2(cell_rect.end.x,clampf(anchor.y,cell_rect.position.y+20,cell_rect.end.y-20))
@@ -447,9 +474,7 @@ func draw_cell_record():
  draw_texture_rect(game.cell_icon(cell_key),Rect2(355,244,54,54),false)
  wrapped_text(Vector2(420,263),d.name,190,16)
  text(Vector2(420,289),d.category+"  RANK "+"▲".repeat(int(cell.get("rank",1)))+"△".repeat(3-int(cell.get("rank",1))),11)
- text(Vector2(355,322),"♥ %s / %s" % [str(cell.get("hp",d.hp)),str(cell.get("max_hp",d.hp))],16,RED)
- text(Vector2(355,342),"ABILITY",10,MUTED)
- wrapped_text(Vector2(355,363),d.description,259,13)
+ if cell.is_empty():text(Vector2(355,303),"HP: "+str(d.hp),13,RED)
 func draw_virus_record():
  paper(virus_rect)
  text(Vector2(1059,231),"VIRUS FILE   SOURCE %d" % (virus_lane+1),10,MUTED)

@@ -10,6 +10,7 @@ var previous={}
 var bursts=[]
 var merges=[]
 var intensity=1.0
+var deaths_seen={}
 var friendly_trail_seconds=0.6
 var virus_trail_seconds=120.0
 var virus_trail_head_seconds=3.0
@@ -35,6 +36,7 @@ func update(sim,delta,water_delta=-1.0):
   previous.clear()
   bursts.clear()
   merges.clear()
+  deaths_seen.clear()
   if fresh: cursor=sim.event_sequence
   elapsed=sim.elapsed
  var dt=maxf(0,sim.elapsed-elapsed) if sim.phase=="battle" else delta
@@ -75,7 +77,11 @@ func update(sim,delta,water_delta=-1.0):
  merges=merges.filter(func(m): return m.age<1.0)
  for e in sim.events_since(cursor):
   if e.event in ["virus_defeated","cell_rest","blood_lost"]:
-   bursts.append({"p":e.data.p,"kind":e.event,"age":0.0})
+   var identity=e.event+":"+str(e.data.get("id",e.seq))
+   if deaths_seen.has(identity): continue
+   deaths_seen[identity]=true
+   var body=sim.cell_by_id(e.data.get("id",-1)) if e.event=="cell_rest" else {}
+   bursts.append({"p":e.data.p,"kind":e.event,"age":0.0,"angle":body.get("angle",0.0),"wall":body.has("key") and sim.catalog[body.key].behavior=="wall"})
   elif e.event=="merge" and e.data.has("p"):
    merges.append({"p":e.data.p,"rank":e.data.rank,"age":0.0})
  cursor=sim.event_sequence
@@ -105,12 +111,52 @@ func draw_under(canvas):
  if not points.is_empty():canvas.draw_multiline_colors(points,colors,4,true)
  for b in bursts:
   var t=b.age/0.7
-  var core=b.kind=="blood_lost"
-  var color=Color(0.9,0.3,0.46,(1-t)*0.45*intensity) if core else Color(0.64,0.46,0.72,(1-t)*0.6*intensity)
-  for i in range(8 if core else 5):
-   var a=i*TAU/(8 if core else 5)
-   var p=b.p+Vector2.from_angle(a)*(12+t*(85 if core else 25))
-   strokes.arc(canvas,p,(9 if core else 4)*(1-t)+1,a,1.3,8,color,2)
+  draw_departure(canvas,b,t)
+  var preset=death_particles(b.kind)
+  var color=Color(preset.color,(1-t)*preset.alpha*intensity)
+  for i in range(preset.count):
+   var a=i*TAU/preset.count
+   var p=b.p+Vector2.from_angle(a)*(12+t*preset.spread)
+   if b.kind=="virus_defeated":
+    canvas.draw_circle(p,(3-t*2)*intensity,color)
+   elif b.kind=="cell_rest":
+    p.y-=t*12
+    var d=Vector2.from_angle(a)*(4*(1-t))
+    canvas.draw_line(p-d,p+d,color,1.5,true)
+   else:
+    strokes.arc(canvas,p,9*(1-t)+1,a,1.3,8,color,2)
+func death_particles(kind):
+ if kind=="blood_lost": return {"count":8,"spread":85.0,"color":Color("#e64d75"),"alpha":0.45}
+ if kind=="cell_rest": return {"count":6,"spread":32.0,"color":Color("#62a49c"),"alpha":0.6}
+ return {"count":5,"spread":25.0,"color":Color("#a375b8"),"alpha":0.6}
+func draw_departure(canvas,b,t):
+ # Non-gameplay echoes disappear within the existing aftermath interval.
+ var alpha=(1-t)*intensity
+ if b.kind=="blood_lost":
+  # Six released hand positions and a contracting shell make Core loss distinct.
+  var r=13*(1-t*0.6)
+  strokes.arc(canvas,b.p,r,0,TAU,24,Color(0.77,0.24,0.38,alpha),2)
+  for i in range(6):
+   var d=Vector2.from_angle(i*TAU/6)
+   canvas.draw_circle(b.p+d*(16+t*8),2*(1-t),Color(0.9,0.43,0.52,alpha))
+ elif b.kind=="cell_rest":
+  # Immune cells leave an upward-opening soft shell, preserving a Wall outline.
+  var p=b.p+Vector2(0,-t*10)
+  if b.wall:
+   var d=Vector2.RIGHT.rotated(b.angle)
+   for side in [-1,1]:
+    var n=d.orthogonal()*side*(12+t*5)
+    canvas.draw_line(p-d*34+n,p+d*34+n,Color(0.38,0.63,0.61,alpha),2,true)
+  else:
+   strokes.arc(canvas,p,22*(1-t*0.25),PI*0.1,PI*0.8,20,Color(0.38,0.63,0.61,alpha),2)
+   strokes.arc(canvas,p,22*(1-t*0.25),PI*1.1,PI*0.8,20,Color(0.38,0.63,0.61,alpha),2)
+ else:
+  # Virus membrane breaks outward into short segments rather than a Core echo.
+  for i in range(5):
+   var a=i*TAU/5
+   # The five pieces share topology and radius; rotate the cached mesh instead
+   # of rebuilding five native antialiased polylines for every fading membrane.
+   strokes.arc(canvas,b.p,12+t*18,a,0.6,5,Color(0.58,0.35,0.68,alpha),1.5)
 func draw_over(canvas):
  for m in merges:
   var color=Color("#e6ad39") if m.rank==3 else Color("#f3f9ff")

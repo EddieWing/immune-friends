@@ -14,6 +14,9 @@ var virus_motion=preload("res://scripts/virus_motion.gd").new()
 var electricity=preload("res://scripts/electricity.gd").new()
 var proteins=preload("res://scripts/protein_system.gd").new()
 var pending_cells=[]
+var _projectile_grid_active=false
+var _projectile_grid={}
+var _projectile_bodies=[]
 var battle_income=0
 var catalog: Dictionary
 var base_catalog: Dictionary
@@ -207,7 +210,7 @@ func merge(a, b):
 	if a.rank == 3:
 		queue_reward()
 	rebuild_links()
-	record("merge",{"key":a.key,"hp":a.hp,"rank":a.rank,"p":a.p})
+	record("merge",{"id":a.id,"key":a.key,"hp":a.hp,"rank":a.rank,"p":a.p})
 	effect(a.p,Color("#f6de8d"),"Hug!",48)
 	return true
 
@@ -252,6 +255,7 @@ func purchase(index: int, p: Vector2, reward = false):
 		last_message = "No room. Merge cells or level up."
 		return false
 	item = make_cell(key,p)
+	var purchase_buffs=[]
 	if not reward:
 		money-=int(shop_rules.buy_price)
 	if catalog[key].category=="B":
@@ -259,13 +263,26 @@ func purchase(index: int, p: Vector2, reward = false):
 			if c.key=="resonant_wall":
 				c.max_hp+=constant_of(c,"healthIncrement",1)
 				c.hp+=constant_of(c,"healthIncrement",1)
+				purchase_buffs.append({"source_id":item.id,"id":c.id,"amount":constant_of(c,"healthIncrement",1)})
 			if c.key=="resonant_buffer":
 				item.max_hp+=constant_of(c,"healthIncrement",1)
 				item.hp+=constant_of(c,"healthIncrement",1)
+				purchase_buffs.append({"source_id":c.id,"id":item.id,"amount":constant_of(c,"healthIncrement",1)})
 	source.remove_at(index)
 	cells.append(item)
 	if direct:
 		merge(recipient,item)
+	for bonus in purchase_buffs:
+		# Direct merge may consume either participant (Wildcard swaps the survivor).
+		for field in ["source_id","id"]:
+			if cell_by_id(bonus[field]).is_empty() and direct:
+				bonus[field]=item.id if not cell_by_id(item.id).is_empty() else recipient.id
+		var provider=cell_by_id(bonus.source_id)
+		var receiver=cell_by_id(bonus.id)
+		if bonus.amount>0 and not provider.is_empty() and not receiver.is_empty():
+			bonus["from"]=provider.p
+			bonus["p"]=receiver.p
+			record("purchase_buff",bonus)
 	rebuild_links()
 	record("purchase",{"key":key,"reward":reward})
 	last_message = catalog[key].name + " joined the team"
@@ -319,9 +336,9 @@ func buy_xp():
 	money-=int(shop_rules.xp_price)
 	if gain_xp(1):
 		fill_shop()
-		last_message="Level %d · Capacity increased to %d cells" % [tier,capacity()]
+		last_message="Level %d Â· Capacity increased to %d cells" % [tier,capacity()]
 	else:
-		last_message="+1 XP · %d / %d to level %d" % [xp,int(rules.xp_thresholds[tier-1]),tier+1]
+		last_message="+1 XP Â· %d / %d to level %d" % [xp,int(rules.xp_thresholds[tier-1]),tier+1]
 	record("xp",{"tier":tier,"xp":xp})
 	return true
 
@@ -336,13 +353,51 @@ func constant_of(c, field, fallback=0):
 	if int(c.rank)>=3 and data.get("elite_constants",{}).has(field): return float(data.elite_constants[field])
 	return float(data.get("constants",{}).get(field,fallback))
 
+func preparation_start_health(c):
+	# Greed replaces runtime HP; permanent HP survives in the composition.
+	# Conversion happens once, before subsequent battle damage/healing.
+	return maxf(1.0,constant_of(c,"conversionRate",2)*money) if c.key=="greed_wall" else float(c.max_hp)
+
+var step_lookups_active=false
+var lookup_sizes=Vector3i(-1,-1,-1)
+var cell_lookup={}
+var virus_lookup={}
+var core_lookup={}
+func prepare_step_lookups():
+	# Synchronous update owns array membership. New spawns/offspring change
+	# sizes; death only changes the referenced Dictionary, which stays live.
+	var sizes=Vector3i(cells.size(),viruses.size(),blood.size())
+	if sizes==lookup_sizes:return
+	cell_lookup.clear();virus_lookup.clear();core_lookup.clear()
+	for c: Dictionary in cells:
+		var id=c.id
+		# Older numeric checkpoints may contain 1.0; linear equality matches 1.
+		if id is float and id==int(id):id=int(id)
+		if not cell_lookup.has(id):cell_lookup[id]=c
+	for v: Dictionary in viruses:
+		var id=v.id
+		if id is float and id==int(id):id=int(id)
+		if not virus_lookup.has(id):virus_lookup[id]=v
+	for b: Dictionary in blood:
+		var id=-2-int(b.id)
+		if not core_lookup.has(id):core_lookup[id]=b
+	lookup_sizes=sizes
+
 func cell_by_id(id):
+	if step_lookups_active and id is int:
+		prepare_step_lookups()
+		return cell_lookup.get(id,{})
 	for c in cells:
 		if c.id==id:
 			return c
 	return {}
 
 func endpoint_by_id(id):
+	if step_lookups_active and id is int:
+		prepare_step_lookups()
+		if id < -1:return core_lookup.get(id,{})
+		if cell_lookup.has(id):return cell_lookup[id]
+		return virus_lookup.get(id,{})
 	if id < -1:
 		for b in blood:
 			if -2-int(b.id)==id: return b
@@ -390,6 +445,59 @@ func network(id):
 			var c=endpoint_by_id(other)
 			if not c.is_empty() and c.alive:
 				found.append(other)
+	return found
+
+# This temporary index is built only during the cell pass; integer IDs are
+# required so dictionary lookups use the same equality as the link scan.
+var experimental_radar_kernel=null
+func prepare_native_radar():
+	if not ClassDB.class_exists("CoreKernel"):return {}
+	if experimental_radar_kernel==null:experimental_radar_kernel=ClassDB.instantiate("CoreKernel")
+	if not experimental_radar_kernel.has_method("radar_last"):return {}
+	var ids=[];var indices={};var roots=PackedInt32Array();var edges=PackedInt32Array()
+	for c in cells:
+		if typeof(c.id)!=TYPE_INT or c.id==-1:return {}
+		if not indices.has(c.id):indices[c.id]=ids.size();ids.append(c.id)
+		roots.append(indices[c.id])
+	for l in links:
+		if typeof(l.a)!=TYPE_INT or typeof(l.b)!=TYPE_INT or l.a==-1 or l.b==-1:return {}
+		for id in [l.a,l.b]:
+			if not indices.has(id):indices[id]=ids.size();ids.append(id)
+		edges.append(indices[l.a]);edges.append(indices[l.b])
+	var flags=PackedInt32Array()
+	for id in ids:
+		var ep=endpoint_by_id(id);var provider=cell_by_id(id)
+		flags.append((1 if not ep.is_empty() and ep.alive else 0) | (2 if provider.get("key","")=="radar" else 0))
+	var last=experimental_radar_kernel.radar_last(flags,edges,roots)
+	if last.size()!=cells.size():return {}
+	var by_id={}
+	for i in range(cells.size()):
+		if last[i]>=0:by_id[cells[i].id]=ids[last[i]]
+	return {"last":by_id}
+
+func radar_adjacency():
+	var adj={}
+	for l in links:
+		if typeof(l.a)!=TYPE_INT or typeof(l.b)!=TYPE_INT:return {}
+		if not adj.has(l.a):adj[l.a]=[]
+		adj[l.a].append(l.b)
+		if l.a==l.b:continue
+		if not adj.has(l.b):adj[l.b]=[]
+		adj[l.b].append(l.a)
+	return {"edges":adj}
+
+func radar_network(id,adj):
+	if typeof(id)!=TYPE_INT or adj.is_empty():return network(id)
+	var source=endpoint_by_id(id)
+	if source.is_empty() or not source.alive:return []
+	var found=[id];var seen={id:true};var cursor=0
+	while cursor<found.size():
+		var here=found[cursor];cursor+=1
+		for other in adj.edges.get(here,[]):
+			if other==-1 or seen.has(other):continue
+			var c=endpoint_by_id(other)
+			if not c.is_empty() and c.alive:
+				found.append(other);seen[other]=true
 	return found
 
 func direct_neighbors(id):
@@ -466,6 +574,8 @@ func begin_battle():
 		c.cool=0.1
 		c.contact=0
 		c["friendly_stun"]=0.0
+		c["presentation_target"]=-1
+		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
 		c.speed_buff=1.0
@@ -488,7 +598,11 @@ func begin_battle():
 		c.erase("orbit_center");c.erase("orbit_radius")
 		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
 		if c.key=="hungry_bomb": c["radius_growth"]=0.0
-		if c.key=="greed_wall": c.hp+=constant_of(c,"conversionRate",2)*money
+		c.erase("initial_health_bonus")
+		c.erase("initial_conversion_health")
+		if c.key=="greed_wall":
+			c.hp=preparation_start_health(c)
+			c["initial_conversion_health"]=c.hp
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	for c in cells:
 		for id in network(c.id):
@@ -612,7 +726,7 @@ func heal(c, amount, source={}):
 	c.hp+=amount
 	c.flash=0.3
 	effect(c.p,Color("#a3e4b6"),"+"+str(amount)+" Health",24)
-	record("heal",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"from":source.get("p",c.p)})
+	record("heal",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"from":source.get("p",c.p),"source_id":source.get("id",-1)})
 
 # SCAPEGOAT_CHAIN targets Connected (whole component), excluding itself.
 # One live guard absorbs at most its HP; overflow reaches the original target.
@@ -683,6 +797,15 @@ func contains_cell(c, p, extra=0.0):
 	return local.length()<physics.radius(c)+extra
 
 func update(delta: float):
+	# Keep lookups scoped to this call. Editor/debug changes between ticks
+	# (including same-size replacement/reordering) always see fresh membership.
+	step_lookups_active=true
+	lookup_sizes=Vector3i(-1,-1,-1)
+	update_step(delta)
+	step_lookups_active=false
+	cell_lookup.clear();virus_lookup.clear();core_lookup.clear()
+
+func update_step(delta: float):
 	var movement_delta: float=delta
 	for e: Dictionary in effects: e.life-=delta
 	effects=effects.filter(func(e): return e.life>0)
@@ -698,16 +821,27 @@ func update(delta: float):
 		if provider.alive and provider.key in ["radar","accelerator"]:
 			has_network_buffs=true
 			break
+	var radar_native=prepare_native_radar() if has_network_buffs else {}
+	var radar_edges=radar_adjacency() if has_network_buffs and radar_native.is_empty() else {}
 	for c: Dictionary in cells:
 		if not c.alive: continue
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
 		c.speed_buff=1.0
-		for id in (network(c.id) if has_network_buffs else []):
-			var provider=cell_by_id(id)
-			if provider.get("key","")=="radar" and ability_reaches(provider,c.id): apply_radar(c,provider)
+		if not radar_native.is_empty():
+			if radar_native.last.has(c.id):apply_radar(c,cell_by_id(radar_native.last[c.id]))
+		else:
+			for id in (radar_network(c.id,radar_edges) if has_network_buffs else []):
+				var provider=cell_by_id(id)
+				if provider.get("key","")=="radar":
+					var safe_ints=not radar_edges.is_empty() and typeof(c.id)==TYPE_INT and typeof(provider.id)==TYPE_INT
+					if (provider.id!=c.id if safe_ints else ability_reaches(provider,c.id)):apply_radar(c,provider)
 		proteins.tick(self,c,delta)
-		if not c.alive:continue
+		if not c.alive:
+			if has_network_buffs:
+				radar_native=prepare_native_radar()
+				radar_edges=radar_adjacency() if radar_native.is_empty() else {}
+			continue
 		experiments.tick(self,c,delta)
 		if interval_of(c)>0:proteins.accelerate_cooldown(c)
 		c.cool-=delta
@@ -716,14 +850,17 @@ func update(delta: float):
 		var d: Dictionary=catalog[c.key]
 		var velocity: Vector2=Vector2.ZERO
 		var reach: float=range_of(c)
-		var target: Dictionary=nearest_virus(c.p,reach)
-		if c.key=="tag_splitter":
+		# Only pursuit and a ready aimed shot consume this query. Other abilities
+		# use their own area/directional checks; cooldown does not acquire a target.
+		var needs_target: bool=d.behavior=="seek" or (d.behavior=="shoot" and c.cool<=0)
+		var target: Dictionary=nearest_virus(c.p,reach) if needs_target else {}
+		if needs_target and c.key=="tag_splitter":
 			var distance=reach if target.is_empty() else c.p.distance_to(target.p)
 			for p: Dictionary in particles:
 				if p.life>0 and p.kind=="tag" and p.p.distance_to(c.p)<distance:
 					target={"p":p.p}
 					distance=p.p.distance_to(c.p)
-		if target.is_empty() and d.category=="T" and reach>0:
+		if needs_target and target.is_empty() and d.category=="T" and reach>0:
 			for candidate: Dictionary in viruses:
 				if candidate.alive and candidate.tag>0 and c.p.distance_to(candidate.p)<reach*2:
 					target=candidate
@@ -738,6 +875,12 @@ func update(delta: float):
 						target=v
 						break
 			velocity=preload("res://scripts/seeker_motion.gd").direction(self,c,target,delta)*speed_of(c)*Ref.SCALE
+			var target_id=int(target.get("id",-1))
+			if target_id!=int(c.get("presentation_target",-1)):
+				var had_target=int(c.get("presentation_target",-1))>=0
+				c["presentation_target"]=target_id
+				if not had_target or target_id<0:
+					record("cell_target",{"id":c.id,"p":c.p,"target_id":target_id,"target":target.get("p",c.p)})
 		elif d.behavior=="orbit":
 			if not c.has("orbit_center"):
 				c["orbit_center"]=reference_core_center()
@@ -777,11 +920,13 @@ func update(delta: float):
 						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*400,"cell",c.p)
 				"drop":
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id})
+					record("interferon_created",{"id":c.id,"p":c.p})
 				"spray":
 					if int(c.get("tags",0))>0:
 						c.tags-=1
 						var angle=c.angle+rng.randf_range(-PI/2,PI/2)
 						particles.append({"kind":"tag","p":c.p,"v":Vector2.from_angle(angle)*95,"life":1e12,"r":5.0,"owner":c.id})
+						record("interferon_created",{"id":c.id,"p":c.p})
 		if c.key=="magnet":
 			for v: Dictionary in viruses:
 				if v.alive and v.p.distance_to(c.p)<reach: physics.accelerate(self,v,v.p.direction_to(c.p)*Ref.impulse(1000.0),delta)
@@ -790,8 +935,20 @@ func update(delta: float):
 		if cells.size()<int(rules.produced_cell_limit): cells.append(c)
 	pending_cells.clear()
 	var core_positions: PackedVector2Array=[]
-	for b: Dictionary in blood:core_positions.append(b.p)
-	for v: Dictionary in viruses:
+	var core_target_names={}
+	for b: Dictionary in blood:
+		core_positions.append(b.p)
+		if typeof(b.id)==TYPE_INT:core_target_names[b.id]="core:"+str(b.id)
+	var nearest_cores=PackedInt32Array()
+	if supports_batched_cores():
+		var virus_positions=PackedVector2Array();var living_cores=PackedInt32Array()
+		for v: Dictionary in viruses:virus_positions.append(v.p)
+		for b: Dictionary in blood:living_cores.append(int(b.alive))
+		nearest_cores=nearest_cores_batch(virus_positions,core_positions,living_cores)
+	var motion_contexts={};var default_motion_keys={}
+	var swarm_edges=swarm_adjacency()
+	for virus_index in range(viruses.size()):
+		var v: Dictionary=viruses[virus_index]
 		if not v.alive: continue
 		v["lived"]=float(v.get("lived",0))+delta
 		if v.lived>float(v.get("lifespan",14.0)):
@@ -811,24 +968,33 @@ func update(delta: float):
 				v.emerging=false
 				v.age=0.0
 			continue
-		var destination: Dictionary=nearest_blood_at(v.p,core_positions)
+		var destination: Dictionary=nearest_blood_at(v.p,core_positions) if nearest_cores.is_empty() else (blood[nearest_cores[virus_index]] if nearest_cores[virus_index]>=0 else {})
 		if destination.is_empty():
 			if gym_mode: continue
 			finish(false)
 			return
 		var target_pos: Vector2=destination.p
-		var target_key: String="core:"+str(destination.id)
+		var target_key: String=core_target_names[destination.id] if typeof(destination.id)==TYPE_INT else "core:"+str(destination.id)
 		if v.type=="seeker":
 			var nearest: float=15.0*26.0/3.5
 			for c: Dictionary in cells:
-				if c.alive and c.p.distance_to(v.p)<nearest:
+				if not c.alive:continue
+				var distance_to_cell: float=c.p.distance_to(v.p)
+				if distance_to_cell<nearest:
 					target_pos=c.p
 					target_key="cell:"+str(c.id)
-					nearest=c.p.distance_to(v.p)
+					nearest=distance_to_cell
 		if v.type=="seeker" and v.get("visual_target","")!=target_key:
 			record("virus_target",{"id":v.id,"p":v.p,"target":target_pos})
 		v.visual_target=target_key
 		var dir: Vector2=v.p.direction_to(target_pos)
+		var motion_key: String
+		if not v.has("physics_diameter"):
+			if not default_motion_keys.has(v.type):default_motion_keys[v.type]=physics.material_key(v)
+			motion_key=default_motion_keys[v.type]
+		else:motion_key=physics.material_key(v)
+		if not motion_contexts.has(motion_key):motion_contexts[motion_key]=virus_motion.context(self,v)
+		var motion_context: Dictionary=motion_contexts[motion_key]
 		v.visual_avoiding=false
 		if v.type=="avoider":
 			var avoid={};var distance=15.0*26.0/3.5
@@ -836,12 +1002,12 @@ func update(delta: float):
 				var d=v.p.distance_to(c.p)
 				if c.alive and d<distance:avoid=c;distance=d
 			if not avoid.is_empty() and v.freeze<=0:
-				var force=avoid.p.direction_to(v.p)*150.0*virus_motion.multiplier(self,v)*Ref.MASS_UNIT
-				physics.accelerate(self,v,force,delta)
+				var force=avoid.p.direction_to(v.p)*150.0*motion_context.scale*Ref.MASS_UNIT
+				virus_motion.apply_impulse(self,v,force*delta,motion_context.mass)
 				v.visual_avoiding=true
-		if v.type=="swarmer":update_swarm_attraction(v,delta)
+		if v.type=="swarmer":update_swarm_attraction(v,delta,motion_context,swarm_edges)
 		v.visual_heading=dir
-		virus_motion.tick(self,v,dir,delta)
+		virus_motion.tick(self,v,dir,delta,motion_context)
 	physics.step(self,delta)
 	join_swarm_contacts()
 	for pair: Vector2i in physics.contacts:
@@ -854,16 +1020,7 @@ func update(delta: float):
 		if c.key=="electric_wall":experiments.electric_contacts(self,c,delta)
 	resolve_cell_contacts()
 	advance_blasts(delta)
-	for p: Dictionary in particles:
-		if p.life<=0: continue
-		p.life-=delta
-		var previous=p.p
-		if p.kind=="tag":proteins.steer_tag(self,p,delta)
-		p.p+=p.v*movement_delta
-		if p.kind=="bullet":
-			resolve_bullet(p,previous,p.p)
-		elif p.kind=="tag":
-			proteins.resolve_tag(self,p,previous,p.p)
+	advance_projectiles(delta,movement_delta)
 	particles=particles.filter(func(p): return p.life>0)
 	viruses=viruses.filter(func(v): return v.alive)
 	if gym_mode: return
@@ -903,6 +1060,7 @@ func start_blast(position,reach,damage=1.0,force=600.0,owner=-1,immune_only=fals
 	var visual={"p":position,"color":Color("#f9b8d1") if damage>0 else Color("#a5e2f0"),"text":"","r":0.0,"front":true,"life":duration,"max":duration}
 	effects.append(visual)
 	blasts.append({"p":position,"reach":reach,"radius":0.0,"duration":duration,"age":0.0,"hit":{},"immune_only":immune_only,"damage":damage,"force":force,"owner":owner,"visual":visual})
+	record("blast_started",{"p":position,"reach":reach,"damage":damage,"duration":duration,"owner":owner})
 
 func advance_blasts(delta):
 	# Iterate a snapshot: a killed bomb starts a distinct front next step.
@@ -952,9 +1110,42 @@ func projectile_fraction(body,from,to,radius):
 	var t=(-b-sqrt(discriminant))/a
 	return t if t>=0 and t<=1 else INF
 
+# Bodies do not translate during projectile resolution. Keep array order so
+# equal-time hits retain the original cells-before-viruses tie break.
+func _prepare_projectile_grid():
+	_projectile_grid.clear()
+	_projectile_bodies=cells+viruses
+	for i in range(_projectile_bodies.size()):
+		var p: Vector2=_projectile_bodies[i].p
+		var tile=Vector2i(floori(p.x/96.0),floori(p.y/96.0))
+		if not _projectile_grid.has(tile):_projectile_grid[tile]=[]
+		_projectile_grid[tile].append(i)
+	_projectile_grid_active=true
+
+func _clear_projectile_grid():
+	_projectile_grid_active=false
+	_projectile_grid.clear();_projectile_bodies.clear()
+
+func projectile_candidates(from: Vector2,to: Vector2,radius: float) -> Array:
+	if not _projectile_grid_active:return cells+viruses
+	# Expanded rotated Wall has half extents (43+r,13+r). This bound
+	# includes its corner for every angle, with margin for Float32 rounding.
+	var padding=160.0+2.0*absf(radius)
+	var lo=Vector2i(floori((minf(from.x,to.x)-padding)/96.0),floori((minf(from.y,to.y)-padding)/96.0))
+	var hi=Vector2i(floori((maxf(from.x,to.x)+padding)/96.0),floori((maxf(from.y,to.y)+padding)/96.0))
+	if (hi.x-lo.x+1)*(hi.y-lo.y+1)>128:return _projectile_bodies
+	var indices=[]
+	for y in range(lo.y,hi.y+1):
+		for x in range(lo.x,hi.x+1):
+			indices.append_array(_projectile_grid.get(Vector2i(x,y),[]))
+	indices.sort()
+	var found=[]
+	for i in indices:found.append(_projectile_bodies[i])
+	return found
+
 func resolve_bullet(p,from,to):
 	var target={};var nearest=INF
-	for body in cells+viruses:
+	for body in projectile_candidates(from,to,float(p.r)):
 		if not body.alive or body.id==p.owner:continue
 		if body.has("type"):
 			if body.jump:continue
@@ -964,6 +1155,9 @@ func resolve_bullet(p,from,to):
 		var t=projectile_fraction(body,from,to,float(p.r))
 		if t<nearest:nearest=t;target=body
 	if target.is_empty():return
+	apply_bullet_hit(p,from,to,target,nearest)
+
+func apply_bullet_hit(p,from,to,target,nearest):
 	p.p=from.lerp(to,nearest);p.life=0
 	if target.has("type"):
 		damage_virus(target,1,{"p":from,"cause":"bullet","owner":p.owner})
@@ -978,30 +1172,95 @@ func resolve_bullet(p,from,to):
 		proteins.consumed(self,target)
 		record("protein_eaten",{"id":target.id,"p":target.p,"from":p.p,"kind":"bullet"})
 
-func update_swarm_attraction(v,delta):
-	var attached=[]
+func swarm_adjacency():
+	var edges={}
 	for link in links:
 		if not link.get("swarm",false):continue
-		var other=link.b if link.a==v.id else (link.a if link.b==v.id else -1)
-		var body=endpoint_by_id(other)
-		if not body.is_empty() and body.alive:attached.append(body)
-	var host=-1 if attached.is_empty() else attached[0].id
+		if typeof(link.a)!=TYPE_INT or typeof(link.b)!=TYPE_INT:return {}
+		if not edges.has(link.a):edges[link.a]=[]
+		edges[link.a].append(link.b)
+		if link.a!=link.b:
+			if not edges.has(link.b):edges[link.b]=[]
+			edges[link.b].append(link.a)
+	return {"edges":edges}
+func update_swarm_attraction(v,delta,prepared={},swarm_adj={}):
+	var host=-1
+	if not swarm_adj.is_empty() and typeof(v.id)==TYPE_INT:
+		for other in swarm_adj.edges.get(v.id,[]):
+			if other==-1:continue
+			var body=endpoint_by_id(other)
+			if not body.is_empty() and body.alive:host=body.id;break
+	else:
+		for link in links:
+			if not link.get("swarm",false):continue
+			var other=link.b if link.a==v.id else (link.a if link.b==v.id else -1)
+			if other==-1:continue
+			var body=endpoint_by_id(other)
+			if not body.is_empty() and body.alive:host=body.id;break
 	if v.get("host",-1)!=host:
 		record("virus_attachment",{"id":v.id,"p":v.p,"old_host":v.get("host",-1),"host":host})
 	v.host=host
 	if host!=-1 or v.freeze>0:return
-	var nearby=viruses.filter(func(other):return other.alive and other.id!=v.id and not other.jump and v.p.distance_to(other.p)<60.0*26.0/3.5)
-	nearby.sort_custom(func(a,b):return v.p.distance_squared_to(a.p)<v.p.distance_squared_to(b.p))
-	for other in nearby.slice(0,9):
-		physics.accelerate(self,v,v.p.direction_to(other.p)*25.0*virus_motion.multiplier(self,v)*Ref.MASS_UNIT,delta)
+	# Packed scalar sorting avoids invoking a GDScript comparator per pair.
+	# Equal keys use the original full sort to preserve its unstable tie order.
+	var distances=PackedFloat64Array()
+	var by_distance={}
+	var tied=false
+	var candidates=[]
+	for other: Dictionary in viruses:
+		if not other.alive or other.id==v.id or other.jump:continue
+		var offset: Vector2=v.p-other.p
+		if not (offset.length()<60.0*26.0/3.5):continue
+		var distance: float=offset.length_squared()
+		if by_distance.has(distance):tied=true
+		by_distance[distance]=other
+		distances.append(distance)
+		candidates.append(other)
+	var nearby=[]
+	if tied:
+		for i in range(candidates.size()):nearby.append([distances[i],candidates[i]])
+		nearby.sort_custom(func(x,y):return x[0]<y[0])
+	else:
+		distances.sort()
+		for i in range(mini(9,distances.size())):nearby.append([distances[i],by_distance[distances[i]]])
+	if nearby.is_empty():return
+	# All nine attractions use the same material and movement tuning. Preserve
+	# each Vector2 multiply/divide and impulse order, but resolve them once.
+	var movement_scale=virus_motion.multiplier(self,v) if prepared.is_empty() else prepared.scale
+	var body_mass=physics.mass(self,v) if prepared.is_empty() else prepared.mass
+	var body_state=physics.state(v)
+	for entry in nearby.slice(0,9):
+		var other: Dictionary=entry[1]
+		var force: Vector2=v.p.direction_to(other.p)*25.0*movement_scale*Ref.MASS_UNIT
+		body_state.v+=force*delta/body_mass
 
 func join_swarm_contacts():
+	var contact_grid={}
+	var grid_ready=false
 	for v in viruses:
 		if not v.alive or v.type!="swarmer" or v.jump or v.get("host",-1)>=0:continue
-		for other in viruses:
+		if not grid_ready:
+			# Virus radii are 10: every possible 20.02-unit contact is in
+			# this tile or a neighbouring 32-unit tile. Sort original indices
+			# to preserve link creation/event order, including multiple joins.
+			for i in range(viruses.size()):
+				var other: Dictionary=viruses[i]
+				if not other.alive or other.jump:continue
+				var tile=Vector2i(floori(other.p.x/32.0),floori(other.p.y/32.0))
+				if not contact_grid.has(tile):contact_grid[tile]=[]
+				contact_grid[tile].append(i)
+			grid_ready=true
+		var tile=Vector2i(floori(v.p.x/32.0),floori(v.p.y/32.0))
+		var candidates=PackedInt32Array()
+		for y in range(-1,2):
+			for x in range(-1,2):
+				for i in contact_grid.get(tile+Vector2i(x,y),[]):candidates.append(i)
+		candidates.sort()
+		for i in candidates:
+			var other: Dictionary=viruses[i]
 			if not other.alive or other==v or other.jump:continue
-			if links.any(func(l):return (l.a==v.id and l.b==other.id) or (l.b==v.id and l.a==other.id)):continue
 			if v.p.distance_to(other.p)>physics.radius(v)+physics.radius(other)+0.02:continue
+			if links.any(func(l):return (l.a==v.id and l.b==other.id) or (l.b==v.id and l.a==other.id)):continue
 			links.append({"a":v.id,"b":other.id,"owner":v.id,"rest":v.p.distance_to(other.p),"offset":(other.p-v.p).rotated(-float(v.get("angle",0))),"relative_angle":float(other.get("angle",0))-float(v.get("angle",0)),"locked":true,"swarm":true})
 			record("virus_attachment",{"id":v.id,"p":v.p,"old_host":-1,"host":other.id})
 			v.host=other.id
@@ -1029,8 +1288,12 @@ func next_round():
 		c["range_bonus"]=0.0
 		c.hp=c.max_hp
 		c.alive=true
+		c.erase("initial_health_bonus")
+		c.erase("initial_conversion_health")
 		c.charge=int(constant_of(c,"charge",2)) if c.key=="zapper" else 0
 	rebuild_links()
+	for c in cells:
+		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
 	# Original TradeHealth processes exchanges sequentially after restoration.
 	for c in cells:
 		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
@@ -1047,6 +1310,8 @@ func next_round():
 			var before=c.max_hp
 			c.max_hp=other.max_hp;c.hp=c.max_hp
 			other.max_hp=before;other.hp=before
+			c["last_hp_swap"]={"round":round_no+1,"before":before,"after":c.hp,"partner_key":other.key,"partner_before":c.hp,"partner_after":before}
+			other["last_hp_swap"]={"round":round_no+1,"before":c.hp,"after":before,"partner_key":c.key,"partner_before":before,"partner_after":c.hp}
 			record("swap",{"a":c.id,"b":other.id,"p":c.p,"q":other.p,"before_a":before,"after_a":c.hp,"before_b":c.hp,"after_b":before})
 			break
 	round_no+=1
@@ -1238,12 +1503,13 @@ func drive_reference_cell(c,target,delta):
 	if target.length_squared()==0:return
 	var accel=16.0
 	if catalog[c.key].behavior=="seek":accel=speed_of(c)*5.0
-	var velocity: Vector2=physics.state(c).v
+	var body_state: Dictionary=physics.state(c)
+	var velocity: Vector2=body_state.v
 	var change: Vector2=target.normalized()*accel*Ref.SCALE*delta
 	if (velocity+change).length()>=target.length():
 		var axis=velocity.normalized()
 		change-=axis*change.dot(axis)
-	physics.state(c).v+=change
+	body_state.v+=change
 
 func reference_core_center():
 	var center=Vector2.ZERO
@@ -1251,3 +1517,80 @@ func reference_core_center():
 	for core in blood:
 		if core.alive:center+=core.p;count+=1
 	return center/maxi(1,count)
+
+# Batch only dense tag queries: packing is slower for bullets and sparse fields.
+# This selects equivalent implementations, never changes a timestep or event.
+func dense_projectile_queries() -> bool:
+	var budget=(cells.size()+viruses.size()+particles.size())*8
+	var work=0
+	for p: Dictionary in particles:
+		if p.kind=="tag" and p.life>0:
+			work+=viruses.size()
+			if work>budget:return true
+	return false
+
+func advance_projectiles(delta,movement_delta):
+	if particles.is_empty():return
+	if physics.web_kernel!=null and dense_projectile_queries() and physics.web_angles_supported(cells):
+		advance_projectiles_web(delta,movement_delta)
+	else:
+		advance_projectiles_native(delta,movement_delta)
+
+func advance_projectiles_native(delta,movement_delta):
+	if not particles.is_empty():_prepare_projectile_grid()
+	for p: Dictionary in particles:
+		if p.life<=0: continue
+		p.life-=delta
+		var previous=p.p
+		if p.kind=="tag":proteins.steer_tag(self,p,delta)
+		p.p+=p.v*movement_delta
+		if p.kind=="bullet":
+			resolve_bullet(p,previous,p.p)
+		elif p.kind=="tag":
+			proteins.resolve_tag(self,p,previous,p.p)
+	_clear_projectile_grid()
+
+func pack_projectile_items(first):
+	var packed=PackedFloat64Array()
+	for i in range(first,particles.size()):
+		var p: Dictionary=particles[i]
+		var position: Vector2=p.p;var velocity: Vector2=p.v
+		packed.append_array(PackedFloat64Array([1 if p.kind=="bullet" else (2 if p.kind=="tag" else 0),position.x,position.y,velocity.x,velocity.y,p.life,p.r,p.owner,float(p.get("split",false))]))
+	return Marshalls.raw_to_base64(packed.to_byte_array())
+
+const PROJECTILE_BODY_KIND={"bullet_wall":2,"mortar":3,"seeker_factory":4,"tag_splitter":5}
+func advance_projectiles_web(delta,movement_delta):
+	var bodies=[];var packed=PackedFloat64Array()
+	for body: Dictionary in cells+viruses:
+		var kind=0 if body.has("type") else PROJECTILE_BODY_KIND.get(body.key,-1)
+		if kind<0:continue
+		bodies.append(body)
+		var position: Vector2=body.p
+		packed.append_array(PackedFloat64Array([position.x,position.y,body.id,float(body.alive),float(body.get("jump",false)),float(body.get("tag",0)),kind,float(physics.is_box(self,body)),float(body.get("angle",0)),physics.radius(body),physics.half_size(body).x,physics.half_size(body).y]))
+	var kernel=physics.web_kernel
+	kernel.projectileStart(Marshalls.raw_to_base64(packed.to_byte_array()),pack_projectile_items(0),JSON.stringify([delta,movement_delta,experimental],"",true,true))
+	var sent=particles.size();var changed=-1;var alive=0;var tag=0
+	while true:
+		var extra=pack_projectile_items(sent) if sent<particles.size() else ""
+		sent=particles.size()
+		var values=JavaScriptBridge.js_buffer_to_packed_byte_array(kernel.projectileNext(changed,alive,tag,extra)).to_float64_array()
+		if values.is_empty():break
+		changed=-1
+		for offset in range(0,values.size(),10):
+			var p: Dictionary=particles[int(values[offset])]
+			p.p=Vector2(values[offset+1],values[offset+2]);p.v=Vector2(values[offset+3],values[offset+4]);p.life=values[offset+5]
+			var target_index=int(values[offset+8])
+			if target_index<0:continue
+			var target: Dictionary=bodies[target_index]
+			var from=Vector2(values[offset+6],values[offset+7])
+			if p.kind=="bullet":apply_bullet_hit(p,from,p.p,target,values[offset+9])
+			else:proteins.apply_tag_hit(self,p,from,p.p,target,values[offset+9])
+			changed=target_index;alive=int(target.alive);tag=int(float(target.get("tag",0))>0)
+
+
+
+func nearest_cores_batch(_v: PackedVector2Array,_c: PackedVector2Array,_a: PackedInt32Array) -> PackedInt32Array:
+	return PackedInt32Array()
+
+func supports_batched_cores() -> bool:
+	return false

@@ -85,7 +85,7 @@ func _initialize():
 	var survivor=add(s,"survivor_bomb",Vector2(-300,0))
 	s.money=5
 	s.begin_battle()
-	check(greed.hp==12 and greed.max_hp==2,"Greed applies temporary unspent-money bonus")
+	check(greed.hp==10 and greed.max_hp==2,"Greed replaces battle HP from unspent Carbons and preserves permanent HP")
 	s.phase="recap"
 	s.next_round()
 	check(greed.hp==2 and survivor.radius_growth==8,"Shop resets Greed and retains survival growth")

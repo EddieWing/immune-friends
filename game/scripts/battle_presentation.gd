@@ -70,6 +70,7 @@ func observe_link(active,kind,id_a,id_b,p,q,ca,cb,a,b):
  bond.a=a
  bond.b=b
 func draw_bonds(canvas,kind):
+ var soft=canvas.get("soft_motion")
  var core_arms=PackedVector2Array()
  var core_clasps: Array[Vector2]=[]
  var core_tips: Array[Vector2]=[]
@@ -97,11 +98,30 @@ func draw_bonds(canvas,kind):
      core_tips.append(hand)
      core_fingers.append(hand);core_fingers.append(hand+direction.orthogonal()*2.3)
    continue
-  canvas.draw_multiline(arms,Color("#594352"),width+1.5,true)
-  if bond.ca==bond.cb: canvas.draw_multiline(arms,bond.ca,width,true)
+  if soft!=null and soft.active(bond.a.id) and soft.active(bond.b.id):
+   var rest=42.0
+   for link in canvas.sim.links:
+    if (link.a==bond.a.id and link.b==bond.b.id) or (link.a==bond.b.id and link.b==bond.a.id):
+     rest=link.rest
+     break
+   var bend=clampf((rest*1.2-bond.p.distance_to(bond.q))*0.3,0,13)
+   start=canvas.soft_cell_anchor(bond.a,direction*21)
+   end=canvas.soft_cell_anchor(bond.b,-direction*21)
+   middle=(start+end)*0.5
+   left=start.lerp(middle,progress)
+   right=end.lerp(middle,progress)
+   var lp=soft.arm_points(start,left,bend)
+   var rp=soft.arm_points(end,right,-bend)
+   canvas.draw_polyline(lp,Color("#594352"),width+1.5,true)
+   canvas.draw_polyline(rp,Color("#594352"),width+1.5,true)
+   canvas.draw_polyline(lp,bond.ca,width,true)
+   canvas.draw_polyline(rp,bond.cb,width,true)
   else:
-   canvas.draw_line(start,left,bond.ca,width,true)
-   canvas.draw_line(end,right,bond.cb,width,true)
+   canvas.draw_multiline(arms,Color("#594352"),width+1.5,true)
+   if bond.ca==bond.cb: canvas.draw_multiline(arms,bond.ca,width,true)
+   else:
+    canvas.draw_line(start,left,bond.ca,width,true)
+    canvas.draw_line(end,right,bond.cb,width,true)
   var radius=2.3 if core else 5.0
   if bond.connected and bond.progress>=1:
    if core: canvas.draw_texture_rect(CORE_CLASP,Rect2(middle-Vector2(4,4),Vector2(8,8)),false)

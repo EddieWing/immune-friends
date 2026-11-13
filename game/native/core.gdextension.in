@@ -1,0 +1,5 @@
+[configuration]
+entry_symbol="core_kernel_init"
+compatibility_minimum="4.5"
+[libraries]
+web.release.wasm32="res://native/core_kernel.wasm"

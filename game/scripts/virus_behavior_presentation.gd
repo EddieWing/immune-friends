@@ -9,6 +9,8 @@ var feeding={}
 var looks={}
 var effects=[]
 var attachments=[]
+var suspended={}
+var tagged={}
 var motion=preload("res://scripts/motion_presentation.gd").new()
 func update(sim,delta):
  motion.update(sim,delta)
@@ -40,20 +42,35 @@ func update(sim,delta):
  cursor=sim.event_sequence
  if effects.size()>32: effects=effects.slice(effects.size()-32)
  var alive={}
- for v in sim.viruses:
-  if v.alive: alive[v.id]=v
+ suspended.clear()
+ tagged.clear()
+ for v: Dictionary in sim.viruses:
+  if v.alive:
+   alive[v.id]=v
+   if float(v.get("freeze",0))>0:
+    suspended[v.id]={"p":v.p,"remaining":float(v.freeze)}
+   if float(v.get("tag",0))>0: tagged[v.id]=v.p
  for id in looks.keys():
   if not alive.has(id): looks.erase(id)
  attachments=[]
- for v in alive.values():
-  var goal=v.get("visual_heading",Vector2.ZERO)
+ var look_blend: float=1-exp(-dt/0.14)
+ for v: Dictionary in alive.values():
+  var goal: Vector2=v.get("visual_heading",Vector2.ZERO)
   if v.get("emerging",false): goal=v.p.direction_to(v.exit)
-  looks[v.id]=looks.get(v.id,Vector2.ZERO).lerp(goal,1-exp(-dt/0.14))
+  var previous_look: Vector2=looks.get(v.id,Vector2.ZERO)
+  looks[v.id]=previous_look.lerp(goal,look_blend)
  for link in sim.links:
   if link.get("swarm",false) and alive.has(link.a) and alive.has(link.b):
    attachments.append({"a":alive[link.a].p,"b":alive[link.b].p})
 func scale_of(id):
  return 1+sin((1-feeding.get(id,0.0)/0.55)*PI)*0.13 if feeding.has(id) else 1.0
+func spawn_alpha(v):
+ # Appearance follows the actor's real lifetime, never delays its collision/motion.
+ if observed_sim!=null and observed_sim.phase!="battle":return 1.0
+ if v.get("emerging",false):
+  var distance=v.get("spawn_position",v.p).distance_to(v.get("exit",v.p))
+  return lerpf(0.25,1.0,clampf(v.get("spawn_position",v.p).distance_to(v.p)/maxf(1,distance),0,1))
+ return lerpf(0.25,1.0,smoothstep(0,0.35,float(v.get("age",1.0))))
 func draw_links(canvas):
  for link in attachments:
   var d=link.a.direction_to(link.b)
@@ -64,6 +81,20 @@ func draw_links(canvas):
    canvas.draw_polyline(PackedVector2Array([p-d*3,p,p+d*3+d.orthogonal()*side*2]),Color("#d5a4d4"),1.5,true)
 func draw_effects(canvas):
  motion.draw(canvas)
+ # Tag persists after suspend ends; show it in either graphics theme.
+ for p in tagged.values():
+  canvas.draw_arc(p,17,0,TAU,24,Color("#f4c5d9"),1.5,true)
+  canvas.draw_colored_polygon(PackedVector2Array([p+Vector2(0,-25),p+Vector2(3,-21),p+Vector2(0,-17),p+Vector2(-3,-21)]),Color("#e894c1"))
+ # This is a status indicator, not a speed test: blocked collisions are not suspend.
+ # Shared by both field styles and driven directly by the mechanical timer.
+ for status in suspended.values():
+  var p=status.p
+  canvas.draw_circle(p,22,Color(0.55,0.86,0.95,0.12))
+  canvas.draw_arc(p,22,0,TAU,28,Color(0.35,0.65,0.8,0.9),1.5,true)
+  var badge=p+Vector2(19,-18)
+  canvas.draw_circle(badge,6,Color("#234857"))
+  for x in [-2,2]:
+   canvas.draw_line(badge+Vector2(x,-3),badge+Vector2(x,3),Color("#d4f8ff"),1.5,true)
  for e in effects.slice(maxi(0,effects.size()-10)):
   var t=e.age/0.65
   var color=Color(0.92,0.7,0.91,1-t)

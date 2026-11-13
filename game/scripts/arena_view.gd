@@ -8,15 +8,11 @@ var virus_health=[]
 var effect_strokes=preload("res://scripts/stroke_cache.gd").new()
 const CELL_FACE_PARTS=preload("res://assets/ui/cell-face-parts.svg")
 var wall_skins={}
-var hair_roots=PackedVector2Array()
-var hair_tips=PackedVector2Array()
-var hair_tangents=PackedVector2Array()
+var core_cilia=preload("res://scripts/core_cilia.gd").new()
 func _init():
-	for i in range(30):
-		var normal=Vector2.from_angle(i*TAU/30.0)
-		hair_roots.append(normal*10.7)
-		hair_tips.append(normal*13.0)
-		hair_tangents.append(normal.orthogonal())
+	material=ShaderMaterial.new()
+	material.shader=preload("res://shaders/stroke_geometry.gdshader")
+	set_meta("static_stroke_geometry",true)
 var new_field=false
 var new_hud=false
 var sim
@@ -27,6 +23,7 @@ var attention=preload("res://scripts/attention_presentation.gd").new()
 var support=preload("res://scripts/support_presentation.gd").new()
 var virus_behavior=preload("res://scripts/virus_behavior_presentation.gd").new()
 var reactions=preload("res://scripts/reaction_presentation.gd").new()
+var soft_motion=preload("res://scripts/soft_motion.gd").new()
 var sources=preload("res://scripts/source_presentation.gd").new()
 var attacks=preload("res://scripts/attack_presentation.gd").new()
 var presentation=preload("res://scripts/battle_presentation.gd").new()
@@ -56,6 +53,8 @@ var arrival_sim_seed=-1
 var arrival_round=-1
 var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
+var preview_offer_key=""
+var preview_offer_reward=false
 
 func _process(delta):
 	var visual_delta=delta
@@ -74,6 +73,7 @@ func _process(delta):
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)
 		reactions.update(sim,delta)
+		soft_motion.update(sim,delta)
 		virus_behavior.update(sim,delta)
 		support.update(sim,delta)
 		attention.update(sim,delta,blood_faces)
@@ -100,12 +100,14 @@ func text_at(p, text, size=14, color=Color("#d8e9e5")):
 	draw_string(font,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,color)
 
 func _draw():
+	material.set_shader_parameter("arena_scale",maxf(absf(get_global_transform().get_scale().x),0.00001))
 	if sim==null: return
 	microscope_effects.draw_under(self)
 	for lane in sources.states:
 		var source=sources.states[lane]
 		if new_field:
 			draw_circle(source.p,60+source.opening*6+sin(sources.clock*0.8+lane)*1.5,Color(0.38,0.34,0.45,0.35+source.opening*0.08))
+			sources.draw_growth(self,lane)
 			if not new_hud and (sim.phase=="shop" or staging=="warning"): draw_range_ring(source.p,66,Color("#be4a68"),true)
 		else: sources.draw(self,lane)
 		sources.draw_emitters(self,lane,warning_emitters if staging=="warning" else sim.source_emitters)
@@ -174,6 +176,7 @@ func _draw():
 	if not new_hud: attention.draw(self)
 	diagnostics.draw(self)
 	if drag_preview!=Vector2.INF:
+		support.draw_purchase_preview(self,sim,preview_offer_key,drag_preview,preview_offer_reward)
 		draw_arc(drag_preview,24,0,TAU,32,Color("#f3e1ac"),2,true)
 
 func face_part(index: int,p: Vector2,factor: float):
@@ -186,6 +189,18 @@ func face(p, factor, id, hurt, look=Vector2.ZERO,focused=false):
 	var mouth=4 if staging=="launch" or focused else (5 if staging=="aftermath" and (sim.round_losses.core>0 or sim.round_losses.cells>0) else 3)
 	face_part(mouth,p,factor)
 	face_part(6,p,factor)
+
+func soft_cell_anchor(c,local_direction):
+	var pulse=1+sin(time*2+c.id)*0.035
+	if staging=="launch": pulse=0.97
+	if arrivals.has(c.id): pulse*=lerpf(0.55,1.0,smoothstep(0,0.4,arrivals[c.id]))
+	var pose=attacks.poses.get(c.id,{})
+	var windup=pose.get("windup",0.0)
+	var kick=pose.get("kick",0.0)
+	var reaction=reactions.pose("cell",c.id)
+	pulse*=(1-windup*0.12+kick*0.16)
+	var p=c.p-pose.get("direction",Vector2.ZERO)*(windup*1.5+kick*3)+reaction.offset
+	return reactions.deform_transform("cell",c.id,soft_motion.body_transform(c.id,p,c.angle,Vector2(pulse,1/pulse)))*local_direction.rotated(-c.angle)
 
 func draw_cell(c):
 	var d=sim.catalog[c.key]
@@ -205,12 +220,12 @@ func draw_cell(c):
 	var texture=visuals.body(c.key,d)
 	var physical=sim.physics.half_size(c)*2
 	var extent=physical*Vector2(128.0/108.0,128.0/32.6) if wall else physical*(128.0/86.0)
-	draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p+Vector2(2,4))))
+	draw_set_transform_matrix(reactions.deform_transform("cell",c.id,soft_motion.body_transform(c.id,p+Vector2(2,4),c.angle,Vector2(pulse,1/pulse))))
 	draw_texture_rect(texture,Rect2(-extent/2,extent),false,Color(0.06,0.15,0.2,0.2))
 	if not new_field and optical_intensity>0:
 		draw_set_transform(p,c.angle)
 		draw_texture_rect(texture,Rect2(-extent*0.54,extent*1.08),false,Color(0.78,0.94,1,0.14*optical_intensity))
-	draw_set_transform_matrix(reactions.deform_transform("cell",c.id,Transform2D(c.angle,Vector2(pulse,1/pulse),0,p)))
+	draw_set_transform_matrix(reactions.deform_transform("cell",c.id,soft_motion.body_transform(c.id,p,c.angle,Vector2(pulse,1/pulse))))
 	draw_texture_rect(texture,Rect2(-extent/2,extent),false,visuals.tint(c.key,d))
 	draw_set_transform(Vector2.ZERO)
 	var look=pose.get("look",Vector2.ZERO)
@@ -222,7 +237,7 @@ func draw_cell(c):
 				nearest=other
 				distance=p.distance_to(other.p)
 		if not nearest.is_empty(): look=p.direction_to(nearest.p)*1.3
-	face(p,0.95,c.id,c.flash>0 or reaction.hurt,look,windup>0.2 or kick>0.5)
+	face(p+soft_motion.face_offset(c.id),0.95,c.id,c.flash>0 or reaction.hurt,look,windup>0.2 or kick>0.5)
 	if arrivals.has(c.id):
 		var arrival=arrivals[c.id]/0.65
 		draw_arc(p,20+arrival*22,0,TAU,40,Color(0.8,1,1,1-arrival),1.5,true)
@@ -268,9 +283,10 @@ func draw_virus(v):
 	rendered.hurt=reaction.hurt
 	rendered.look=virus_behavior.looks.get(v.id,Vector2.ZERO)
 	rendered.feeding=virus_behavior.feeding.has(v.id)
+	rendered.spawn_alpha=virus_behavior.spawn_alpha(v)
 	if new_field:
-		draw_texture_rect(SIMPLE_VIRUS_BODY,Rect2(-16,-16,32,32),false)
-		draw_texture_rect(SIMPLE_VIRUS_EYES,Rect2(rendered.look-Vector2(16,16),Vector2(32,32)),false)
+		draw_texture_rect(SIMPLE_VIRUS_BODY,Rect2(-16,-16,32,32),false,Color(1,1,1,rendered.spawn_alpha))
+		draw_texture_rect(SIMPLE_VIRUS_EYES,Rect2(rendered.look-Vector2(16,16),Vector2(32,32)),false,Color(1,1,1,rendered.spawn_alpha))
 	else: preload("res://scripts/virus_visuals.gd").draw(self,rendered)
 	draw_set_transform(Vector2.ZERO)
 	if v.get("visual_avoiding",false) and v.get("freeze",0)<=0:
@@ -319,21 +335,13 @@ func draw_blood_cluster():
 		if occupied.has(key_a) or occupied.has(key_b): continue
 		occupied[key_a]=true
 		occupied[key_b]=true
-	# Keep each visual layer contiguous so the renderer can batch it. The hair
-	# tips still mark radius 13; root sway and phase are unchanged.
-	var hairs=PackedVector2Array()
-	var hair_colors=PackedColorArray()
+	# Preserve shadows -> hairs -> bodies -> bonds -> faces layer ordering.
 	for b in sim.blood:
 		if not b.alive:continue
 		var p: Vector2=b.p
 		draw_texture_rect_region(CORE_FACE_PARTS,Rect2(p+Vector2(1,2)-Vector2(16,16),Vector2(32,32)),Rect2(1280,256,256,256),Color(1,1,1,0.22))
-		for i in range(30):
-			var tangent: Vector2=hair_tangents[i]*sin(time*1.8+b.id+i)*0.22
-			hairs.append(p+hair_roots[i]+tangent)
-			hairs.append(p+hair_tips[i])
-			var tint=virus_behavior.motion.cilia_tint(b.id,hair_tips[i]/13.0,time)
-			hair_colors.append(tint)
-	if not hairs.is_empty():draw_multiline_colors(hairs,hair_colors,0.75,true)
+	material.set_shader_parameter("cilia_time",time)
+	core_cilia.draw(self,sim.blood,virus_behavior.motion.cilia)
 	for b in sim.blood:
 		if not b.alive:continue
 		var mask=0
@@ -350,4 +358,4 @@ func draw_blood_cluster():
 
 func has_transient_effects():
 	# Persistent water memory is ambient scenery, not an unresolved hit/death.
-	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty() or not microscope_effects.bursts.is_empty() or not microscope_effects.merges.is_empty()
+	return not presentation.signals.is_empty() or not presentation.hits.is_empty() or not reactions.bursts.is_empty() or not virus_behavior.effects.is_empty() or not support.effects.is_empty() or not attention.active.is_empty() or support.waves.has_transients() or not microscope_effects.bursts.is_empty() or not microscope_effects.merges.is_empty()
