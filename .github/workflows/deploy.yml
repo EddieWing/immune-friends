@@ -11,7 +11,52 @@ concurrency:
   group: github-pages
   cancel-in-progress: true
 jobs:
+  animation-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Keep the experimental build independent from production gameplay.
+          ref: 20f8973e241c2e89041eee465280ecd4a6fe8c81
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download official Godot and web template
+        run: |
+          mkdir -p .build web
+          curl --fail --location --retry 3 https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip -o .build/godot.zip
+          unzip -q .build/godot.zip -d .build
+          chmod +x .build/Godot_v4.7.2-stable_linux.x86_64
+          node download-web-template.mjs
+      - name: Isolate preview saves and title
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('game/project.godot')
+          s = p.read_text()
+          s = s.replace('config/name="Microcosm — Immune Friends"', 'config/name="Microcosm — Animation Preview"\nconfig/use_custom_user_dir=true\nconfig/custom_user_dir_name="Microcosm-Animation-Preview"')
+          p.write_text(s)
+          PY
+      - name: Import preview resources
+        run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path game --import
+      - name: Check preview simulation, systems, saves and animation integration
+        run: |
+          for test in test_simulation test_systems test_ui_save test_atlas_integration; do
+            timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/$test.gd
+          done
+      - name: Export animation preview
+        run: .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --export-release Web ../web/index.html
+      - name: Record preview source
+        run: |
+          node -e 'const fs=require("fs"),cp=require("child_process");fs.writeFileSync("web/version.json",JSON.stringify({channel:"animation-preview",branch:"codex/atlas-animation-integration",commit:cp.execSync("git rev-parse HEAD").toString().trim()}));'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: animation-preview
+          path: web
+          retention-days: 7
   build:
+    needs: animation-preview
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -57,6 +102,11 @@ jobs:
           node -e 'const fs=require("fs"); const version=fs.readFileSync("game/project.godot","utf8").match(/config\/version="([^"]+)"/)[1]; fs.writeFileSync("web/version.json",JSON.stringify({version,commit:process.env.GITHUB_SHA}));'
       - name: Include parameter admin
         run: cp -r admin web/admin
+      - name: Include isolated animation preview
+        uses: actions/download-artifact@v4
+        with:
+          name: animation-preview
+          path: web/animations
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
