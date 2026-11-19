@@ -129,7 +129,7 @@ func _draw():
 			if other.is_empty(): continue
 			draw_line(selected.p,other.p,Color("#f4cf79"),2,true)
 			text_at(other.p+Vector2(-20,-28),"Protected",12,Color("#245a70"))
-	presentation.draw_bonds(self,"immune")
+	atlas.connections.draw(self,"immune") if atlas_enabled else presentation.draw_bonds(self,"immune")
 	draw_blood_cluster()
 	for c in sim.cells:
 		if c.alive: draw_cell(c)
@@ -143,7 +143,7 @@ func _draw():
 			draw_polyline(PackedVector2Array([p.p+Vector2(0,-6),p.p+Vector2(5,4),p.p+Vector2(-5,4),p.p+Vector2(0,-6)]),Color("#803f64"),1.2,true)
 		else:
 			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-4),p.p+Vector2(4,0),p.p+Vector2(0,4),p.p+Vector2(-4,0)]),Color("#795791"))
-	virus_behavior.draw_links(self)
+	atlas.connections.draw(self,"virus") if atlas_enabled else virus_behavior.draw_links(self)
 	virus_health.clear()
 	for v in sim.viruses:
 		if v.alive: draw_virus(v)
@@ -347,7 +347,7 @@ func draw_blood_cluster():
 	if atlas_enabled:
 		for body in sim.blood:
 			if body.alive:atlas.draw_body(self,body,34.0)
-		presentation.draw_bonds(self,"core")
+		atlas.connections.draw(self,"core") if atlas_enabled else presentation.draw_bonds(self,"core")
 		return
 	var occupied={}
 	for link in sim.blood_links:
@@ -377,7 +377,7 @@ func draw_blood_cluster():
 		var texture=SIMPLE_CORE_BODIES if new_field else CLASSIC_CORE_BODIES
 		draw_texture_rect_region(texture,Rect2(b.p-Vector2(16,16),Vector2(32,32)),Rect2(Vector2(mask%8,mask/8)*128,Vector2(128,128)))
 
-	presentation.draw_bonds(self,"core")
+	atlas.connections.draw(self,"core") if atlas_enabled else presentation.draw_bonds(self,"core")
 	blood_faces.begin_draw()
 	for b in sim.blood:
 		if b.alive: blood_faces.draw(self,b,time)

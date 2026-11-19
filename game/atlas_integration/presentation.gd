@@ -1,6 +1,7 @@
 extends RefCounted
 var renderer=preload('res://atlas_integration/renderer.gd').new()
 var states={}
+var connections=preload('res://atlas_integration/connections.gd').new(renderer)
 var observed_sim
 var revision=-1
 var cursor=0
@@ -25,9 +26,13 @@ func trigger(state,candidates,duration=1.5):
  return false
 func update(sim,delta):
  var fresh=sim!=observed_sim or revision!=sim.presentation_revision or sim.elapsed<elapsed
- if fresh:states.clear();cursor=sim.event_sequence
+ var previous_growth={}
+ if fresh:
+  for k in states:previous_growth[k]=states[k].get('radius_growth',0.0)
+  states.clear();connections.links.clear();connections.transfers.clear();cursor=sim.event_sequence
  var dt=maxf(0,sim.elapsed-elapsed) if sim.phase=='battle' else maxf(0,delta)
  observed_sim=sim;revision=sim.presentation_revision;elapsed=sim.elapsed
+ connections.states=states
  var active={}
  var linked={}
  for link in sim.links:
@@ -40,6 +45,7 @@ func update(sim,delta):
     if not body.alive:continue
     var state=renderer.create(id)
     state.p=body.p;state.angle=body.get('angle',0.0);state.hold=0.0;state.dead=false;state.velocity=Vector2.ZERO;state.jump=false;state.charge=body.get('charge',0);state.food=body.get('food',0)
+    state.radius_growth=previous_growth.get(key,body.get('radius_growth',0.0));state.effect_radius=sim.range_of(body) if body.has('key') else 0.0
     states[key]=state
     if not fresh:trigger(state,['placement'],0.65)
    var state=states[key]
@@ -47,7 +53,15 @@ func update(sim,delta):
     active[key]=true
     state.velocity=(body.p-state.p)/dt if dt>0 else state.velocity
     state.p=body.p;state.angle=body.get('angle',0.0)
+    state.wave_progress=body.get('wave_progress',state.clock*0.5)
     state.hold=maxf(0,state.hold-dt)
+    if id=='hungry_bomb':
+     var capacity=maxf(1.0,sim.constant_of(body,'blastIncrement',1)*5.0)
+     if float(body.get('radius_growth',0))<float(state.radius_growth):
+      state.reset_fill=clampf(float(state.radius_growth)/capacity,0,1)
+      trigger(state,['reset'],1.4)
+     state.fill_fraction=clampf(float(body.get('radius_growth',0))/capacity,0,1)
+    state.radius_growth=body.get('radius_growth',0.0)
     if body.get('jump',false)!=state.jump:
      trigger(state,['jump'] if body.get('jump',false) else ['land'],0.8)
     state.jump=body.get('jump',false)
@@ -67,12 +81,13 @@ func update(sim,delta):
      renderer.action(state,mode)
     state.emotion='angry' if sim.phase=='battle' and state.mode not in ['idle','coreIdle','hurt'] else 'calm'
     var look=body.get('visual_heading',state.velocity)
-    if body.has('type'):
+    if body.has('type') and body.type in ['basic','avoider']:
      var distance=INF
      for core in sim.blood:
       if core.alive and body.p.distance_squared_to(core.p)<distance:distance=body.p.distance_squared_to(core.p);look=core.p-body.p
     renderer.advance(state,dt,look)
     if state.mode=='tagged':state.age=minf(state.age,1.8)
+ connections.update(sim,dt)
  for event in sim.events_since(cursor):
   var d=event.data;var name=event.event
   var kind='virus:' if name.begins_with('virus_') or name in ['tagged','tag_ended','thawed'] else 'core:' if name in ['blood_lost','core_protected'] else 'cell:'
@@ -80,11 +95,15 @@ func update(sim,delta):
   if not states.has(key):continue
   var state=states[key]
   if name in ['damage','virus_hit','pushed']:
-   trigger(state,['hurt'],0.38)
+   state.hit_direction=(Vector2(d.get('from',state.p+Vector2.RIGHT))-state.p).normalized();state.hit_age=0.0
+   if name!='pushed':trigger(state,['hurt'],0.38)
   elif name in ['cell_rest','virus_defeated','blood_lost']:
-   state.dead=true;trigger(state,['explode','healDeath','deathPush','death'],1.4)
+   state.dead=true;trigger(state,['explode','healDeath','deathPush','death'],2.5)
   elif EVENTS.has(name):trigger(state,EVENTS[name])
+  if name in ['virus_fed','protein_eaten','generator_fed']:
+   state.feed_age=0.0;state.feed_from=Vector2(d.get('from',state.p))
   if name=='heal':
+   connections.heal('cell:'+str(d.get('source_id',-1)),key)
    trigger(state,['heal','healNetwork','chargeHeal'],0.8)
    var provider='cell:'+str(d.get('source_id',-1))
    if states.has(provider):trigger(states[provider],['heal','healNetwork','chargeHeal'],0.8)
@@ -94,7 +113,7 @@ func update(sim,delta):
   var state=states[key]
   if not state.dead:states.erase(key);continue
   renderer.advance(state,dt)
-  if state.age>1.4:states.erase(key)
+  if state.age>2.5:states.erase(key)
 func first_mode(state,candidates):
  for mode in candidates:
   if mode in renderer.data.characters[state.id].modes:return mode
@@ -107,7 +126,14 @@ func draw_body(canvas,body,width):
 func draw_deaths(canvas):
  for key in states:
   var state=states[key]
-  if state.dead:renderer.draw(canvas,state,state.p,state.get('width',40.0),state.angle,1-smoothstep(0.7,1.4,state.age))
+  if state.dead:
+   if state.mode in ['healDeath','explode']:
+    var progress=clampf(state.age/1.2,0,1);var radius=state.effect_radius*progress
+    var color=Color(renderer.data.characters[state.id].get('color','#80bdb4')) if state.mode=='healDeath' else Color('#dc5b65')
+    if state.mode=='healDeath':
+     for i in range(12,0,-1):canvas.draw_circle(state.p,radius*i/12.0,Color(color,0.018*(1-progress)))
+    elif radius>0:canvas.draw_arc(state.p,radius,0,TAU,48,Color(color,1-progress),2.0,true)
+   renderer.draw(canvas,state,state.p,state.get('width',40.0),state.angle,1.0)
 
 func rest_mode(state,body,linked,phase):
  var key=state.id
@@ -121,7 +147,8 @@ func rest_mode(state,body,linked,phase):
  if key=='resonant_buffer':return 'buff' if linked else 'idle'
  if key=='regen':return 'chargeHeal' if phase=='battle' else 'idle'
  if key=='tag_sprayer':return 'empty' if body.get('cool',0)>0 else 'idle'
- if key in ['generator','mint','mortar','seeker_factory','tag_splitter','hungry_bomb','accelerator']:
+ if key=='hungry_bomb':return 'idle'
+ if key in ['generator','mint','mortar','seeker_factory','tag_splitter','accelerator']:
   if body.get('food',0)>0:return first_mode(state,['recipe','loadFour','loadThree','feedMany','feed'])
   return first_mode(state,['empty','reset','idle'])
  if body.get('cool',10)<0.3 and phase=='battle':return first_mode(state,['aim','aimFixed','caliber','preparePush','charge'])

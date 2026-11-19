@@ -1,6 +1,8 @@
 extends RefCounted
 # Face geometry is sampled from the approved Canvas rig; pupils remain live.
 var poses={}
+var opacity=1.0
+var show_angry_brows=false
 const INK=Color('#573b31')
 const WHITE=Color('#fff2d6')
 func geometry(weights,key,side=-1):
@@ -20,7 +22,7 @@ func stroke(canvas,points,width,color=INK,closed=false):
  if points.size()<2:return
  var line=points.duplicate()
  if closed:line.append(line[0])
- canvas.draw_polyline(line,color,width,true)
+ canvas.draw_polyline(line,Color(color,color.a*opacity),width,true)
 func draw(canvas,position,width,weights,look,time,no_mouth=false):
  var line=maxf(0.55,width*0.020)
  var angry=float(weights.get('angry',0))
@@ -63,7 +65,7 @@ func draw(canvas,position,width,weights,look,time,no_mouth=false):
    stroke(canvas,points,line,Color(INK,spiral))
   var brow=geometry(weights,'brows',side_index)
   for i in brow.size():brow[i]=origin+brow[i]*width
-  stroke(canvas,brow,line,Color(INK,1-angry))
+  stroke(canvas,brow,line,Color(INK,1.0 if show_angry_brows else 1-angry))
   if hurt>0.001:
    var cheek=PackedVector2Array()
    for i in 17:
@@ -96,4 +98,4 @@ func clean_polygon(points):
  return result
 func fill(canvas,points,color):
  var cleaned=clean_polygon(points)
- if cleaned.size()>2 and not Geometry2D.triangulate_polygon(cleaned).is_empty():canvas.draw_colored_polygon(cleaned,color)
+ if cleaned.size()>2 and not Geometry2D.triangulate_polygon(cleaned).is_empty():canvas.draw_colored_polygon(cleaned,Color(color,color.a*opacity))
