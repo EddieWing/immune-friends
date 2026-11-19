@@ -75,13 +75,15 @@ func update(sim,delta):
      if body.get('tag',0)>0 or body.get('freeze',0)>0:mode='tagged'
      elif body.get('visual_avoiding',false):mode='evade'
      elif body.get('host',-1)>=0 and body.has('type'):mode='attach'
-     elif state.velocity.length()>0.5:
+     elif sim.phase=='battle' and state.velocity.length()>0.5:
       mode=first_mode(state,['wave','pursue','swim','swimSlow','orbit','move'])
      else:mode=rest_mode(state,body,linked.has(body.id),sim.phase)
      renderer.action(state,mode)
     state.emotion='angry' if sim.phase=='battle' and state.mode not in ['idle','coreIdle','hurt'] else 'calm'
-    var look=body.get('visual_heading',state.velocity)
-    if body.has('type') and body.type in ['basic','avoider']:
+    # Manual placement is not autonomous locomotion. Sparse pointer events must
+    # not restart the clip or turn the character between stationary draw frames.
+    var look=body.get('visual_heading',state.velocity) if sim.phase=='battle' else state.look
+    if sim.phase=='battle' and body.has('type') and body.type in ['basic','avoider']:
      var distance=INF
      for core in sim.blood:
       if core.alive and body.p.distance_squared_to(core.p)<distance:distance=body.p.distance_squared_to(core.p);look=core.p-body.p
