@@ -29,7 +29,7 @@ func endpoint(sim,body,other,previous,delta):
  if previous>=0:
   var distance=fposmod(desired-previous+points.size()*0.5,points.size())-points.size()*0.5
   param=fposmod(previous+clampf(distance,-delta*points.size(),delta*points.size()),points.size())
- var index=int(param)%points.size();var fraction=param-index
+ var index=int(floor(param))%points.size();var fraction=param-floor(param)
  var local=Vector2(points[index][0],points[index][1]).lerp(Vector2(points[(index+1)%points.size()][0],points[(index+1)%points.size()][1]),fraction)
  var position=body.p+(local*width(sim,body)/spec.width).rotated(angle)
  return {'parameter':param,'position':position,'color':Color(spec.get('color','#dcb880')),'edge':Color(spec.get('edge','#90704d'))}

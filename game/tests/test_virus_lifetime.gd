@@ -8,7 +8,9 @@ func _initialize():
 	var s=Sim.new();s.reset(42,12);s.begin_battle();s.spawn_queue=[]
 	s.spawn_virus({"type":"jumper","lane":0,"p":Vector2(8000,0)})
 	var v=s.viruses[0];v.tag=100;v.freeze=100;v.jump=true
-	check(v.lifespan>=12 and v.lifespan<14,"MC-026: lifespan randomly 12–14 seconds from spawn")
+	check(v.lifespan>=24 and v.lifespan<28,"MC-026: lifespan randomly 24 to 28 seconds from spawn")
+	v.lived=14.0;s.update(1.0/60)
+	check(v.alive,"Virus survives the previous lifetime limit")
 	v.lived=v.lifespan-0.01;s.update(1.0/60)
 	check(not v.alive and s.round_losses.viruses==1 and s.particles.any(func(p):return p.kind=="food"),"MC-026: age kills even tagged/frozen/jumping and drops food")
 	check(s.phase=="battle","MC-026: result waits for effects")
