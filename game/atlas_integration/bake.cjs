@@ -15,9 +15,10 @@ vm.runInContext(renderer,context);
 const L=vm.runInContext('Living',context),B=context.Bake;
 const common={idle:'idle',expression:'expression',hurt:'hurt',death:'death'};
 const specific={virus_basic:{ability_1:'move',ability_2:'contact',tagged:'tagged'},virus_avoider:{move_core:'move',ability_1:'evade',ability_2:'return',tagged:'tagged'},virus_swarmer:{move_target:'move',ability_1:'swarm',ability_2:'attach',tagged:'tagged'},wall:{placement:'placement',merge:'merge',ability_1:'brace',ability_2:'recover',bond_form:'bond'},turret:{placement:'placement',merge:'merge',ability_1:'aim',ability_2:'shoot',bond_form:'bond'}};
-const manifest={schema:1,tile:128,columns:8,fps:12,frames:72,seconds:6,characters:{},faces:L.faceMorph.poses,reactions:L.reactions};
+const TILE=256;
+const manifest={schema:1,tile:TILE,columns:8,fps:12,frames:72,seconds:6,characters:{},faces:L.faceMorph.poses,reactions:L.reactions};
 fs.mkdirSync(out,{recursive:true});
-const progressPath=path.join(root,'../../.build/atlas-bake-progress.json');
+const progressPath=path.join(root,'../../.build/atlas-bake-progress'+(process.env.BAKE_JOB||'')+'.json');
 fs.mkdirSync(path.dirname(progressPath),{recursive:true});
 const progress=fs.existsSync(progressPath)?JSON.parse(fs.readFileSync(progressPath)):{};
 const previous=fs.existsSync(path.join(out,'manifest.json'))?JSON.parse(fs.readFileSync(path.join(out,'manifest.json'))):null;
@@ -35,13 +36,13 @@ for(const spec of L.specs){
  for(const mode of modes){
   const filename=path.join(out,spec.id+'--'+mode+'.png');if(!needs(mode))continue;
   const a=JSON.parse(JSON.stringify(seed));a.production=true;a.texture=B.pigment(spec);a.tiles=Object.fromEntries(a.org.map(o=>[o.id,B.organelleTile(o.id,spec)]));a.hideFace=true;
-  manifest.characters[spec.id].frame_faces[mode]=[];const sheet=createCanvas(1024,1152),ctx=sheet.getContext('2d');
+  manifest.characters[spec.id].frame_faces[mode]=[];const sheet=createCanvas(TILE*8,TILE*9),ctx=sheet.getContext('2d');
   if(['hurt','impact','contact','shoot','ability'].includes(mode))L.event(a,mode==='shoot'?'ability':'impact');
   for(let f=0;f<72;f++){
    for(let j=0;j<5;j++)L.update(a,1/60,mode,'auto',[1,-.15]);
    // Runtime bonds follow real endpoints. Bake only membrane intention.
    a.bond=null;
-   ctx.save();ctx.beginPath();ctx.rect(f%8*128,Math.floor(f/8)*128,128,128);ctx.clip();
+   ctx.save();ctx.scale(TILE/128,TILE/128);ctx.beginPath();ctx.rect(f%8*128,Math.floor(f/8)*128,128,128);ctx.clip();
    B.renderActor(ctx,a,f%8*128+64,Math.floor(f/8)*128+64,88,false);let face=L.faceLayout(a),life=L.lifecycle(a);manifest.characters[spec.id].frame_faces[mode].push([face[0]*life.scale,face[1]*life.scale,face[2]*life.scale,life.faceAlpha]);ctx.restore();
   }
   fs.writeFileSync(filename,sheet.toBuffer('image/png'));
@@ -50,6 +51,6 @@ for(const spec of L.specs){
  console.log(spec.id,modes.length,'clips');
 
 }
-fs.writeFileSync(path.join(out,'manifest.json.tmp'),JSON.stringify(manifest));
-fs.renameSync(path.join(out,'manifest.json.tmp'),path.join(out,'manifest.json'));
+fs.writeFileSync(path.join(out,'manifest'+(process.env.BAKE_JOB||'')+'.json.tmp'),JSON.stringify(manifest));
+fs.renameSync(path.join(out,'manifest'+(process.env.BAKE_JOB||'')+'.json.tmp'),path.join(out,'manifest'+(process.env.BAKE_JOB||'')+'.json'));
 console.log('DONE',Object.keys(manifest.characters).length,'characters');

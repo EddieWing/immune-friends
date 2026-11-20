@@ -46,6 +46,7 @@ func update(sim,delta):
     var state=renderer.create(id)
     state.p=body.p;state.angle=body.get('angle',0.0);state.hold=0.0;state.dead=false;state.velocity=Vector2.ZERO;state.jump=false;state.charge=body.get('charge',0);state.food=body.get('food',0)
     state.idle_phase=fposmod(float(body.id)*2.399963,TAU)
+    state.idle_speed=0.90+0.20*fposmod(float(body.id)*0.618034,1.0)
     state.radius_growth=previous_growth.get(key,body.get('radius_growth',0.0));state.effect_radius=sim.range_of(body) if body.has('key') else 0.0
     states[key]=state
     if not fresh:trigger(state,['placement'],0.65)

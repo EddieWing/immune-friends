@@ -135,8 +135,10 @@ func _draw():
 		if c.alive: draw_cell(c)
 	for p in sim.particles:
 		if p.kind=="bullet":
-			draw_circle(p.p,p.r+2,Color(0.8,0.95,1,0.15))
-			draw_circle(p.p,p.r,Color("#bbe5ee"))
+			var tail=p.p-p.v.normalized()*maxf(10.0,p.r*3.0)
+			draw_line(tail,p.p,Color("#eab96a"),maxf(2.0,p.r),true)
+			draw_circle(p.p,p.r+2,Color("#7e4c6a"))
+			draw_circle(p.p,p.r,Color("#fff4c2"))
 			draw_arc(p.p,p.r,0,TAU,14,Color("#e8faf9"),1,true)
 		elif p.kind=="tag":
 			draw_colored_polygon(PackedVector2Array([p.p+Vector2(0,-6),p.p+Vector2(5,4),p.p+Vector2(-5,4)]),Color("#ef9cbe"))
@@ -198,9 +200,10 @@ func draw_cell(c):
 		atlas.draw_body(self,c,width)
 		support.draw_cell(self,c)
 		var fraction=clampf(c.hp/maxf(c.max_hp,c.hp),0,1)
-		draw_line(c.p+Vector2(-12,22),c.p+Vector2(12,22),Color("#453450"),3,true)
-		draw_line(c.p+Vector2(-12,22),c.p+Vector2(-12+24*fraction,22),Color("#cae2b0"),3,true)
-		text_at(c.p+Vector2(18,31),str(int(ceil(c.hp))),10,Color("#e7efe1"))
+		var hp_y=atlas.renderer.bottom_extent(atlas.states[atlas.key_of(c)],width)+10.0 if atlas.states.has(atlas.key_of(c)) else 30.0
+		draw_line(c.p+Vector2(-12,hp_y),c.p+Vector2(12,hp_y),Color("#453450"),3,true)
+		draw_line(c.p+Vector2(-12,hp_y),c.p+Vector2(-12+24*fraction,hp_y),Color("#cae2b0"),3,true)
+		text_at(c.p+Vector2(18,hp_y+4),str(int(ceil(c.hp))),10,Color("#e7efe1"))
 		if c.charge>0:text_at(c.p+Vector2(-5,-27),"ϟ",18,Color("#ffe89a"))
 		if c.rank>1:
 			for i in range(c.rank):draw_circle(c.p+Vector2(-6+i*6,-27),2.2,Color("#ffe6a1"))
@@ -288,7 +291,7 @@ func capsule_style(color):
 func draw_virus(v):
 	if atlas_enabled:
 		atlas.draw_body(self,v,sim.physics.radius(v)*3.0)
-		if v.hp>1:text_at(v.p+Vector2(12,-9),str(int(v.hp)),10,Color("#e7efe1"))
+		if v.hp>1:text_at(v.p+Vector2(0,-sim.physics.radius(v)*3.0*128.0/88.0*0.5-8),str(int(v.hp)),10,Color("#e7efe1"))
 		if v.get("freeze",0)>0:draw_arc(v.p,sim.physics.radius(v)*1.3,0,TAU,20,Color("#b7def0"),1,true)
 		return
 	var reaction=reactions.pose("virus",v.id)

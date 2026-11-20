@@ -1,6 +1,7 @@
 extends RefCounted
 # F2: impulse-based bodies with circle / oriented-box contacts.
 # Current game geometry is retained. This is not a numerically identical Box2D port.
+var web_kernel=null # Reference solver intentionally uses native projectile path.
 var states={}
 var contacts={}
 var drives={}
@@ -238,8 +239,8 @@ func step(s,delta):
 			st.w=clampf(st.w,-float(material.max_angular_speed),float(material.max_angular_speed))
 			body.p+=st.v*dt
 			if body.has("key"):body.angle=wrapf(float(body.angle)+st.w*dt,-PI,PI)
-			# Keep the established playfield boundary; reflect velocity, never store out-of-bounds momentum.
-			if body.has("key"):
+			# Apply the explicitly changed preparation-only boundary to both solvers; all contact algorithms remain the old reference.
+			if body.has("key") and s.phase=="shop":
 				var ex=extent(s,body,Vector2.RIGHT);var ey=extent(s,body,Vector2.DOWN)
 				var clipped=body.p.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
 				if clipped.x!=body.p.x:st.v.x=-st.v.x*float(material.restitution)

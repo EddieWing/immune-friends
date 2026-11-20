@@ -85,18 +85,22 @@ func draw(canvas,state,position,body_width,angle=0.0,alpha=1.0):
  if accumulated:mode='feed'
  var texture=texture_for(state.id,mode)
  if texture==null:return
- var index=mini(int(state.age*data.fps),int(data.frames)-1) if state.mode in ['death','explode','healDeath','deathPush'] else int(state.age*data.fps)%int(data.frames)
+ var frame_age=state.age
+ if state.get('preparing',false) and state.mode not in ['placement','merge','hurt','death','explode','healDeath','deathPush']:
+  frame_age=state.clock*state.get('idle_speed',1.0)+state.get('idle_phase',0.0)*6.0/TAU
+ var index=mini(int(state.age*data.fps),int(data.frames)-1) if state.mode in ['death','explode','healDeath','deathPush'] else int(frame_age*data.fps)%int(data.frames)
  if accumulated:
   var amount=float(state.get('fill_fraction',0.0))
   if state.mode=='reset':amount=float(state.get('reset_fill',0.0))*(1-smoothstep(0,1.4,state.age))
   index=clampi(int(amount*1.8*data.fps),0,int(data.frames)-1)
+ var tile=texture.get_width()/8.0
  var extent=body_width*128.0/88.0
  var rotation=visual_angle(state,angle)
  canvas.draw_set_transform(position,rotation)
  if state.hit_age<0.6 and not protected and state.mode not in ['death','explode','healDeath','deathPush']:
   warp.draw(canvas,texture,extent,index,state.hit_direction.rotated(-rotation),state.hit_age,alpha)
  else:
-  canvas.draw_texture_rect_region(texture,Rect2(Vector2.ONE*(-extent/2),Vector2.ONE*extent),Rect2(Vector2(index%8,int(index/8))*128,Vector2.ONE*128),Color(1,1,1,alpha))
+  canvas.draw_texture_rect_region(texture,Rect2(Vector2.ONE*(-extent/2),Vector2.ONE*extent),Rect2(Vector2(index%8,int(index/8))*tile,Vector2.ONE*tile),Color(1,1,1,alpha))
  canvas.draw_set_transform(Vector2.ZERO)
  if state.feed_age<0.4 and state.has('feed_from'):
   var direction=Vector2.RIGHT.rotated(rotation);var lumen=position+direction*body_width*0.27
@@ -110,3 +114,11 @@ func draw(canvas,state,position,body_width,angle=0.0,alpha=1.0):
  face.opacity=opacity;face.show_angry_brows=state.id=='orbiter'
  if opacity>0.01:face.draw(canvas,position+face_anchor.rotated(rotation),layout[2]*body_width/spec.width,state.weights,state.look,state.clock,spec.no_mouth)
  face.opacity=1.0
+
+func bottom_extent(state,width):
+ var spec=data.characters[state.id]
+ var angle=visual_angle(state,state.get('angle',0.0))
+ var result=0.0
+ for point in spec.body_bounds:
+  result=maxf(result,(Vector2(point[0],point[1])*width*resting_scale(state)/spec.width).rotated(angle).y)
+ return result

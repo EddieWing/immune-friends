@@ -32,7 +32,7 @@ func _process(_delta):
 
 func set_from_y(y):
  var ratio=clampf((230.0-y)/200.0,0,1)
- game.set_zoom(0.45+ratio*1.05)
+ game.set_zoom(0.45+ratio*1.55)
 func _gui_input(event):
  if game.modal.visible: return
  if event is InputEventMouseButton and event.pressed:
@@ -50,7 +50,7 @@ func _gui_input(event):
   if event.keycode==KEY_UP: value+=0.0525
   if event.keycode==KEY_DOWN: value-=0.0525
   if event.keycode==KEY_HOME: value=0.45
-  if event.keycode==KEY_END: value=1.5
+  if event.keycode==KEY_END: value=2.0
   game.set_zoom(value)
   accept_event()
 func _input(event):
@@ -68,7 +68,7 @@ func _draw():
  if modern:
   draw_modern()
   return
- var ratio=clampf((game.view.scale.x-0.45)/1.05,0,1)
+ var ratio=clampf((game.view.scale.x-0.45)/1.55,0,1)
  var ink=Color("#fff5df")
  draw_style_box(track_style(Color(0.07,0.14,0.19,0.92)),Rect2(-8,-7,58,272))
  var font=ThemeDB.fallback_font
@@ -87,7 +87,7 @@ func track_style(color):
  return box
 
 func draw_modern():
- var ratio=clampf((game.view.scale.x-0.45)/1.05,0,1)
+ var ratio=clampf((game.view.scale.x-0.45)/1.55,0,1)
  draw_style_box(track_style(Color("#292e30")),Rect2(-4,-2,46,262))
  var font=game.symbol_font
  draw_string(font,Vector2(-2,-13),"⌕ ZOOM",HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#9c916f"))

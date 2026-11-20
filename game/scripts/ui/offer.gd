@@ -7,6 +7,10 @@ var reward=false
 var icon_texture: Texture2D
 var category="B"
 var elite_ready=false
+var atlas_state={}
+func draw_atlas(center,width):
+	if atlas_state.is_empty():return
+	game.view.atlas.renderer.draw(self,atlas_state,center,width,0,0.45 if disabled else 1.0)
 
 func _ready():
 	mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
@@ -34,7 +38,7 @@ func _draw():
 	draw_colored_polygon(puddle,Color(color,0.65))
 	draw_polyline(puddle,Color("#eaffffd9"),1.5,true)
 	draw_arc(center+Vector2(-5,-2),radius*0.75,PI*1.1,PI*1.55,16,Color("#ffffff90"),2,true)
-	if icon_texture: draw_texture_rect(icon_texture,Rect2(center-Vector2(29,29),Vector2(58,58)),false)
+	draw_atlas(center,40)
 	var badge=center+Vector2(-radius*0.72,-radius*0.70)
 	draw_circle(badge,13,Color("#e8b745") if not reward else Color("#a4bd75"))
 	var font=ThemeDB.fallback_font
@@ -49,14 +53,21 @@ func _draw():
 		draw_colored_polygon(points,Color("#7f34a4"))
 	if has_focus(): draw_arc(center,radius+3,0,TAU,64,Color("#66573f"),2,true)
 
-func _process(_delta):
+func _process(delta):
+	if game and key!="" and is_visible_in_tree():
+		if atlas_state.is_empty():
+			atlas_state=game.view.atlas.renderer.create(key)
+			atlas_state.preparing=true
+			game.view.atlas.renderer.action(atlas_state,game.view.atlas.rest_mode(atlas_state,{},false,"shop"))
+		game.view.atlas.renderer.advance(atlas_state,delta)
 	queue_redraw()
 
 func _get_drag_data(_at_position):
 	if disabled or game.sim.phase!="shop": return null
 	game.cancel_placement()
-	var preview=TextureRect.new()
-	preview.texture=icon_texture
+	var preview=preload("res://atlas_integration/preview.gd").new()
+	preview.game=game
+	preview.character_key=key
 	preview.custom_minimum_size=Vector2(65,65)
 	preview.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 	preview.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -72,7 +83,7 @@ func draw_modern():
 	box.set_border_width_all(1)
 	draw_style_box(box,Rect2(Vector2.ZERO,size))
 	draw_rect(Rect2(8,8,size.x-16,54),Color("#c6e0ef"))
-	if icon_texture:draw_texture_rect(icon_texture,Rect2((size.x-52)/2,9,52,52),false,Color(1,1,1,0.45 if disabled else 1))
+	draw_atlas(Vector2(size.x/2,35),36)
 	var font=game.symbol_font
 	draw_string(font,Vector2(7,80),category+" "+game.sim.catalog[key].name,HORIZONTAL_ALIGNMENT_LEFT,size.x-12,11,ink)
 	draw_string(font,Vector2(8,104),"REWARD" if reward else "TIER "+str(int(game.sim.catalog[key].tier)),HORIZONTAL_ALIGNMENT_LEFT,-1,10,ink)

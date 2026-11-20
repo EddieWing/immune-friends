@@ -366,7 +366,8 @@ func build_ui():
 	var column=VBoxContainer.new()
 	column.add_theme_constant_override("separation",8)
 	detail_panel.add_child(column)
-	detail_icon=TextureRect.new()
+	detail_icon=preload("res://atlas_integration/preview.gd").new()
+	detail_icon.game=self
 	detail_icon.custom_minimum_size=Vector2(300,98)
 	detail_icon.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 	detail_icon.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -1140,8 +1141,9 @@ func show_reward():
 		var choice=VBoxContainer.new()
 		choice.custom_minimum_size=Vector2(335,350)
 		row.add_child(choice)
-		var picture=TextureRect.new()
-		picture.texture=cell_icon(key)
+		var picture=preload("res://atlas_integration/preview.gd").new()
+		picture.game=self
+		picture.character_key=key
 		picture.custom_minimum_size=Vector2(335,105)
 		picture.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 		picture.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -1163,6 +1165,16 @@ func start_battle():
 		return
 	if sim.phase!="shop" or not sim.reward_choices.is_empty() or launch_remaining>0: return
 	paused=false
+	selected={}
+	card_cell={}
+	inspected_cell=-1
+	inspected_virus={}
+	detail_panel.hide()
+	term_panel.hide()
+	if hud_a:
+		hud_a.cell_key=""
+		hud_a.cell={}
+		hud_a.virus_key=""
 	sim.release_blood()
 	cancel_placement()
 	save_run()
@@ -1572,10 +1584,10 @@ func set_automatic_zoom(level: int) -> bool:
 
 func set_zoom(value):
 	if browsing_from_main_menu() or entering_game: return
-	if tutorial_guide and not is_equal_approx(camera_requested,clampf(value,0.45,1.5)):tutorial_guide.complete("zoom")
+	if tutorial_guide and not is_equal_approx(camera_requested,clampf(value,0.45,2.0)):tutorial_guide.complete("zoom")
 	cancel_camera_transition()
 	camera_phase="warning" if view.staging=="warning" else sim.phase
-	camera_requested=clampf(value,0.45,1.5)
+	camera_requested=clampf(value,0.45,2.0)
 	zoom_target=camera_requested
 	update_zoom()
 
@@ -1787,7 +1799,7 @@ func show_cell_card(key,c={}):
 	card_cell=c
 	card_anchor=get_viewport().get_mouse_position()
 	detail_panel.show()
-	detail_icon.texture=cell_icon(key)
+	detail_icon.character_key=key
 	detail_panel.size.y=0
 	term_panel.size.y=0
 	detail.text=description(key,c.get("rank",1)==3)

@@ -294,7 +294,7 @@ func step(s,delta: float):
 			spin=clampf(spin,-float(material.max_angular_speed),float(material.max_angular_speed))
 			position+=velocity*dt
 			if cell:body.angle=wrapf(float(body.angle)+spin*dt,-PI,PI)
-			if cell:
+			if cell and s.phase=="shop":
 				var ex: float=extent(s,body,Vector2.RIGHT);var ey: float=extent(s,body,Vector2.DOWN)
 				var clipped: Vector2=position.clamp(Vector2(-620+ex,-365+ey),Vector2(620-ex,350-ey))
 				if clipped.x!=position.x:velocity.x=-velocity.x*float(material.restitution)
@@ -395,7 +395,7 @@ func advance_web(s,bodies: Array,delta: float,steps: int):
 		var a=s.endpoint_by_id(link.a);var b=s.endpoint_by_id(link.b)
 		if a.is_empty() or b.is_empty() or not a.alive or not b.alive:continue
 		links.append([indices[id_of(a)],indices[id_of(b)],link.rest])
-	var buffer=web_kernel.advanceCompact(Marshalls.raw_to_base64(rows.to_byte_array()),JSON.stringify([delta,steps,float(settings.get("contact_impulse_scale",1.0)),float(settings.spring_stiffness),float(settings.spring_damping),rigid_membership],"",true,true),JSON.stringify(links,"",true,true))
+	var buffer=web_kernel.advanceCompact(Marshalls.raw_to_base64(rows.to_byte_array()),JSON.stringify([delta,steps,float(settings.get("contact_impulse_scale",1.0)),float(settings.spring_stiffness),float(settings.spring_damping),rigid_membership,s.phase=="shop"],"",true,true),JSON.stringify(links,"",true,true))
 	var result=JavaScriptBridge.js_buffer_to_packed_byte_array(buffer).to_float64_array()
 	for i in range(bodies.size()):
 		var offset=i*6;var body: Dictionary=bodies[i]

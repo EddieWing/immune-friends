@@ -79,7 +79,8 @@ func draw(canvas,kind):
   if link.kind!=kind:continue
   var a=link.a.position;var b=link.b.position;var direction=(b-a).normalized()
   var reach=smoothstep(0.12,0.55,link.age)*(1-smoothstep(0.0,0.3,link.release))
-  var mid=a.lerp(b,0.5)
+  var sway=sin(link.age*(1.1+fposmod(float(id.hash()),7.0)*0.07)+fposmod(float(id.hash()),TAU))*minf(1.1,a.distance_to(b)*0.14)
+  var mid=a.lerp(b,0.5)+direction.orthogonal()*sway
   for side in 2:
    var data=link.a if side==0 else link.b;var base=a if side==0 else b
    var tip=base.lerp(mid,reach);var dir=direction if side==0 else -direction

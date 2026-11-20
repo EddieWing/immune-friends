@@ -6,6 +6,11 @@ const MUTED=Color("#9c9580")
 const DARK=Color("#252b2d")
 const RED=Color("#b52e4a")
 var game
+var incoming_tab: Button
+var incoming_age=0.0
+var incoming_pinned=false
+var last_phase=""
+var record_state={}
 var shelf: ScrollContainer
 var offers: HBoxContainer
 var release: Button
@@ -65,6 +70,7 @@ func _ready():
   b.set_meta("speed",value)
   transport.append(b)
  note=paper_panel(Rect2(24,84,230,0))
+ incoming_tab=action("INCOMING  >",Rect2(0,88,120,34),func():incoming_pinned=not incoming_pinned;incoming_age=4.0)
  note_rows=VBoxContainer.new()
  note_rows.add_theme_constant_override("separation",8)
  var note_scroll=ScrollContainer.new()
@@ -201,6 +207,8 @@ func observe_wave():
  for entry in game.sim.wave:
   if entry.type not in seen_types: seen_types.append(entry.type)
 func refresh_data():
+ incoming_age=0.0
+ incoming_pinned=false
  if not is_node_ready(): return
  observe_wave()
  clear_rows(offers)
@@ -367,7 +375,13 @@ func _process(delta):
  if upgrade.get_theme_font_size("font_size")!=15: upgrade.add_theme_font_size_override("font_size",15)
  upgrade.text="+1 XP"
  upgrade.tooltip_text=game.xp_purchase_tooltip()
- note.visible=prep
+ incoming_age+=delta
+ var show_incoming=prep and (incoming_age<4.0 or incoming_pinned or (note.visible and note.get_global_rect().has_point(get_global_mouse_position())))
+ note.visible=show_incoming
+ incoming_tab.visible=prep
+ incoming_tab.position.x=note.position.x+note.size.x if show_incoming else 0.0
+ incoming_tab.text="<" if show_incoming else "INCOMING  >"
+ incoming_tab.size.x=30 if show_incoming else 120
  forecast.visible=preview
  for b in transport:
   b.visible=combat
@@ -383,6 +397,11 @@ func _process(delta):
  cell_block.visible=(prep or combat) and cell_key!="" and (prep or not cell.is_empty())
  facts_scroll.visible=cell_block.visible
  if cell_block.visible:
+  if record_state.is_empty() or record_state.id!=cell_key:
+   record_state=game.view.atlas.renderer.create(cell_key)
+   record_state.preparing=true
+   game.view.atlas.renderer.action(record_state,game.view.atlas.rest_mode(record_state,cell,false,"shop"))
+  game.view.atlas.renderer.advance(record_state,delta)
   var facts="\n".join(game.cell_fact_lines(cell))
   var info=preload("res://scripts/ui/cell_facts.gd").ability(game.sim,cell_key,int(cell.get("rank",1)))
   var content=(facts+"\n\n" if facts!="" else "")+"ABILITY\n"+info
@@ -471,7 +490,7 @@ func draw_cell_record():
  var d=game.sim.catalog[cell_key]
  text(Vector2(355,231),"○ LAB RECORD",10,MUTED)
  text(Vector2(558,231),"REWARD" if int(d.tier)==0 else "TIER %d" % int(d.tier),10,INK)
- draw_texture_rect(game.cell_icon(cell_key),Rect2(355,244,54,54),false)
+ if not record_state.is_empty():game.view.atlas.renderer.draw(self,record_state,Vector2(382,271),38)
  wrapped_text(Vector2(420,263),d.name,190,16)
  text(Vector2(420,289),d.category+"  RANK "+"▲".repeat(int(cell.get("rank",1)))+"△".repeat(3-int(cell.get("rank",1))),11)
  if cell.is_empty():text(Vector2(355,303),"HP: "+str(d.hp),13,RED)
