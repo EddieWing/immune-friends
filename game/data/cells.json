@@ -25,7 +25,7 @@
     "interval": 0,
     "behavior": "forward",
     "color": "#ed9c98",
-    "description": "Moves forward in the direction of its arrow.",
+    "description": "Moves forward in the direction of its arrow for 5 seconds, then returns to the nearest living Core and stays nearby.",
     "reference_id": 0,
     "elite": {},
     "constants": {},
