@@ -1,7 +1,12 @@
 extends RefCounted
 # Presentation-only texture mesh. The hit direction is in local body coordinates.
 # A single draw call replaces the sprite only while a directional impact is active.
+var meshes=[]
+var cursor=0
+var draw_frame=-1
 func draw(canvas, texture, extent, frame, direction, age, alpha):
+ if draw_frame!=Engine.get_process_frames():
+  draw_frame=Engine.get_process_frames();cursor=0
  var vertices=PackedVector2Array()
  var uv=PackedVector2Array()
  var indices=PackedInt32Array()
@@ -26,5 +31,7 @@ func draw(canvas, texture, extent, frame, direction, age, alpha):
  var arrays=[];arrays.resize(Mesh.ARRAY_MAX)
  arrays[Mesh.ARRAY_VERTEX]=vertices;arrays[Mesh.ARRAY_TEX_UV]=uv
  arrays[Mesh.ARRAY_INDEX]=indices;arrays[Mesh.ARRAY_COLOR]=colors
- var mesh=ArrayMesh.new();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+ if cursor==meshes.size():meshes.append(ArrayMesh.new())
+ var mesh=meshes[cursor];cursor+=1
+ mesh.clear_surfaces();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
  canvas.draw_mesh(mesh,texture)
