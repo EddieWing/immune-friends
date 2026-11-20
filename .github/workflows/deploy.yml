@@ -13,12 +13,12 @@ concurrency:
 jobs:
   animation-preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           # Keep the experimental build independent from production gameplay.
-          ref: ad6cc2e3451d36c2d93df6ab95dee1c06dc439c0
+          ref: 210e22ae6bb9905832666fa3119bf7e6a5f2e316
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -126,3 +126,4 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/deploy-pages@v4
         id: deployment
+
