@@ -1,6 +1,7 @@
 extends RefCounted
 var renderer=preload('res://atlas_integration/renderer.gd').new()
 var states={}
+var shot_trails=[]
 var connections=preload('res://atlas_integration/connections.gd').new(renderer)
 var observed_sim
 var revision=-1
@@ -29,7 +30,7 @@ func update(sim,delta):
  var previous_growth={}
  if fresh:
   for k in states:previous_growth[k]=states[k].get('radius_growth',0.0)
-  states.clear();connections.links.clear();connections.transfers.clear();cursor=sim.event_sequence
+  states.clear();shot_trails.clear();connections.links.clear();connections.transfers.clear();cursor=sim.event_sequence
  var dt=maxf(0,sim.elapsed-elapsed) if sim.phase=='battle' else maxf(0,delta)
  observed_sim=sim;revision=sim.presentation_revision;elapsed=sim.elapsed
  connections.states=states
@@ -93,8 +94,12 @@ func update(sim,delta):
     renderer.advance(state,dt,look)
     if state.mode=='tagged':state.age=minf(state.age,1.8)
  connections.update(sim,dt)
+ for trail in shot_trails:trail.age+=dt
+ shot_trails=shot_trails.filter(func(t):return t.age<0.16)
  for event in sim.events_since(cursor):
   var d=event.data;var name=event.event
+  if name=='projectile_travel':
+   shot_trails.append({'a':d['from'],'b':d.to,'owner':d.owner,'age':0.0});continue
   var kind='virus:' if name.begins_with('virus_') or name in ['tagged','tag_ended','thawed'] else 'core:' if name in ['blood_lost','core_protected'] else 'cell:'
   var key=kind+str(d.get('id',d.get('source',d.get('a',-1))))
   if not states.has(key):continue
@@ -159,3 +164,13 @@ func rest_mode(state,body,linked,phase):
  if body.get('cool',10)<0.3 and phase=='battle':return first_mode(state,['aim','aimFixed','caliber','preparePush','charge'])
  if body.get('charge',0)>0:return first_mode(state,['conduct','charge','chargeHeal'])
  return first_mode(state,['coreIdle','passive','bombIdle','facet','idle'])
+
+func draw_shots(canvas):
+ for trail in shot_trails:
+  var axis=(trail.b-trail.a).normalized()
+  var a=trail.a
+  var owner=states.get('cell:'+str(trail.owner),{})
+  if not owner.is_empty():a+=axis*minf(a.distance_to(trail.b)*0.4,float(owner.get('width',35))*0.4)
+  var alpha=1.0-smoothstep(0.03,0.16,trail.age)
+  canvas.draw_line(a,trail.b,Color('#d99263',alpha*0.35),5.0,true)
+  canvas.draw_line(a,trail.b,Color('#fff0b8',alpha),1.8,true)

@@ -1415,6 +1415,11 @@ func advance_projectiles(delta,movement_delta):
 	else:
 		advance_projectiles_native(delta,movement_delta)
 
+func record_projectile_trace(p,from):
+	if p.kind!="bullet" or p.get("trace_sent",false) or from==p.p:return
+	p.trace_sent=true
+	record("projectile_travel",{"from":from,"to":p.p,"owner":p.owner})
+
 func advance_projectiles_native(delta,movement_delta):
 	if not particles.is_empty():_prepare_projectile_grid()
 	for p: Dictionary in particles:
@@ -1425,6 +1430,7 @@ func advance_projectiles_native(delta,movement_delta):
 		p.p+=p.v*movement_delta
 		if p.kind=="bullet":
 			resolve_bullet(p,previous,p.p)
+			record_projectile_trace(p,previous)
 		elif p.kind=="tag":
 			proteins.resolve_tag(self,p,previous,p.p)
 	_clear_projectile_grid()
@@ -1459,9 +1465,11 @@ func advance_projectiles_web(delta,movement_delta):
 			var p: Dictionary=particles[int(values[offset])]
 			p.p=Vector2(values[offset+1],values[offset+2]);p.v=Vector2(values[offset+3],values[offset+4]);p.life=values[offset+5]
 			var target_index=int(values[offset+8])
-			if target_index<0:continue
+			if target_index<0:
+				record_projectile_trace(p,Vector2(values[offset+6],values[offset+7]));continue
 			var target: Dictionary=bodies[target_index]
 			var from=Vector2(values[offset+6],values[offset+7])
 			if p.kind=="bullet":apply_bullet_hit(p,from,p.p,target,values[offset+9])
 			else:proteins.apply_tag_hit(self,p,from,p.p,target,values[offset+9])
+			record_projectile_trace(p,from)
 			changed=target_index;alive=int(target.alive);tag=int(float(target.get("tag",0))>0)

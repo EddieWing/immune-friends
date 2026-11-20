@@ -153,6 +153,7 @@ func _draw():
 		draw_set_transform(label[0],0,label[1])
 		draw_string(font,Vector2(12,-9),label[2],HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("#e7efe1"))
 	draw_set_transform(Vector2.ZERO)
+	if atlas_enabled:atlas.draw_shots(self)
 	effect_strokes.begin()
 	for e in sim.effects:
 		var alpha=e.life/e.max
