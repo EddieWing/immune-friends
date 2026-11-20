@@ -21,7 +21,10 @@ func emotion(state,name):
  else:state.emotion=name;state.reaction=''
 func advance(state,dt,target=Vector2.RIGHT):
  state.age+=dt;state.clock+=dt;state.hit_age+=dt;state.feed_age+=dt
- state.look=state.look.lerp(target.normalized() if target.length_squared()>0.001 else state.look,1-exp(-12*dt))
+ # Interpolate direction on the circle: opposite vectors must not pass through zero.
+ var wanted=target.angle() if target.length_squared()>0.001 else state.look.angle()
+ state.look=Vector2.RIGHT.rotated(lerp_angle(state.look.angle(),wanted,1-exp(-12*dt)))
+ advance_rotation(state,dt)
  var expression=state.emotion
  if state.reaction!='':
   state.reaction_age+=dt
@@ -41,7 +44,7 @@ func texture_for(id,mode):
  textures[key]=texture;order.append(key)
  if order.size()>CACHE_LIMIT:textures.erase(order.pop_front())
  return texture
-func visual_angle(state,angle):
+func target_angle(state,angle):
  if state.id=='virus_wave' and state.mode in ['wave','waveImpact','move']:
   return angle+TAU*sin(float(state.get('wave_progress',state.clock*0.5))*PI)
  if state.id=='orbiter' and state.mode in ['orbit','turn','move']:
@@ -50,8 +53,31 @@ func visual_angle(state,angle):
  if state.id in ['virus_hungry','virus_jumper','virus_avoider','virus_seeker','seeker','tackle','virus_swarmer'] and state.mode not in ['idle','death','tagged']:
   return state.look.angle()
  return angle
+func advance_rotation(state,dt):
+ var angle=float(state.get('angle',0.0))
+ var wave=state.id=='virus_wave' and state.mode in ['wave','waveImpact','move']
+ var offset=TAU*sin(float(state.get('wave_progress',state.clock*0.5))*PI) if wave else 0.0
+ var desired=angle if wave else target_angle(state,angle)
+ if not state.has('body_angle'):
+  state.turn_angle=desired;state.body_angle=desired+offset;state.turn_wave=wave
+  return
+ if state.mode in ['death','explode','healDeath','deathPush']:return
+ # Keep Wave's continuous full revolutions; only smooth its underlying heading.
+ if state.turn_wave!=wave:state.turn_angle=state.body_angle-offset
+ var error=wrapf(desired-state.turn_angle,-PI,PI)
+ state.turn_angle+=clampf(error*(1-exp(-10*dt)),-8*dt,8*dt)
+ state.body_angle=state.turn_angle+offset;state.turn_wave=wave
+func visual_angle(state,angle):
+ return float(state.body_angle) if state.has('body_angle') else target_angle(state,angle)
+func resting_scale(state):
+ # Low-amplitude continuous motion stays readable below a sprite-sheet pixel.
+ # Approved clips remain unchanged; no idle pulse is added during an action.
+ if not state.get('preparing',false) or state.mode not in ['idle','coreIdle','passive']:return 1.0
+ if state.mode in data.characters[state.id].get('protected_modes',[]):return 1.0
+ return 1.0+0.022*sin(state.clock*1.8+float(state.get('idle_phase',0.0)))
 func draw(canvas,state,position,body_width,angle=0.0,alpha=1.0):
  if not has_character(state.id):return
+ body_width*=resting_scale(state)
  var spec=data.characters[state.id]
  var protected=state.mode in spec.get('protected_modes',[])
  var mode='idle' if state.mode=='hurt' and not protected else state.mode

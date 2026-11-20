@@ -7,9 +7,10 @@ var states={}
 func _init(painter):renderer=painter
 func key(body):return ('virus:' if body.has('type') else 'cell:' if body.has('key') else 'core:')+str(body.id)
 func width(sim,body):
- if body.has('type'):return sim.physics.radius(body)*3.0
- if not body.has('key'):return 34.0
- return sim.physics.extent(sim,body,Vector2.RIGHT.rotated(body.get('angle',0.0)))*(2.2 if sim.catalog[body.key].behavior=='wall' else 2.5)
+ var result=34.0
+ if body.has('type'):result=sim.physics.radius(body)*3.0
+ elif body.has('key'):result=sim.physics.extent(sim,body,Vector2.RIGHT.rotated(body.get('angle',0.0)))*(2.2 if sim.catalog[body.key].behavior=='wall' else 2.5)
+ return result*renderer.resting_scale(states[key(body)]) if states.has(key(body)) else result
 func rig_id(body):return 'virus_'+body.type if body.has('type') else body.get('key','core')
 func endpoint(sim,body,other,previous,delta):
  var spec=renderer.data.characters[rig_id(body)]
