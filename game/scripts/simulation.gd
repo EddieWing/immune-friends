@@ -581,7 +581,7 @@ func spawn_virus(entry):
 	var p=entry.get("p",infection_sources[entry.lane])
 	var hp=float(tuning.get("virus:"+entry.type,{}).get("hp",2.0 if entry.type=="seeker" else 1.0))
 	viruses.append({"id":next_id,"type":entry.type,"p":p,"hp":hp,"peak_hp":hp,"alive":true,
-		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"lived":0.0,"lifespan":12.0+rng.randf()*2.0,"jump":false,"phase":rng.randf()*TAU,
+		"cool":0.0,"tag":0.0,"freeze":0.0,"age":0.0,"lived":0.0,"lifespan":24.0+rng.randf()*4.0,"jump":false,"phase":rng.randf()*TAU,
 		"emerging":false,"exit":p,"spawn_position":p,"source_lane":entry.lane})
 	next_id+=1
 
@@ -870,7 +870,7 @@ func update_step(delta: float):
 	for v: Dictionary in viruses:
 		if not v.alive: continue
 		v["lived"]=float(v.get("lived",0))+delta
-		if v.lived>float(v.get("lifespan",14.0)):
+		if v.lived>float(v.get("lifespan",28.0)):
 			damage_virus(v,maxf(1,v.hp),{"p":v.p,"cause":"expiry"})
 			continue
 		v.age+=delta
