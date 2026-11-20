@@ -22,7 +22,7 @@ const LivingFeatures=(()=>{
  function appendages(c,a,lod,scale,api){let sp=a.spec,s=Catalog.state(a);if(!sp.motor)return;let count=sp.motor==='orbit'?22:sp.motor==='wave'?12:13;
  for(let j=0;j<count;j++){let angle=sp.motor==='rear'?Math.PI+(j-(count-1)/2)*.16:sp.motor==='orbit'?j/count*TAU:Math.PI+(j%2?1:-1)*.7;
  let base=Bond.anchor(a.poly,sp.shape==='crescent'?[-40,0]:[0,0],[Math.cos(angle),Math.sin(angle)]);if(sp.motor==='wave'){base=nearestSurface(a.poly,[-60+j*17,j%2?-65:65]);angle=j%2?-Math.PI/2:Math.PI/2};let root=api.deform(a,...base),length=sp.motor==='orbit'?(Math.cos(angle)>.1?52:19):27+(j%3)*3,segments=lod?7:18,pts=[];
- for(let i=0;i<=segments;i++){let u=i/segments,phase=a.phase*8-u*6+j*.6,bend=Math.sin(phase)*(1+s.motor*6)*u*u;pts.push([root[0]+Math.cos(angle)*length*u-Math.sin(angle)*bend,root[1]+Math.sin(angle)*length*u+Math.cos(angle)*bend])}line(c,pts,sp.edge,Math.max(2.5,.5/scale));line(c,pts,sp.light,Math.max(1.25,.27/scale))}
+ for(let i=0;i<=segments;i++){let u=i/segments,phase=a.phase*8-u*6+j*.6,bend=Math.sin(phase)*(7+s.motor*7)*u*u;pts.push([root[0]+Math.cos(angle)*length*u-Math.sin(angle)*bend,root[1]+Math.sin(angle)*length*u+Math.cos(angle)*bend])}line(c,pts,sp.edge,Math.max(2.5,.5/scale));line(c,pts,sp.light,Math.max(1.25,.27/scale))}
  }
  function hands(c,a,lod,scale,api){let sp=a.spec,s=Catalog.state(a),connector=['bond','bodyguard','radar','swapper','accelerator','kinetic_bond'].includes(sp.id),core=sp.id==='core';if(!connector&&!core)return;
  let number=core?6:2;for(let i=0;i<number;i++){let angle=core?i/6*TAU:i*Math.PI,dir=[Math.cos(angle),Math.sin(angle)],site=Bond.anchor(a.poly,[0,0],dir),root=api.deform(a,...site);

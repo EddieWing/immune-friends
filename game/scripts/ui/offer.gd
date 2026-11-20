@@ -26,8 +26,8 @@ func _draw():
 		return
 	var center=size*0.5
 	var radius=minf(size.x,size.y)*0.43
-	var color=Color("#c9dae4")
-	if is_hovered(): color=Color("#deebef")
+	var color=Color("#160f24")
+	if is_hovered(): color=Color("#251b38")
 	if elite_ready: color=Color("#f5e2a2")
 	if reward: color=Color("#dce7bc")
 	var puddle=PackedVector2Array()
@@ -58,6 +58,7 @@ func _process(delta):
 		if atlas_state.is_empty():
 			atlas_state=game.view.atlas.renderer.create(key)
 			atlas_state.preparing=true
+			atlas_state.idle_phase=index*2.399963
 			game.view.atlas.renderer.action(atlas_state,game.view.atlas.rest_mode(atlas_state,{},false,"shop"))
 		game.view.atlas.renderer.advance(atlas_state,delta)
 	queue_redraw()
@@ -82,7 +83,7 @@ func draw_modern():
 	box.border_color=Color("#a99a70") if has_focus() else Color("#7f9aa7")
 	box.set_border_width_all(1)
 	draw_style_box(box,Rect2(Vector2.ZERO,size))
-	draw_rect(Rect2(8,8,size.x-16,54),Color("#c6e0ef"))
+	draw_rect(Rect2(8,8,size.x-16,54),Color("#160f24"))
 	draw_atlas(Vector2(size.x/2,35),36)
 	var font=game.symbol_font
 	draw_string(font,Vector2(7,80),category+" "+game.sim.catalog[key].name,HORIZONTAL_ALIGNMENT_LEFT,size.x-12,11,ink)

@@ -3,6 +3,7 @@ extends RefCounted
 var poses={}
 var opacity=1.0
 var show_angry_brows=false
+var blink=0.0
 const INK=Color('#573b31')
 const WHITE=Color('#fff2d6')
 func geometry(weights,key,side=-1):
@@ -33,6 +34,7 @@ func draw(canvas,position,width,weights,look,time,no_mouth=false):
   var side=-1 if side_index==0 else 1
   var origin=position+Vector2(side*0.215,-0.025 if side==1 else 0)*width
   var eye=clean_polygon(geometry(weights,'eyes',side_index))
+  for i in eye.size():eye[i].y=lerpf(eye[i].y,0.025,blink)
   var local_eye=eye.duplicate()
   for i in eye.size():eye[i]=origin+eye[i]*width
   if spiral<0.999:

@@ -522,6 +522,7 @@ func begin_battle():
 		c["friendly_stun"]=0.0
 		c["presentation_target"]=-1
 		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
+		if c.key=="tackle":preload("res://scripts/tackle_motion.gd").reset(c)
 		c.range_buff=1.0
 		c["range_bonus"]=0.0
 		c.speed_buff=1.0
@@ -797,7 +798,9 @@ func update_step(delta: float):
 				if candidate.alive and candidate.tag>0 and c.p.distance_to(candidate.p)<reach*2:
 					target=candidate
 					break
-		if d.behavior=="forward" or d.behavior=="drop":
+		if c.key=="tackle":
+			velocity=preload("res://scripts/tackle_motion.gd").direction(self,c,delta)*speed_of(c)*3
+		elif d.behavior=="forward" or d.behavior=="drop":
 			velocity=Vector2.RIGHT.rotated(c.angle)*speed_of(c)*3
 		elif d.behavior=="seek":
 			# Tagged targets can be detected at twice the normal distance.
@@ -1194,6 +1197,7 @@ func next_round():
 	rebuild_links()
 	for c in cells:
 		if catalog[c.key].behavior=="seek":preload("res://scripts/seeker_motion.gd").reset(c)
+		if c.key=="tackle":preload("res://scripts/tackle_motion.gd").reset(c)
 	# Original TradeHealth processes exchanges sequentially after restoration.
 	for c in cells:
 		if c.key!="swapper":continue

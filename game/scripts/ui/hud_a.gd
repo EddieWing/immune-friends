@@ -70,7 +70,7 @@ func _ready():
   b.set_meta("speed",value)
   transport.append(b)
  note=paper_panel(Rect2(24,84,230,0))
- incoming_tab=action("INCOMING  >",Rect2(0,88,120,34),func():incoming_pinned=not incoming_pinned;incoming_age=4.0)
+ incoming_tab=action(">",Rect2(0,88,30,34),func():incoming_pinned=not incoming_pinned;incoming_age=4.0)
  note_rows=VBoxContainer.new()
  note_rows.add_theme_constant_override("separation",8)
  var note_scroll=ScrollContainer.new()
@@ -380,8 +380,8 @@ func _process(delta):
  note.visible=show_incoming
  incoming_tab.visible=prep
  incoming_tab.position.x=note.position.x+note.size.x if show_incoming else 0.0
- incoming_tab.text="<" if show_incoming else "INCOMING  >"
- incoming_tab.size.x=30 if show_incoming else 120
+ incoming_tab.text="<" if show_incoming else ">"
+ incoming_tab.size.x=30
  forecast.visible=preview
  for b in transport:
   b.visible=combat

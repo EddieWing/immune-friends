@@ -75,6 +75,16 @@ func resting_scale(state):
  if not state.get('preparing',false) or state.mode not in ['idle','coreIdle','passive']:return 1.0
  if state.mode in data.characters[state.id].get('protected_modes',[]):return 1.0
  return 1.0+0.022*sin(state.clock*1.8+float(state.get('idle_phase',0.0)))
+func blink_amount(state):
+ if state.get('reaction','') in ['wink','kiss']:return 0.0
+ if state.mode in ['hurt','death','explode','healDeath','deathPush'] or state.emotion in ['hurt','spiral','laugh','wink','kiss']:return 0.0
+ var seed=float(state.get('idle_phase',0.0))+float(str(state.id).hash()%997)*0.01
+ var period=3.5+fposmod(seed*1.73,2.8)
+ var t=fposmod(state.clock+seed,period)
+ if t<0.09:return smoothstep(0.0,0.09,t)
+ if t<0.13:return 1.0
+ if t<0.27:return 1.0-smoothstep(0.13,0.27,t)
+ return 0.0
 func draw(canvas,state,position,body_width,angle=0.0,alpha=1.0):
  if not has_character(state.id):return
  body_width*=resting_scale(state)
@@ -111,7 +121,7 @@ func draw(canvas,state,position,body_width,angle=0.0,alpha=1.0):
  if not frames.is_empty():layout=frames[index]
  var face_anchor=Vector2(layout[0],layout[1])*body_width/spec.width
  var opacity=alpha*(float(layout[3]) if layout.size()>3 else 1.0)
- face.opacity=opacity;face.show_angry_brows=state.id=='orbiter'
+ face.opacity=opacity;face.show_angry_brows=state.id=='orbiter';face.blink=blink_amount(state)
  if opacity>0.01:face.draw(canvas,position+face_anchor.rotated(rotation),layout[2]*body_width/spec.width,state.weights,state.look,state.clock,spec.no_mouth)
  face.opacity=1.0
 

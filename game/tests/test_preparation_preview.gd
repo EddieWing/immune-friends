@@ -13,6 +13,7 @@ func run():
  g.buy_offer(0,false);var cell=g.sim.cells[0];g.selected=cell;g.show_cell_card(cell.key,cell);g.hud_a.select_cell(cell.key,cell)
  g.hud_a.refresh_data();g.hud_a._process(0.1);check(g.hud_a.note.visible,'Incoming initially visible')
  g.hud_a.incoming_age=5;g.hud_a._process(0);check(not g.hud_a.note.visible and g.hud_a.incoming_tab.visible,'Incoming collapses to tab')
+ check(g.hud_a.incoming_tab.text=='>' and g.hud_a.incoming_tab.size.x==30,'Collapsed Incoming uses only a narrow arrow')
  g.hud_a.incoming_tab.pressed.emit();g.hud_a._process(0);check(g.hud_a.note.visible,'Incoming can reopen')
  var offer=preload('res://scripts/ui/offer.gd').new();offer.game=g;offer.key=cell.key;root.add_child(offer);offer._process(0.1)
  check(not offer.atlas_state.is_empty() and offer.atlas_state.age>0,'shop preview uses animated field renderer')
