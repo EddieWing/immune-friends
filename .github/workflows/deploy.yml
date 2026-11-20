@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Keep the experimental build independent from production gameplay.
-          ref: 9bb157170eba300a75956f6dd2b470548c2548bb
+          ref: ad6cc2e3451d36c2d93df6ab95dee1c06dc439c0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -43,7 +43,8 @@ jobs:
       - name: Check preview simulation, systems, saves and animation integration
         run: |
           node game/atlas_integration/tests/review_geometry.cjs
-          for test in test_simulation test_systems test_ui_save test_atlas_integration test_atlas_drag test_atlas_turn; do
+            node game/tests/test_web_source_bounds.cjs
+          for test in test_simulation test_systems test_ui_save test_atlas_integration test_atlas_drag test_atlas_turn test_atlas_core_links test_atlas_impact_mesh test_preparation_preview test_virus_lifetime; do
             timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/$test.gd
           done
       - name: Export animation preview
