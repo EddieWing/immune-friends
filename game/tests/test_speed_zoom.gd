@@ -88,7 +88,7 @@ func run():
  for i in range(30): scene._unhandled_input(wheel)
  check(scene.view.scale.x<scene.zoom_target,"zoom has a short easing tail")
  scene.advance_camera(1.0)
- check(is_equal_approx(scene.view.scale.x,2.0) and scene.zoom_gauge.visible,"wheel reaches maximum zoom and gauge is visible")
+ check(is_equal_approx(scene.view.scale.x,3.0) and scene.zoom_gauge.visible,"wheel reaches maximum zoom and gauge is visible")
  wheel.button_index=MOUSE_BUTTON_WHEEL_DOWN
  for i in range(40): scene._unhandled_input(wheel)
  scene.advance_camera(1.0)

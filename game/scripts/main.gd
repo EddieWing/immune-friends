@@ -1584,10 +1584,10 @@ func set_automatic_zoom(level: int) -> bool:
 
 func set_zoom(value):
 	if browsing_from_main_menu() or entering_game: return
-	if tutorial_guide and not is_equal_approx(camera_requested,clampf(value,0.45,2.0)):tutorial_guide.complete("zoom")
+	if tutorial_guide and not is_equal_approx(camera_requested,clampf(value,0.45,3.0)):tutorial_guide.complete("zoom")
 	cancel_camera_transition()
 	camera_phase="warning" if view.staging=="warning" else sim.phase
-	camera_requested=clampf(value,0.45,2.0)
+	camera_requested=clampf(value,0.45,3.0)
 	zoom_target=camera_requested
 	update_zoom()
 

@@ -8,8 +8,8 @@ func run():
  var g=load('res://main.tscn').instantiate();g.save_path='user://test_prep_changes.json';root.add_child(g)
  await process_frame
  g.sim.reset(42,12);g.main_menu.hide();g.entering_game=false;g.modal.hide();g.ui_new=true
- g.set_zoom(2.5);check(is_equal_approx(g.camera_requested,2.0),'manual zoom clamps at x2')
- g.set_zoom(2.0);check(is_equal_approx(g.zoom_target,2.0),'manual zoom reaches x2')
+ g.set_zoom(3.5);check(is_equal_approx(g.camera_requested,3.0),'manual zoom clamps at x3')
+ g.set_zoom(3.0);check(is_equal_approx(g.zoom_target,3.0),'manual zoom reaches x3')
  g.buy_offer(0,false);var cell=g.sim.cells[0];g.selected=cell;g.show_cell_card(cell.key,cell);g.hud_a.select_cell(cell.key,cell)
  g.hud_a.refresh_data();g.hud_a._process(0.1);check(g.hud_a.note.visible,'Incoming initially visible')
  g.hud_a.incoming_age=5;g.hud_a._process(0);check(not g.hud_a.note.visible and g.hud_a.incoming_tab.visible,'Incoming collapses to tab')
