@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Keep the experimental build independent from production gameplay.
-          ref: e72150ae458f4595d73b8b0145df23fd2918f621
+          ref: d48684d9b3a21a5a292ad364654c0346d06f32a9
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -44,7 +44,7 @@ jobs:
         run: |
           node game/atlas_integration/tests/review_geometry.cjs
             node game/tests/test_web_source_bounds.cjs
-          for test in test_simulation test_systems test_ui_save test_atlas_integration test_atlas_drag test_atlas_turn test_atlas_core_links test_atlas_impact_mesh test_atlas_projectile_trace test_preparation_preview test_virus_lifetime test_tackle_return test_atlas_blink test_lookat_sources test_lookat test_lookat_rules test_lookat_interactions test_lookat_render test_lookat_equivalence test_field_labels test_lookat_gaps; do
+          for test in test_simulation test_systems test_ui_save test_atlas_integration test_atlas_drag test_atlas_turn test_atlas_core_links test_atlas_impact_mesh test_atlas_projectile_trace test_preparation_preview test_virus_lifetime test_tackle_return test_atlas_blink test_lookat_sources test_lookat test_lookat_rules test_lookat_interactions test_lookat_render test_lookat_equivalence test_field_labels test_lookat_gaps test_face_assets; do
             timeout 180s .build/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --script res://tests/$test.gd
           done
       - name: Export animation preview
