@@ -54,6 +54,7 @@ var arrivals={}
 var known_cells={}
 var arrival_sim_seed=-1
 var arrival_round=-1
+const FIELD_LABELS=preload("res://scripts/field_labels.gd")
 var font=ThemeDB.fallback_font
 var drag_preview=Vector2.INF
 var preview_offer_key=""
@@ -102,7 +103,7 @@ func _process(delta):
 	queue_redraw()
 
 func text_at(p, text, size=14, color=Color("#d8e9e5")):
-	draw_string(font,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,color)
+	FIELD_LABELS.text(self,font,p,text,size,color)
 
 func _draw():
 	material.set_shader_parameter("arena_scale",maxf(absf(get_global_transform().get_scale().x),0.00001))
@@ -206,8 +207,7 @@ func draw_cell(c):
 		support.draw_cell(self,c)
 		var fraction=clampf(c.hp/maxf(c.max_hp,c.hp),0,1)
 		var hp_y=atlas.renderer.bottom_extent(atlas.states[atlas.key_of(c)],width)+10.0 if atlas.states.has(atlas.key_of(c)) else 30.0
-		draw_line(c.p+Vector2(-12,hp_y),c.p+Vector2(12,hp_y),Color("#453450"),3,true)
-		draw_line(c.p+Vector2(-12,hp_y),c.p+Vector2(-12+24*fraction,hp_y),Color("#cae2b0"),3,true)
+		FIELD_LABELS.bar(self,c.p+Vector2(0,hp_y),fraction)
 		text_at(c.p+Vector2(18,hp_y+4),str(int(ceil(c.hp))),10,Color("#e7efe1"))
 		if c.charge>0:text_at(c.p+Vector2(-5,-27),"ϟ",18,Color("#ffe89a"))
 		if c.rank>1:
