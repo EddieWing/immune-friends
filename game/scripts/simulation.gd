@@ -283,7 +283,7 @@ func purchase(index: int, p: Vector2, reward = false):
 			bonus["p"]=receiver.p
 			record("purchase_buff",bonus)
 	rebuild_links()
-	record("purchase",{"key":key,"reward":reward})
+	record("purchase",{"key":key,"reward":reward,"id":item.id,"p":item.p})
 	last_message = catalog[key].name + " joined the team"
 	return true
 
@@ -291,7 +291,7 @@ func sell(c):
 	if phase != "shop" or not cells.has(c):
 		return
 	money+=int(c.sale)
-	record("sell",{"key":c.key,"value":c.sale})
+	record("sell",{"key":c.key,"value":c.sale,"id":c.id,"p":c.p})
 	cells.erase(c)
 	rebuild_links()
 
@@ -419,6 +419,7 @@ func hit_core(b,v,attack_hp=-1.0):
 	amount=intercept_damage(core_endpoint(b),amount,{"kind":"virus","id":v.id,"p":v.p})
 	if amount>0:
 		b["hp"]=float(b.get("hp",1.0))-amount
+		record("core_hit",{"id":b.id,"p":b.p,"hp":b.hp,"amount":amount,"source_id":v.id,"from":v.p})
 		if b.hp<=0:
 			b.alive=false
 			effect(b.p,Color("#eb8f9d"),"",35)
@@ -635,9 +636,9 @@ func nearest_blood(p: Vector2) -> Dictionary:
 func effect(p, color, label="", radius=30.0):
 	effects.append({"p":p,"color":color,"text":label,"r":radius,"life":0.8,"max":0.8})
 
-func shoot(c, direction, origin=Vector2.INF, split=false):
+func shoot(c, direction, origin=Vector2.INF, split=false, target_id=-1):
 	var p=c.p if origin==Vector2.INF else origin
-	record("attack_fired",{"id":c.id,"p":p,"direction":direction.normalized(),"key":c.key})
+	record("attack_fired",{"id":c.id,"p":p,"direction":direction.normalized(),"key":c.key,"target_id":target_id})
 	var radius=5.0
 	if c.key=="cannon":
 		var count=0
@@ -681,7 +682,7 @@ func intercept_damage(target_id,amount,source={}):
 		if id==target_id or guard.is_empty() or not guard.alive or guard.key!="bodyguard":continue
 		var absorbed=minf(maxf(0,guard.hp),amount)
 		if absorbed<=0:continue
-		record("transfer",{"path":bond_path(target_id,id),"amount":absorbed})
+		record("transfer",{"path":bond_path(target_id,id),"amount":absorbed,"source_id":id,"target_id":target_id,"lethal_prevented":cell_by_id(target_id).get("hp",INF)<=amount and cell_by_id(target_id).get("hp",INF)>amount-absorbed})
 		damage_cell(guard,absorbed,true,source)
 		return amount-absorbed
 	return amount
@@ -696,7 +697,7 @@ func damage_cell(c, amount, redirected=false, source={}):
 	if amount<=0:return
 	c.hp-=amount
 	c.flash=0.25
-	record("damage",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"source_kind":source.get("kind","unknown"),"source_id":source.get("id",-1),"from":source.get("p",c.p)})
+	record("damage",{"id":c.id,"hp":c.hp,"p":c.p,"amount":amount,"source_kind":source.get("kind","unknown"),"source_cause":source.get("cause",""),"source_id":source.get("id",-1),"from":source.get("p",c.p)})
 	if c.key=="impact_wall":
 		var dir=Vector2.RIGHT.rotated(c.angle)
 		shoot(c,dir,c.p+dir*42)
@@ -711,13 +712,13 @@ func damage_cell(c, amount, redirected=false, source={}):
 		for other in cells:
 			if other.alive and c.p.distance_to(other.p)<range_of(c):
 				heal(other,constant_of(c,"healAmount",1),c)
-	record("cell_rest",{"id":c.id,"p":c.p})
+	record("cell_rest",{"id":c.id,"p":c.p,"source_id":source.get("id",-1),"source_kind":source.get("kind","unknown")})
 
 func damage_virus(v, amount, source={}):
 	if not v.alive or (v.jump and source.get("cause","")!="expiry"): return
 	var prior_hp=v.hp
 	v.hp-=amount
-	record("virus_hit",{"id":v.id,"p":v.p,"amount":amount,"from":source.get("p",v.p),"cause":source.get("cause","contact")})
+	record("virus_hit",{"id":v.id,"p":v.p,"amount":amount,"from":source.get("p",v.p),"cause":source.get("cause","contact"),"owner":source.get("owner",source.get("presentation_owner",-1))})
 	if v.hp>0: return
 	v.alive=false
 	experiments.virus_death(self,v)
@@ -727,12 +728,12 @@ func damage_virus(v, amount, source={}):
 	effect(v.p,Color("#d4b8e7"),"",20)
 	var core=nearest_blood(v.p)
 	var key_threat=v.type=="seeker" or v.get("peak_hp",prior_hp)>=3 or (not core.is_empty() and core.p.distance_to(v.p)<80)
-	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat})
+	record("virus_defeated",{"type":v.type,"id":v.id,"p":v.p,"key_threat":key_threat,"cause":source.get("cause","contact"),"owner":source.get("owner",source.get("presentation_owner",-1))})
 
-func push_object(object,offset,kind,origin):
+func push_object(object,offset,kind,origin,source_id=-1):
 	physics.impulse(self,object,offset*physics.parameter(self,object,"impulse_scale"),origin)
 	if offset.length_squared()>0:
-		record("pushed",{"id":object.id,"p":object.p,"kind":kind,"from":origin,"direction":offset.normalized()})
+		record("pushed",{"id":object.id,"p":object.p,"kind":kind,"from":origin,"source_id":source_id,"direction":offset.normalized()})
 
 func contains_cell(c, p, extra=0.0):
 	var local=(p-c.p).rotated(-c.angle)
@@ -831,15 +832,15 @@ func update_step(delta: float):
 			match d.behavior:
 				"shoot":
 					var feeder=experiments.feed_target(self,c)
-					if not feeder.is_empty(): shoot(c,feeder.p-c.p)
-					elif not target.is_empty(): shoot(c,target.p-c.p)
+					if not feeder.is_empty(): shoot(c,feeder.p-c.p,Vector2.INF,false,feeder.id)
+					elif not target.is_empty(): shoot(c,target.p-c.p,Vector2.INF,false,target.id)
 				"sniper":
 					var dir: Vector2=Vector2.RIGHT.rotated(c.angle)
 					var feeder=experiments.feed_target(self,c)
-					if not feeder.is_empty(): shoot(c,dir)
+					if not feeder.is_empty(): shoot(c,dir,Vector2.INF,false,feeder.id)
 					for candidate: Dictionary in ([] if not feeder.is_empty() else viruses):
 						if candidate.alive and c.p.distance_to(candidate.p)<reach and absf(dir.angle_to(candidate.p-c.p))<0.20:
-							shoot(c,dir)
+							shoot(c,dir,Vector2.INF,false,candidate.id)
 							break
 				"heal":
 					for other: Dictionary in cells:
@@ -848,9 +849,9 @@ func update_step(delta: float):
 					record("attack_fired",{"id":c.id,"p":c.p,"direction":Vector2.ZERO,"key":c.key})
 					effect(c.p,Color("#f7dec3"),"",reach)
 					for v: Dictionary in viruses:
-						if v.alive and v.p.distance_to(c.p)<reach: push_object(v,(v.p-c.p).normalized()*30,"virus",c.p)
+						if v.alive and v.p.distance_to(c.p)<reach: push_object(v,(v.p-c.p).normalized()*30,"virus",c.p,c.id)
 					for other: Dictionary in cells:
-						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*20,"cell",c.p)
+						if other.id!=c.id and other.alive and other.p.distance_to(c.p)<reach: push_object(other,(other.p-c.p).normalized()*20,"cell",c.p,c.id)
 				"drop":
 					particles.append({"kind":"tag","p":c.p,"v":Vector2.ZERO,"life":1e12,"r":5.0,"owner":c.id})
 					record("interferon_created",{"id":c.id,"p":c.p})
@@ -905,7 +906,7 @@ func update_step(delta: float):
 					target_key="cell:"+str(c.id)
 					nearest=c.p.distance_to(v.p)
 		if v.type=="seeker" and v.get("visual_target","")!=target_key:
-			record("virus_target",{"id":v.id,"p":v.p,"target":target_pos})
+			record("virus_target",{"id":v.id,"p":v.p,"target":target_pos,"target_uid":target_key})
 		v.visual_target=target_key
 		var dir: Vector2=v.p.direction_to(target_pos)
 		if not motion_contexts.has(v.type):motion_contexts[v.type]=virus_motion.context(self,v)
@@ -972,7 +973,7 @@ func resolve_cell_contacts():
 			hit_core(hit.cell,hit.virus,hit.virus_hp)
 			continue
 		damage_cell(hit.cell,hit.virus_hp,false,{"kind":"virus","id":hit.virus.id,"p":hit.virus.p})
-		damage_virus(hit.virus,hit.cell_hp,{"p":hit.cell.p,"cause":"contact"})
+		damage_virus(hit.virus,hit.cell_hp,{"p":hit.cell.p,"cause":"contact","presentation_owner":hit.cell.id})
 
 func start_blast(position,reach,damage=1.0,force=600.0,owner=-1,immune_only=false):
 	var duration=maxf(0.02,reach/float(rules.scale)*0.02)
@@ -997,8 +998,8 @@ func advance_blasts(delta):
 			# Force 600 / 400 is integrated for one original fixed physics step.
 			physics.impulse(self,body,blast.p.direction_to(body.p)*blast.force*(26.0/3.5)/60.0,blast.p)
 			if blast.damage>0:
-				if body.has("type"):damage_virus(body,blast.damage,{"p":blast.p,"cause":"blast"})
-				else:damage_cell(body,blast.damage,false,{"kind":"cell","id":blast.owner,"p":blast.p})
+				if body.has("type"):damage_virus(body,blast.damage,{"p":blast.p,"cause":"blast","presentation_owner":blast.owner})
+				else:damage_cell(body,blast.damage,false,{"kind":"cell","id":blast.owner,"p":blast.p,"cause":"blast"})
 		blast.visual.life=maxf(0.001,blast.duration-blast.age)
 	blasts=blasts.filter(func(b):return b.age<b.duration)
 
@@ -1084,7 +1085,7 @@ func apply_bullet_hit(p,from,to,target,nearest):
 		var dir=p.v.normalized()
 		shoot(target,dir.rotated(-0.18),target.p+dir*48,true)
 		shoot(target,dir.rotated(0.18),target.p+dir*48,true)
-		record("bullet_split",{"p":target.p,"direction":dir})
+		record("bullet_split",{"id":target.id,"source_id":p.owner,"p":target.p,"direction":dir})
 	else:
 		if target.key=="mortar":target.food+=1
 		else:target["bullet_food"]=int(target.get("bullet_food",0))+1
