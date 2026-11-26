@@ -4,11 +4,15 @@ const ROOT='res://assets/atlas_integration/'
 var data=JSON.parse_string(FileAccess.get_file_as_string(ROOT+'manifest.json'))
 var warp=preload('res://atlas_integration/body_warp.gd').new()
 var face=preload('res://atlas_integration/face.gd').new()
+var face_sets={
+ 'cells':JSON.parse_string(FileAccess.get_file_as_string(ROOT+'faces-cells.json')),
+ 'viruses':JSON.parse_string(FileAccess.get_file_as_string(ROOT+'faces-viruses.json'))}
 var textures={}
 var order=[]
 var attention_config=JSON.parse_string(FileAccess.get_file_as_string("res://data/lookat.json"))
 const CACHE_LIMIT=24
-func _init():face.poses=data.faces
+func _init():face.poses=face_sets.cells.poses
+func face_set_for(id):return face_sets.viruses if id.begins_with('virus_') else face_sets.cells
 func has_character(id):return data.characters.has(id)
 func create(id):
  return {'id':id,'mode':'idle','age':0.0,'clock':0.0,'weights':{'calm':1.0},'look':Vector2.RIGHT,'emotion':'calm','reaction':'','reaction_age':0.0,'return_emotion':'calm','feed_age':99.0,'hit_age':99.0,'hit_direction':Vector2.RIGHT}
@@ -132,6 +136,8 @@ func draw(canvas,state,position,body_width,angle=0.0,alpha=1.0):
  if not frames.is_empty():layout=frames[index]
  var face_anchor=Vector2(layout[0],layout[1])*body_width/spec.width
  var opacity=alpha*(float(layout[3]) if layout.size()>3 else 1.0)
+ var face_set=face_set_for(state.id)
+ face.poses=face_set.poses;face.eye_scale=Vector2(face_set.eye_scale[0],face_set.eye_scale[1])
  face.lens=state.get('lens',0.0);face.lens_scale=attention_config.lens_scale
  face.opacity=opacity;face.show_angry_brows=state.id=='orbiter';face.blink=blink_amount(state)
  if opacity>0.01:face.draw(canvas,position+face_anchor.rotated(rotation),layout[2]*body_width/spec.width,state.weights,state.look,state.clock,spec.no_mouth)

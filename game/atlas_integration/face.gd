@@ -6,6 +6,7 @@ var show_angry_brows=false
 var blink=0.0
 var lens=0.0
 var lens_scale=1.1
+var eye_scale=Vector2.ONE
 const INK=Color('#573b31')
 const WHITE=Color('#fff2d6')
 func geometry(weights,key,side=-1):
@@ -36,7 +37,7 @@ func draw(canvas,position,width,weights,look,time,no_mouth=false):
   var side=-1 if side_index==0 else 1
   var origin=position+Vector2(side*0.215,-0.025 if side==1 else 0)*width
   var eye=clean_polygon(geometry(weights,'eyes',side_index))
-  for i in eye.size():eye[i].y=lerpf(eye[i].y,0.025,blink)
+  for i in eye.size():eye[i].y=lerpf(eye[i].y,0.025*eye_scale.y,blink)
   var local_eye=eye.duplicate()
   for i in eye.size():eye[i]=origin+eye[i]*width
   if spiral<0.999:
@@ -57,7 +58,7 @@ func draw(canvas,position,width,weights,look,time,no_mouth=false):
      if fits:break
      gaze*=0.9
     gaze=gaze.lerp(Vector2.ZERO,lens)
-    var pupil=ellipse(gaze,Vector2(0.174*0.47,0.221*0.61)*lerpf(1.0,lens_scale,lens))
+    var pupil=ellipse(gaze*eye_scale,Vector2(0.174*0.47,0.221*0.61)*eye_scale*lerpf(1.0,lens_scale,lens))
     for clipped in Geometry2D.intersect_polygons(pupil,local_eye):
      for i in clipped.size():clipped[i]=origin+clipped[i]*width
      if clipped.size()>2 and absf(area(clipped))>0.01:fill(canvas,clipped,Color(INK,1-spiral))
@@ -76,12 +77,12 @@ func draw(canvas,position,width,weights,look,time,no_mouth=false):
    for i in 17:
     var t=i/16.0
     var q=Vector2(0.104,0.009)*(1-t)*(1-t)+2*(1-t)*t*Vector2(0.104-0.12*hurt,0.115)+t*t*Vector2(0.104-0.235*hurt,0.11)
-    q.x*=-side;cheek.append(origin+q*width)
+    q.x*=-side;cheek.append(origin+q*eye_scale*width)
    stroke(canvas,cheek,line,Color(INK,hurt))
   if cry>0.001:
-   canvas.draw_colored_polygon(ellipse(origin+Vector2(0,0.193)*width,Vector2(0.15,0.046*cry)*width),Color('#b8e9f0'))
-   var tear=origin+Vector2(side*0.115,0.30+fmod(time*0.8+(side+1)*0.21,1)*0.27)*width
-   canvas.draw_colored_polygon(ellipse(tear,Vector2(0.035,0.07)*width*cry),Color('#b8e9f0'))
+   fill(canvas,ellipse(origin+Vector2(0,0.193)*eye_scale*width,Vector2(0.15,0.046*cry)*eye_scale*width),Color('#b8e9f0'))
+   var tear=origin+Vector2(side*0.115,0.30+fmod(time*0.8+(side+1)*0.21,1)*0.27)*eye_scale*width
+   fill(canvas,ellipse(tear,Vector2(0.035,0.07)*width*cry),Color('#b8e9f0'))
  var blush=float(weights.get('blush',0))+float(weights.get('kiss',0))
  if blush>0.001:
   for side in [-1,1]:canvas.draw_colored_polygon(ellipse(position+Vector2(side*0.35,0.25)*width,Vector2(0.11,0.045)*width),Color(0.84,0.37,0.47,blush*0.45))
@@ -103,4 +104,12 @@ func clean_polygon(points):
  return result
 func fill(canvas,points,color):
  var cleaned=clean_polygon(points)
- if cleaned.size()>2 and not Geometry2D.triangulate_polygon(cleaned).is_empty():canvas.draw_colored_polygon(cleaned,Color(color,color.a*opacity))
+ if cleaned.size()>2 and not Geometry2D.triangulate_polygon(cleaned).is_empty():
+  var tint=Color(color,color.a*opacity)
+  canvas.draw_colored_polygon(cleaned,tint)
+  # Compatibility/WebGL has no 2D MSAA. Add only an antialiased edge, in
+  # physical pixel units, rather than supersampling the whole playing field.
+  var transform=canvas.get_viewport().get_final_transform()*canvas.get_global_transform_with_canvas()
+  var scale=maxf(0.001,transform.get_scale().abs().y)
+  var edge=cleaned.duplicate();edge.append(edge[0])
+  canvas.draw_polyline(edge,tint,1.0/scale,true)
