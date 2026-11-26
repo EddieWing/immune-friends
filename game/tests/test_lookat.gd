@@ -38,6 +38,9 @@ func _initialize():
  sim.phase='shop'
  for i in 80:observer.update(sim,1.0/60,{'selected_uid':'cell:'+str(wall.id),'sell_hover':true,'over_field':false})
  check(observer.output('cell:'+str(wall.id)).get('emotion','')=='worried','selected cell anticipates sale')
+ observer.engine.cursor_jump_at=observer.engine.now
+ sim.presentation_revision+=1;observer.update(sim,0.1,{})
+ check(observer.engine.cursor_jump_at==-INF,'reset clears cursor gesture history')
  print('LookAt failures: ',failures)
  quit(failures)
 

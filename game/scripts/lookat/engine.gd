@@ -41,7 +41,7 @@ func _init():
     phase_cases[key][label][int(row.case)]=true
 func reset(seed_value,round_number):
  states.clear();actors.clear();grid.clear();inbound.clear();links.clear();contacts.clear();dead_viruses.clear()
- now=0;sim_elapsed=0;first_virus=false;cursor_last=Vector2.INF;cursor_still=0;last_action=0;phase_at=0
+ now=0;sim_elapsed=0;first_virus=false;cursor_last=Vector2.INF;cursor_still=0;cursor_jump_at=-INF;last_action=0;phase_at=0;phase="shop";previous_money=0;ui={};frame={}
  rng.seed=seed_value*1000003+round_number*9176
  rules.rare_until=0;rules.serial=0;event_seq=0;ui_previous={}
 func sample(list,new_links,new_contacts,new_particles):
@@ -54,6 +54,7 @@ func sample(list,new_links,new_contacts,new_particles):
   grid[tile].append(uid)
   if not states.has(uid):
    states[uid]={'choice':{},'cooldowns':{},'seen':{},'triggers':{},'until':0.0,'chosen_at':-INF,'choice_fact_time':-INF,'target':'','targets':[],'points':[],'point':actor.body.p,'next':now+float(abs(uid.hash())%1000)/1000.0/config.hz,'look':Vector2.RIGHT,'lens':0.0,'serial':0,'born':now,'prev':{},'conditions':{},'contact_times':[],'push_times':[],'pair_since':now,'pair':'','last_p':actor.body.p,'velocity':Vector2.ZERO,'blink_at':-INF,'phase_seed':rng.randf()*TAU,'wander':actor.body.p,'wander_until':0.0,'rotation_total':0.0,'drag_since':now,'grief_at':-INF,'grief_point':actor.body.p,'orbit_total':0.0,'no_target_since':now,'last_sample':now,'previous_contacts':[],'caught':false,'contagion_at':INF,'contagion_target':'','contagion_point':actor.body.p,'counted_laugh':-1,'event_target':'','event_point':actor.body.p,'event_at':-INF,'last_shooter':'','children':{},'last_hit':-INF}
+   states[uid].registered=rules.index.get(actor.key,{})
    states[uid].allowed={}
    for row in catalog.get(actor.key,[]):states[uid].allowed[int(row.case)]=true
    if actor.group=='virus':
@@ -82,7 +83,7 @@ func closest(ids: Array,point: Vector2) -> String:
   if d<best:best=d;result=uid
  return result
 func emit(uid,code,detail={}):
- if not states.has(uid) or not states[uid].allowed.has(code):return
+ if not states.has(uid) or not states[uid].registered.has(code):return
  var fact=detail.duplicate();fact.time=now;fact.token=event_seq
  states[uid].triggers[code]=fact
  if detail.has('target'):states[uid].event_target=detail.target

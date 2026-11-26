@@ -78,6 +78,7 @@ func facts(e,a: Dictionary,s: Dictionary) -> Dictionary:
  if a.group=='virus':work=b.get('visual_target',core)
  elif a.is_shooter and e.now-s.get('shot_at',-INF)<c.event_fresh:work=s.get('shot_target','')
  if not actors.has(work):work=enemy if a.group!='virus' else core
+ if a.is_shooter and actors.has(work):enemy=work
  if work=='':
   if not s.has('empty_since'):s.empty_since=e.now
  else:s.empty_since=e.now

@@ -13,5 +13,5 @@ func _initialize():
  times.sort()
  var result={'frames':times.size(),'simulation_ticks':900,'speed':5,'mean_us':float(total)/times.size(),'p95_us':times[int(times.size()*0.95)],'peak_us':peak,'states':observer.engine.states.size(),'includes':'sampling, selection, events and per-frame gaze output; excludes existing art drawing'}
  print('LOOKAT_CPU ',JSON.stringify(result))
- var out=FileAccess.open('D:/Create/Immunity/.build/lookat-cpu-result.json',FileAccess.WRITE);out.store_string(JSON.stringify(result,'  '));out.close()
+ var out=FileAccess.open('user://lookat_cpu_result.json',FileAccess.WRITE);out.store_string(JSON.stringify(result,'  '));out.close()
  quit()
