@@ -682,7 +682,7 @@ func intercept_damage(target_id,amount,source={}):
 		if id==target_id or guard.is_empty() or not guard.alive or guard.key!="bodyguard":continue
 		var absorbed=minf(maxf(0,guard.hp),amount)
 		if absorbed<=0:continue
-		record("transfer",{"path":bond_path(target_id,id),"amount":absorbed,"source_id":id,"target_id":target_id,"lethal_prevented":cell_by_id(target_id).get("hp",INF)<=amount and cell_by_id(target_id).get("hp",INF)>amount-absorbed})
+		record("transfer",{"path":bond_path(target_id,id),"amount":absorbed,"source_id":id,"target_id":target_id,"lethal_prevented":endpoint_by_id(target_id).get("hp",1.0)<=amount and endpoint_by_id(target_id).get("hp",1.0)>amount-absorbed})
 		damage_cell(guard,absorbed,true,source)
 		return amount-absorbed
 	return amount

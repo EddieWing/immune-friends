@@ -21,4 +21,16 @@ func _initialize():
  sim.push_object(wall,Vector2(1,0),'cell',shooter.p,shooter.id)
  event=sim.events.back()
  check(event.event=='pushed' and event.data.source_id==shooter.id,'push identifies source without changing impulse API defaults')
+ sim.reset(42,12);sim.blood=sim.blood.slice(0,1);sim.blood_links=[]
+ var core=sim.blood[0];core.p=Vector2.ZERO;core.hp=1
+ var guard=sim.make_cell('bodyguard',Vector2(30,0));sim.cells=[guard];sim.rebuild_links();sim.phase='battle'
+ var observer=load('res://scripts/lookat/observer.gd').new();observer.update(sim,0.2,{})
+ sim.intercept_damage(sim.core_endpoint(core),1,{'kind':'virus','id':900,'p':Vector2(40,0)})
+ observer.update(sim,0.2,{})
+ var transfer={}
+ for event_item in sim.events:
+  if event_item.event=='transfer':transfer=event_item.data
+ check(transfer.get('lethal_prevented',false),'Core lethal interception is attributed using endpoint HP')
+ var trigger=observer.engine.states['cell:'+str(guard.id)].triggers.get(60,{})
+ check(trigger.get('target','')=='core:'+str(core.id),'Bodyguard looks at protected Core ID, not path coordinates')
  quit(failures)

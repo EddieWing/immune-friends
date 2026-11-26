@@ -310,9 +310,8 @@ func event(e,event_data):
    emit_codes(e,source,[38,70],uid,p)
    if float(d.get('hp',0))-float(d.get('amount',0))<=c.critical_hp:emit_codes(e,source,[30],uid,p)
   'transfer':
-   var path=d.get('path',[])
-   if not path.is_empty():
-    var provider=e.actor_id(path[-1]);var recipient=e.actor_id(path[0])
+   if d.has('source_id') and d.has('target_id'):
+    var provider=e.actor_id(d.source_id);var recipient=e.actor_id(d.target_id)
     emit_codes(e,provider,[59],recipient,e.point(recipient));emit_codes(e,recipient,[4],provider,e.point(provider))
     if d.get('lethal_prevented',false):emit_codes(e,provider,[60],recipient,e.point(recipient))
   'pushed':

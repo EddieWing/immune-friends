@@ -93,6 +93,7 @@ func has_actor(uid):return actors.has(uid)
 func point(uid: String,fallback: Vector2=Vector2.ZERO) -> Vector2:return actors[uid].body.p if actors.has(uid) else fallback
 func actor_id(id,kind='cell'):
  if kind=='core':return 'core:'+str(id)
+ if int(id)<-1:return 'core:'+str(-2-int(id))
  var uid='cell:'+str(id)
  return uid if actors.has(uid) else 'virus:'+str(id)
 func update(dt,input,events,snapshot):
