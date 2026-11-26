@@ -294,6 +294,7 @@ func build_ui():
 	field.mouse_filter=Control.MOUSE_FILTER_PASS
 	ui.add_child(field)
 	view=ArenaView.new()
+	view.lookat_game=self
 	view.position=Vector2(720,425)
 	zoom_target=0.88
 	view.scale=Vector2.ONE*zoom_target

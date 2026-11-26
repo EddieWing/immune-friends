@@ -4,6 +4,8 @@ var poses={}
 var opacity=1.0
 var show_angry_brows=false
 var blink=0.0
+var lens=0.0
+var lens_scale=1.1
 const INK=Color('#573b31')
 const WHITE=Color('#fff2d6')
 func geometry(weights,key,side=-1):
@@ -54,7 +56,8 @@ func draw(canvas,position,width,weights,look,time,no_mouth=false):
       if q.length_squared()>0.86*0.86:fits=false;break
      if fits:break
      gaze*=0.9
-    var pupil=ellipse(gaze,Vector2(0.174*0.47,0.221*0.61))
+    gaze=gaze.lerp(Vector2.ZERO,lens)
+    var pupil=ellipse(gaze,Vector2(0.174*0.47,0.221*0.61)*lerpf(1.0,lens_scale,lens))
     for clipped in Geometry2D.intersect_polygons(pupil,local_eye):
      for i in clipped.size():clipped[i]=origin+clipped[i]*width
      if clipped.size()>2 and absf(area(clipped))>0.01:fill(canvas,clipped,Color(INK,1-spiral))

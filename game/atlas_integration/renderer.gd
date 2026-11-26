@@ -6,6 +6,7 @@ var warp=preload('res://atlas_integration/body_warp.gd').new()
 var face=preload('res://atlas_integration/face.gd').new()
 var textures={}
 var order=[]
+var attention_config=JSON.parse_string(FileAccess.get_file_as_string("res://data/lookat.json"))
 const CACHE_LIMIT=24
 func _init():face.poses=data.faces
 func has_character(id):return data.characters.has(id)
@@ -19,22 +20,27 @@ func emotion(state,name):
  if name in ['kiss','wink','blush','raised_brow','astonished']:
   state.return_emotion=state.emotion;state.reaction=name;state.reaction_age=0.0
  else:state.emotion=name;state.reaction=''
-func advance(state,dt,target=Vector2.RIGHT):
+func advance(state,dt,target=Vector2.RIGHT,face_dt=-1.0):
+ if face_dt<0:face_dt=dt
  state.age+=dt;state.clock+=dt;state.hit_age+=dt;state.feed_age+=dt
  # Interpolate direction on the circle: opposite vectors must not pass through zero.
  var wanted=target.angle() if target.length_squared()>0.001 else state.look.angle()
- state.look=Vector2.RIGHT.rotated(lerp_angle(state.look.angle(),wanted,1-exp(-12*dt)))
+ state.look=Vector2.RIGHT.rotated(lerp_angle(state.look.angle(),wanted,1-exp(-float(state.get("look_smoothing",12.0))*face_dt)))
  advance_rotation(state,dt)
- var expression=state.emotion
+ var expression=state.get("attention_emotion",state.emotion)
+ state.lens=lerpf(float(state.get("lens",0.0)),float(state.get("lens_target",0.0)),1-exp(-attention_config.lens_smoothing*face_dt))
  if state.reaction!='':
-  state.reaction_age+=dt
+  state.reaction_age+=face_dt
   var durations={'kiss':1.2,'wink':0.8,'blush':4.2,'raised_brow':2.0,'astonished':2.0}
   if state.reaction_age>=durations[state.reaction]:state.reaction='';state.emotion=state.return_emotion
   else:expression=state.reaction
- if state.mode in ['hurt','death','healDeath','deathPush']:expression='hurt'
- if state.mode=='explode':expression='surprised' if state.age<0.55 else 'astonished'
- var speed=3.0 if expression=='blush' else 16.0
- for name in data.faces:state.weights[name]=lerpf(float(state.weights.get(name,0)),1.0 if name==expression else 0.0,1-exp(-speed*dt))
+ if state.mode in ['hurt','death','healDeath','deathPush']:expression='kiss' if state.id=='bandage' and state.mode=='healDeath' else 'hurt'
+ if state.mode=='explode':expression='hurt' if state.get('dead',false) else ('surprised' if state.age<0.55 else 'astonished')
+ var speed=attention_config.blush_smoothing if expression=='blush' else attention_config.expression_smoothing
+ var mix_weight=float(state.get('attention_mix',1.0)) if expression==state.get('attention_emotion','') else 1.0
+ for name in data.faces:
+  var desired=(mix_weight if name==expression else 0.0)+(1-mix_weight if name==state.get('attention_return','calm') else 0.0)
+  state.weights[name]=lerpf(float(state.weights.get(name,0)),desired,1-exp(-speed*face_dt))
 func texture_for(id,mode):
  var key=id+'--'+mode
  if textures.has(key):order.erase(key);order.append(key);return textures[key]
@@ -51,7 +57,7 @@ func target_angle(state,angle):
   var velocity=state.get('velocity',Vector2.ZERO)
   return velocity.angle()-PI if velocity.length()>0.1 else state.look.angle()-PI
  if state.id in ['virus_hungry','virus_jumper','virus_avoider','virus_seeker','seeker','tackle','virus_swarmer'] and state.mode not in ['idle','death','tagged']:
-  return state.look.angle()
+  return state.get('motion_heading',state.look).angle() if state.get('motion_heading',state.look).length_squared()>0.001 else state.get('body_angle',angle)
  return angle
 func advance_rotation(state,dt):
  var angle=float(state.get('angle',0.0))
@@ -77,7 +83,12 @@ func resting_scale(state):
  return 1.0+0.022*sin(state.clock*1.8+float(state.get('idle_phase',0.0)))
 func blink_amount(state):
  if state.get('reaction','') in ['wink','kiss']:return 0.0
- if state.mode in ['hurt','death','explode','healDeath','deathPush'] or state.emotion in ['hurt','spiral','laugh','wink','kiss']:return 0.0
+ if state.mode in ['hurt','death','explode','healDeath','deathPush'] or state.get('attention_emotion',state.emotion) in ['hurt','spiral','laugh','wink','kiss']:return 0.0
+ var forced=float(state.get('attention_blink_age',INF))
+ if forced<attention_config.blink_duration:
+  if forced<attention_config.blink_close:return smoothstep(0.0,attention_config.blink_close,forced)
+  if forced<attention_config.blink_hold:return 1.0
+  return 1.0-smoothstep(attention_config.blink_hold,attention_config.blink_duration,forced)
  var seed=float(state.get('idle_phase',0.0))+float(str(state.id).hash()%997)*0.01
  var period=3.5+fposmod(seed*1.73,2.8)
  var t=fposmod(state.clock+seed,period)
@@ -121,6 +132,7 @@ func draw(canvas,state,position,body_width,angle=0.0,alpha=1.0):
  if not frames.is_empty():layout=frames[index]
  var face_anchor=Vector2(layout[0],layout[1])*body_width/spec.width
  var opacity=alpha*(float(layout[3]) if layout.size()>3 else 1.0)
+ face.lens=state.get('lens',0.0);face.lens_scale=attention_config.lens_scale
  face.opacity=opacity;face.show_angry_brows=state.id=='orbiter';face.blink=blink_amount(state)
  if opacity>0.01:face.draw(canvas,position+face_anchor.rotated(rotation),layout[2]*body_width/spec.width,state.weights,state.look,state.clock,spec.no_mouth)
  face.opacity=1.0

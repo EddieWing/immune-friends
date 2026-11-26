@@ -1,6 +1,8 @@
 extends RefCounted
 var renderer=preload('res://atlas_integration/renderer.gd').new()
 var states={}
+var lookat=preload("res://scripts/lookat/observer.gd").new()
+var input_context={}
 var shot_trails=[]
 var connections=preload('res://atlas_integration/connections.gd').new(renderer)
 var observed_sim
@@ -26,6 +28,8 @@ func trigger(state,candidates,duration=1.5):
    renderer.action(state,mode);state.age=0.0;state.hold=duration;return true
  return false
 func update(sim,delta):
+ lookat.update(sim,delta,input_context)
+ var face_dt=0.0 if input_context.get("paused",false) else maxf(0,delta)
  var fresh=sim!=observed_sim or revision!=sim.presentation_revision or sim.elapsed<elapsed
  var previous_growth={}
  if fresh:
@@ -83,15 +87,15 @@ func update(sim,delta):
       mode=first_mode(state,['wave','pursue','swim','swimSlow','orbit','move'])
      else:mode=rest_mode(state,body,linked.has(body.id),sim.phase)
      renderer.action(state,mode)
-    state.emotion='angry' if sim.phase=='battle' and state.mode not in ['idle','coreIdle','hurt'] else 'calm'
-    # Manual placement is not autonomous locomotion. Sparse pointer events must
-    # not restart the clip or turn the character between stationary draw frames.
-    var look=body.get('visual_heading',state.velocity) if sim.phase=='battle' else state.look
-    if sim.phase=='battle' and body.has('type') and body.type in ['basic','avoider']:
-     var distance=INF
-     for core in sim.blood:
-      if core.alive and body.p.distance_squared_to(core.p)<distance:distance=body.p.distance_squared_to(core.p);look=core.p-body.p
-    renderer.advance(state,dt,look)
+    var attention=lookat.output(key)
+    var look=state.look
+    if not attention.is_empty():
+     look=attention.look;state.attention_emotion=attention.emotion;state.look_smoothing=attention.smoothing
+     state.lens_target=attention.lens;state.attention_blink_age=attention.blink_age
+     state.attention_case=attention.case
+     state.attention_mix=attention.reaction_mix;state.attention_return=attention.return_emotion
+    state.motion_heading=body.get('visual_heading',state.velocity)
+    renderer.advance(state,dt,look,face_dt)
     if state.mode=='tagged':state.age=minf(state.age,1.8)
  connections.update(sim,dt)
  for trail in shot_trails:trail.age+=dt
@@ -122,7 +126,7 @@ func update(sim,delta):
   if active.has(key):continue
   var state=states[key]
   if not state.dead:states.erase(key);continue
-  renderer.advance(state,dt)
+  renderer.advance(state,dt,state.look,face_dt)
   if state.age>2.5:states.erase(key)
 func first_mode(state,candidates):
  for mode in candidates:

@@ -5,6 +5,8 @@ const SIMPLE_CORE_BODIES=preload("res://assets/ui/core-field-bodies.svg")
 const CORE_FACE_PARTS=preload("res://assets/ui/core-face-parts.svg")
 const CLASSIC_CORE_BODIES=preload("res://assets/ui/core-classic-bodies.svg")
 var atlas_enabled=true
+var lookat_game
+var lookat_ui=preload("res://atlas_integration/lookat_ui.gd").new()
 var atlas=preload('res://atlas_integration/presentation.gd').new()
 var virus_health=[]
 var effect_strokes=preload("res://scripts/stroke_cache.gd").new()
@@ -70,7 +72,9 @@ func _process(delta):
 		visual_revision=sim.presentation_revision
 	if sim!=null: diagnostics.update(sim,delta)
 	if sim!=null:
-		if atlas_enabled:atlas.update(sim,delta)
+		if atlas_enabled:
+			if lookat_game!=null:atlas.input_context=lookat_ui.sample(lookat_game,self)
+			atlas.update(sim,delta)
 		microscope_effects.update(sim,delta,-1.0 if water_paused==null else (0.0 if water_paused else delta))
 		presentation.update(sim,delta)
 		attacks.update(sim,delta)

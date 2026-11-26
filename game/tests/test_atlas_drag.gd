@@ -13,7 +13,7 @@ func run():
  var initial={}
  for cell in sim.cells:
   var state=view.states[view.key_of(cell)]
-  initial[cell.id]={'mode':state.mode,'age':state.age,'look':state.look}
+  initial[cell.id]={'mode':state.mode,'age':state.age,'body_angle':state.body_angle}
  var stable=true;var uninterrupted=true;var heading=true
  # Pointer events arrive less often than display frames, then stop and reverse.
  for frame in 60:
@@ -24,11 +24,11 @@ func run():
    var state=view.states[view.key_of(cell)]
    stable=stable and state.mode==initial[cell.id].mode
    uninterrupted=uninterrupted and state.age>initial[cell.id].age
-   heading=heading and state.look.is_equal_approx(initial[cell.id].look)
+   heading=heading and is_equal_approx(state.body_angle,initial[cell.id].body_angle)
    initial[cell.id].age=state.age
  check(stable,'preparation drag never alternates idle and locomotion between pointer events')
  check(uninterrupted,'preparation animation clock runs continuously through drag, pause and reversal')
- check(heading,'manual placement does not jitter autonomous facing')
+ check(heading,'manual placement preserves body heading independently of gaze')
  var cell=sim.cells[1];sim.phase='battle';sim.elapsed+=1.0/60;cell.p+=Vector2(2,0)
  view.update(sim,1.0/60)
  check(view.states[view.key_of(cell)].mode=='pursue','real battle movement still activates Seeker locomotion')
