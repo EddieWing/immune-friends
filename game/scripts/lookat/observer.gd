@@ -29,6 +29,9 @@ func update(sim,delta,ui={}):
     var uid=uid_of(body);var key='virus_'+str(body.type) if body.has('type') else body.get('key','core')
     var spec=sim.catalog.get(key,{})
     var actor={'uid':uid,'key':key,'body':body,'group':'virus' if body.has('type') else 'core' if not body.has('key') else 'cell','range':sim.range_of(body) if body.has('key') else engine.config.near,'radius':sim.physics.radius(body),'behavior':spec.get('behavior',''),'no_mouth':key in ['turret','sniper','cannon','bullet_wall','impact_wall','mortar','gatling','seeker_factory','virus_hungry']}
+    if actor.behavior=='wall':
+     var axis=Vector2.RIGHT.rotated(body.get('angle',0.0))
+     actor.wall_half=Vector2(sim.physics.extent(sim,body,axis),sim.physics.extent(sim,body,axis.orthogonal()))
     if body.has('key'):
      actor.interval=sim.interval_of(body) if key=='gatling' else 0.0
      actor.recipe_food=sim.constant_of(body,'consume',2) if key=='accelerator' else sim.constant_of(body,'consume',4) if key=='mortar' else sim.constant_of(body,'capsid',1) if key=='seeker_factory' else 0.0

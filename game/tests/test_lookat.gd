@@ -11,7 +11,7 @@ func _initialize():
   for row in catalog[key]:
    cases[int(row.case)]=true
    if key=='core':emotions[row.emotion]=true
- check(count==1794 and cases.size()==198,'all 1794 mappings / 198 cases are loaded')
+ check(count==1836 and cases.size()==199,'1794 original mappings plus 42 Sell-hover mappings / 199 cases are loaded')
  check(emotions.size()==18,'Core has all 18 gameplay expressions')
  for key in ['kinetic_bond','kinetic_generator']:
   for row in catalog[key]:

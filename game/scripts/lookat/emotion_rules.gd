@@ -12,6 +12,8 @@ func _init(settings={},cases={}):
   for row in rows[key]:index[key][int(row.case)]=row
 func priority(row,phase):
  if row.emotion=='hurt':return 6
+ # The loser of a stare contest reacts after hurt, even under ongoing threat.
+ if int(row.case) in [66,186]:return 5.5
  if phase=='battle' and row.frequency=='state' and row.emotion in ['angry','worried']:return 5
  return {'often':4,'sometimes':3,'rare':2,'state':1}[row.frequency]
 func duration(row):
@@ -31,7 +33,7 @@ func choose(actor,state,facts,phase,speed,now,rng):
   if not row.phases.has(phase):continue
   if actor.get('no_mouth',false) and row.emotion=='kiss':continue
   if row.frequency=='rare' and (now<rare_until or (phase=='battle' and speed>=config.speed5)):continue
-  if phase=='battle' and facts.get('threat',false) and (row.frequency=='rare' or code in [32,66,71,93,126,127,128,129,130,131,135,150,153,154,155,156,166,168,171,176,177,179,186]):continue
+  if phase=='battle' and facts.get('threat',false) and (row.frequency=='rare' or code in [32,71,93,126,127,128,129,130,131,135,150,153,154,155,156,166,168,171,176,177,179]):continue
   if now<float(state.cooldowns.get(code,-INF)):continue
   var fact=facts[code]
   if row.frequency!='state' and state.seen.get(code,-INF)>=fact.time:continue

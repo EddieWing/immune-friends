@@ -32,6 +32,8 @@ var event_seq=0
 var facts_us=0
 var rules_us=0
 var phase_cases: Dictionary={}
+var duels: Dictionary={}
+var jump_origins: Dictionary={}
 func _init():
  for key in catalog:
   phase_cases[key]={}
@@ -40,6 +42,7 @@ func _init():
     if not phase_cases[key].has(label):phase_cases[key][label]={}
     phase_cases[key][label][int(row.case)]=true
 func reset(seed_value,round_number):
+ duels.clear();jump_origins.clear()
  states.clear();actors.clear();grid.clear();inbound.clear();links.clear();contacts.clear();dead_viruses.clear()
  now=0;sim_elapsed=0;first_virus=false;cursor_last=Vector2.INF;cursor_still=0;cursor_jump_at=-INF;last_action=0;phase_at=0;phase="shop";previous_money=0;ui={};frame={}
  rng.seed=seed_value*1000003+round_number*9176
@@ -127,6 +130,9 @@ func update(dt,input,events,snapshot):
   var stamp=Time.get_ticks_usec()
   s.allowed=phase_cases.get(a.key,{}).get(phase,{})
   var facts=detectors.facts(self,a,s)
+  if s.has('duel_pending') and now>=s.duel_pending.after and (s.choice.get('emotion','')!='hurt' or now>=s.until):
+   var pending=s.duel_pending;s.erase('duel_pending')
+   emit(uid,pending.code,{'target':pending.target,'point':pending.point})
   facts_us+=Time.get_ticks_usec()-stamp
   for code in s.triggers.keys():
    var fact=s.triggers[code]

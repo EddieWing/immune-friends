@@ -495,6 +495,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-wall",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "tackle": [
@@ -978,6 +990,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-tackle",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "seeker": [
@@ -1485,6 +1509,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-seeker",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "orbiter": [
@@ -1968,6 +2004,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-orbiter",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "magnet": [
@@ -2439,6 +2487,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-magnet",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "bandage": [
@@ -2898,6 +2958,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-bandage",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "regen": [
@@ -3369,6 +3441,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-regen",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "bank": [
@@ -3828,6 +3912,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-bank",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "resonant_wall": [
@@ -4323,6 +4419,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-resonant_wall",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "resonant_buffer": [
@@ -4782,6 +4890,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-resonant_buffer",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "turret": [
@@ -5277,6 +5397,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-turret",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "sniper": [
@@ -5760,6 +5892,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-sniper",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "cannon": [
@@ -6255,6 +6399,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-cannon",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "bullet_wall": [
@@ -6738,6 +6894,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-bullet_wall",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "impact_wall": [
@@ -7209,6 +7377,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-impact_wall",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "tag_dropper": [
@@ -7668,6 +7848,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-tag_dropper",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "tag_sprayer": [
@@ -8139,6 +8331,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-tag_sprayer",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "zapper": [
@@ -8622,6 +8826,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-zapper",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "generator": [
@@ -9081,6 +9297,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-generator",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "bond": [
@@ -9558,6 +9786,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-bond",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "bodyguard": [
@@ -10058,6 +10298,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-bodyguard",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "radar": [
@@ -10546,6 +10798,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-radar",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "swapper": [
@@ -11034,6 +11298,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-swapper",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "accelerator": [
@@ -11522,6 +11798,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-accelerator",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "wildcard": [
@@ -11981,6 +12269,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-wildcard",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "bomb": [
@@ -12452,6 +12752,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-bomb",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "pusher": [
@@ -12911,6 +13223,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-pusher",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "mortar": [
@@ -13358,6 +13682,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-mortar",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "mint": [
@@ -13829,6 +14165,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-mint",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "tag_splitter": [
@@ -14348,6 +14696,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-tag_splitter",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "tag_drag": [
@@ -14807,6 +15167,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-tag_drag",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "greed_wall": [
@@ -15314,6 +15686,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-greed_wall",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "survivor_bomb": [
@@ -15797,6 +16181,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-survivor_bomb",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "electric_wall": [
@@ -16304,6 +16700,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-electric_wall",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "electromagnet": [
@@ -16775,6 +17183,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-electromagnet",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "kinetic_generator": [
@@ -17258,6 +17678,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-kinetic_generator",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "tag_proof": [
@@ -17765,6 +18197,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-tag_proof",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "seeker_factory": [
@@ -18224,6 +18668,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-seeker_factory",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "gatling": [
@@ -18719,6 +19175,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-gatling",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "kinetic_bond": [
@@ -19207,6 +19675,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-kinetic_bond",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "hungry_bomb": [
@@ -19702,6 +20182,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Пережила взрыв Bomb, получив от него урон"
+      },
+      {
+        "id": "LA-SELL-hungry_bomb",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "core": [
@@ -20003,6 +20495,18 @@
         "direction": 12,
         "target_description": "Никуда (глаза-спирали)",
         "condition": "Игрок таскал его курсором дольше 5 с или рядом был взрыв"
+      },
+      {
+        "id": "LA-SELL-core",
+        "case": 199,
+        "emotion": "raised_brow",
+        "frequency": "sometimes",
+        "phases": [
+          "shop"
+        ],
+        "direction": 0,
+        "target_description": "Соседняя клетка, выбранная для продажи",
+        "condition": "Игрок навёл Sell на соседнюю клетку, продажа ещё не совершена"
       }
     ],
     "virus_basic": [

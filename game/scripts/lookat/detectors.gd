@@ -1,5 +1,5 @@
 extends RefCounted
-const EVENTS={'damage':true,'virus_hit':true,'core_hit':true,'heal':true,'transfer':true,'pushed':true,'attack_fired':true,'cell_target':true,'cell_return':true,'bullet_split':true,'cell_split':true,'accelerated':true,'charge_generated':true,'generator_charged':true,'discharge':true,'charge_kill':true,'tagged':true,'protein_eaten':true,'generator_fed':true,'virus_fed':true,'produced':true,'blast_started':true,'cell_rest':true,'blood_lost':true,'core_protected':true,'virus_defeated':true,'virus_target':true,'virus_attachment':true,'merge':true,'purchase':true,'purchase_buff':true,'sell':true,'swap':true,'permanent_growth':true}
+const EVENTS={'virus_jump_started':true,'virus_landed':true,'damage':true,'virus_hit':true,'core_hit':true,'heal':true,'transfer':true,'pushed':true,'attack_fired':true,'cell_target':true,'cell_return':true,'bullet_split':true,'cell_split':true,'accelerated':true,'charge_generated':true,'generator_charged':true,'discharge':true,'charge_kill':true,'tagged':true,'protein_eaten':true,'generator_fed':true,'virus_fed':true,'produced':true,'blast_started':true,'cell_rest':true,'blood_lost':true,'core_protected':true,'virus_defeated':true,'virus_target':true,'virus_attachment':true,'merge':true,'purchase':true,'purchase_buff':true,'sell':true,'swap':true,'permanent_growth':true}
 # Detectors read actor snapshots and normalized events; all memory is in engine states.
 func add(e,s,f,code,ok,target='',point=Vector2.INF,targets=[],points=[]):
  if not s.allowed.has(code):return
@@ -61,6 +61,9 @@ func facts(e,a: Dictionary,s: Dictionary) -> Dictionary:
   if states[viewer].choice.get('emotion','')=='worried':worried_watchers.append(viewer)
  var pair=s.target if actors.has(s.target) and states[s.target].target==uid and a.key!='virus_avoider' and actors[s.target].key!='virus_avoider' else ''
  if pair!=s.pair:s.pair=pair;s.pair_since=e.now
+ var sold=e.ui.get('selected_uid','')
+ var sell_neighbor=e.phase=='shop' and e.ui.get('sell_hover',false) and sold!=uid and actors.has(sold) and p.distance_to(e.point(sold))<=c.sell_neighbor_radius
+ add(e,s,f,199,sell_neighbor,sold)
  var pair_age=e.now-s.pair_since if pair!='' else 0.0
  var threat=(enemy!='' and a.group!='virus' and p.distance_to(e.point(enemy))<c.threat_radius) or (a.group=='virus' and core!='' and close_core<c.virus_threat_radius)
  f.threat=threat
@@ -245,8 +248,7 @@ func facts(e,a: Dictionary,s: Dictionary) -> Dictionary:
   if s.allowed.has(184):add(e,s,f,184,b.get('tag',0)>0 or b.get('freeze',0)>0)
   if s.allowed.has(185):add(e,s,f,185,not b.get('jump',false) and b.get('jump_cooldown',1)<c.hold_min)
   if s.allowed.has(187):add(e,s,f,187,friend!='',friend)
-  if s.allowed.has(188):add(e,s,f,188,s.prev.get('jump',false) and not b.get('jump',false))
-  if s.allowed.has(189):add(e,s,f,189,s.prev.get('jump',false) and not b.get('jump',false) and not walls.is_empty(),e.closest(walls,p))
+  # Landing cases are emitted from actual jump events, not 8 Hz snapshots.
   if s.allowed.has(191):add(e,s,f,191,b.get('lived',0)>b.get('lifespan',INF)*c.lifetime_fraction)
  s.network_seen=enemy
  for code in [103,116,163,169]:
@@ -257,25 +259,79 @@ func facts(e,a: Dictionary,s: Dictionary) -> Dictionary:
   var ns: Dictionary=states[neighbor]
   if ns.choice.get('emotion','')=='laugh' and int(ns.choice.get('case',0))!=77 and int(ns.serial)!=s.counted_laugh:
    if s.allowed.has(77):add(e,s,f,77,true,neighbor);s.counted_laugh=ns.serial;break
- # Idle-only gaze contagion, queued nearest first by distance-based delay.
+ # Idle-only contagion; point votes use neighboring bins to avoid boundary gaps.
  if (s.allowed.has(104) or s.allowed.has(129) or s.allowed.has(155)) and (s.choice.is_empty() or int(s.choice.get('case',0)) in [102,103,104,147,180]):
-  var votes={}
-  for neighbor in nearby:
-   if neighbor==uid:continue
-   var ns: Dictionary=states[neighbor];var key=ns.target if ns.target!='' else 'lens' if ns.choice.get('direction',0)==6 else ''
-   if key=='':continue
-   if not votes.has(key):votes[key]=[]
-   votes[key].append(neighbor)
-  for target in votes:
-   if votes[target].size()<c.contagion_count:continue
-   if s.contagion_target!=target:s.contagion_target=target;s.contagion_at=e.now+lerpf(c.contagion_min,c.contagion_max,p.distance_to(e.point(votes[target][0],p))/c.contagion_radius)
+  var focus=contagion_focus(e,a,nearby)
+  if focus.is_empty():s.contagion_target='';s.contagion_at=INF
+  else:
+   var changed=s.contagion_target!=focus.key or (focus.target=='' and focus.key!='lens' and s.contagion_point.distance_to(focus.point)>c.contagion_point_tolerance)
+   if changed:
+    s.contagion_target=focus.key;s.contagion_at=e.now+lerpf(c.contagion_min,c.contagion_max,clampf(focus.distance/c.contagion_radius,0,1))
+   s.contagion_point=focus.point
    if e.now>=s.contagion_at:
-    if target=='lens':add(e,s,f,155 if a.group=='core' else 129,true)
-    else:add(e,s,f,104,true,target,e.point(target))
-   break
+    if focus.key=='lens':add(e,s,f,155 if a.group=='core' else 129,true)
+    else:add(e,s,f,104,true,focus.target,focus.point)
+
  return f
 func emit_codes(e,uid,codes,target='',p=Vector2.ZERO,targets=[]):
  for code in codes:e.emit(uid,code,{'target':target,'point':p,'targets':targets})
+func contagion_focus(e,a,nearby):
+ var votes={};var bins={};var tolerance=float(e.config.contagion_point_tolerance)
+ for uid in nearby:
+  if uid==a.uid or a.body.p.distance_to(e.point(uid))>e.config.contagion_radius:continue
+  var state=e.states[uid]
+  var target=state.target
+  var key='lens' if state.choice.get('direction',0)==6 else target
+  if key!='':
+   if not votes.has(key):votes[key]=[]
+   votes[key].append(uid)
+  else:
+   var tile=Vector2i((state.point/tolerance).floor())
+   if not bins.has(tile):bins[tile]=[]
+   bins[tile].append(uid)
+ for key in votes:
+  if votes[key].size()>=e.config.contagion_count:
+   var closest=e.closest(votes[key],a.body.p)
+   return {'key':key,'target':'' if key=='lens' else key,'point':e.point(key),'distance':a.body.p.distance_to(e.point(closest))}
+ for tile in bins:
+  var anchor=e.states[bins[tile][0]].point;var members=[];var sum=Vector2.ZERO
+  for y in range(-1,2):
+   for x in range(-1,2):
+    for uid in bins.get(tile+Vector2i(x,y),[]):
+     var point=e.states[uid].point
+     if point.distance_to(anchor)<=tolerance:members.append(uid);sum+=point
+  if members.size()>=e.config.contagion_count:
+   var closest=e.closest(members,a.body.p)
+   return {'key':'point','target':'','point':sum/members.size(),'distance':a.body.p.distance_to(e.point(closest))}
+ return {}
+func queue_duel_reaction(e,uid):
+ var s=e.states[uid];var other=s.pair
+ if other=='' or not e.states.has(other):return
+ var partner=e.states[other]
+ if partner.pair!=uid or s.target!=other or partner.target!=uid:return
+ var started=maxf(s.pair_since,partner.pair_since)
+ if e.now-started<e.config.pair_delay:return
+ var code=186 if uid.begins_with('virus:') else 66
+ var partner_code=66 if code==186 else 186
+ if not s.registered.has(code) or not partner.registered.has(partner_code):return
+ var key='|'.join([uid,other] if uid<other else [other,uid])
+ if e.duels.get(key,{}).get('started',-INF)==started:return
+ # Event order resolves simultaneous hits deterministically without simulation RNG.
+ e.duels[key]={'started':started,'first_hit':uid}
+ s.duel_pending={'code':code,'target':other,'point':e.point(other),'after':e.now+e.config.durations.hurt}
+func crossed_wall(e,start,finish,radius):
+ var result='';var first=INF
+ for uid in e.groups.cell:
+  var wall=e.actors[uid]
+  if not wall.is_wall or not wall.has('wall_half'):continue
+  var origin: Vector2=wall.body.p;var angle=float(wall.body.get('angle',0))
+  var a=(start-origin).rotated(-angle);var b=(finish-origin).rotated(-angle)
+  var half: Vector2=wall.wall_half
+  if a.y*b.y>=0 or absf(a.y)<half.y+radius or absf(b.y)<half.y+radius:continue
+  var fraction=-a.y/(b.y-a.y)
+  var x=lerpf(a.x,b.x,fraction)
+  if absf(x)<=half.x and fraction<first:result=uid;first=fraction
+ return result
 func event(e,event_data):
  var name=event_data.event
  if not EVENTS.has(name):return
@@ -287,6 +343,13 @@ func event(e,event_data):
  var target=e.actor_id(int(d.get('target_id',d.get('target',-1)))) if d.get('target',-1) is int or d.has('target_id') else ''
  var q=d.get('from',e.point(source,p));var nearby=e.near(p,c.event_radius) if name in ['pushed','protein_eaten','generator_fed','blast_started','cell_rest','virus_defeated','merge','purchase','sell'] else []
  match name:
+  'virus_jump_started':e.jump_origins[uid]=p
+  'virus_landed':
+   emit_codes(e,uid,[188],'',p)
+   if e.jump_origins.has(uid):
+    var wall=crossed_wall(e,e.jump_origins[uid],p,e.actors.get(uid,{}).get('radius',0.0))
+    if wall!='':emit_codes(e,uid,[189],wall,e.point(wall))
+    e.jump_origins.erase(uid)
   'damage','virus_hit','core_hit':
    emit_codes(e,uid,[81 if name=='damage' else 193 if name=='virus_hit' else 142],source,q)
    if name=='virus_hit' and d.get('cause','')=='blast':
@@ -301,7 +364,8 @@ func event(e,event_data):
     var s=e.states[uid];s.last_hit=e.now;s.last_shooter=source
     if name=='virus_hit' and e.actors.get(uid,{}).get('key','')=='virus_wave':emit_codes(e,uid,[194],source,q)
     if name=='damage' and s.get('pushed_by','')!='' and e.now-s.get('pushed_when',-INF)<c.event_fresh:emit_codes(e,s.pushed_by,[89],uid,p)
-    if s.pair!='':emit_codes(e,uid,[186 if name=='virus_hit' else 66],s.pair,e.point(s.pair))
+    queue_duel_reaction(e,uid)
+    if s.has('duel_pending'):s.duel_pending.after=e.now+c.durations.hurt
    if name=='damage':
     emit_codes(e,uid,[65],source,q)
     if d.get('source_cause','')=='blast':emit_codes(e,uid,[58],source,q)

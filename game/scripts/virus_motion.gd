@@ -30,10 +30,12 @@ func tick(s,v,dir,delta,prepared={}):
 			if v.jump_remaining<=0:
 				apply_impulse(s,v,-dir*250.0*scale/(PI*1.75*1.75)*body_mass,body_mass)
 				v.jump=false;v.jump_cooldown=1.0
+				s.record("virus_landed",{"id":v.id,"p":v.p})
 		else:
 			v["jump_cooldown"]=float(v.get("jump_cooldown",1.0))-delta
 			if v.jump_cooldown<=0:
 				v.jump=true;v.jump_remaining=0.1
+				s.record("virus_jump_started",{"id":v.id,"p":v.p})
 				if v.freeze<=0:apply_impulse(s,v,dir*250.0*scale/(PI*1.75*1.75)*body_mass,body_mass)
 		if v.freeze<=0 and not v.jump:s.physics.drive(v,dir*5.0*scale)
 		v.visual_heading=dir
