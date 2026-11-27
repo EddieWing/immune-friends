@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Keep the experimental build independent from production gameplay.
-          ref: 47f36bebac562974f788b56c34a408a32ba6cb56
+          ref: dda0af07fb134a481352f2b20a24f4edbdfbff5a
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
