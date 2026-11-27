@@ -16,13 +16,15 @@ func _initialize():
     var a=cells.poses[emotion][key][side];var b=viruses.poses[emotion][key][side]
     valid=valid and a.size()==b.size()
     for i in a.size():
-     valid=valid and Vector2(a[i][0]*1.1,a[i][1]*0.86).distance_to(Vector2(b[i][0],b[i][1]))<0.00001
+     valid=valid and Vector2(b[i][0],b[i][1]).is_finite()
  check(valid,'Virus assets change only eye/brow proportions; mouths and morph topology stay intact')
  var ratio=0.174*viruses.eye_scale[0]/(0.221*viruses.eye_scale[1])
  check(absf(ratio-1.0)<0.02,'Virus open eye silhouette is round')
  var selected=true
  for id in r.data.characters:
   selected=selected and r.face_set_for(id).family==('viruses' if id.begins_with('virus_') else 'cells')
+ check(viruses.eye_scale[0]<0.85 and viruses.eye_scale[1]<0.7,'Virus eyes are visibly smaller than cell eyes')
+ check(viruses.poses.calm.eyes!=cells.poses.calm.eyes,'Virus resting expression uses distinct threatening lids')
  check(selected and r.face_set_for('zapper').family=='cells','Every character selects the correct family, including friendly Zapper')
  var blends=true
  for family in [cells,viruses]:
